@@ -10,6 +10,7 @@ import io.github.thomasjoleary.toxicsurface.registry.ModCreativeTabs;
 import io.github.thomasjoleary.toxicsurface.registry.ModDataComponents;
 import io.github.thomasjoleary.toxicsurface.registry.ModFluids;
 import io.github.thomasjoleary.toxicsurface.registry.ModItems;
+import io.github.thomasjoleary.toxicsurface.registry.ModRecipes;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -33,6 +34,7 @@ public final class ToxicSurface {
         ModItems.ITEMS.register(modEventBus);
         ModCreativeTabs.CREATIVE_MODE_TABS.register(modEventBus);
         ModAttachments.ATTACHMENT_TYPES.register(modEventBus);
+        ModRecipes.RECIPE_SERIALIZERS.register(modEventBus);
 
         // Server config — server-authoritative and synced in multiplayer (DESIGN.md §3, §4).
         modContainer.registerConfig(ModConfig.Type.SERVER, ToxicSurfaceConfig.SPEC);

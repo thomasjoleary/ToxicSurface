@@ -20,6 +20,9 @@ public final class ModItems {
     /** Clean filter; crafted from 2 wool, installed into a face mask. */
     public static final DeferredItem<Item> CLEAN_AIR_FILTER = ITEMS.registerSimpleItem("clean_air_filter");
 
+    /** Spent filter ejected when refilling a mask; wash it back to clean (DESIGN.md §3). */
+    public static final DeferredItem<Item> USED_AIR_FILTER = ITEMS.registerSimpleItem("used_air_filter");
+
     /** Helmet-slot mask whose installed filter time is its durability bar. */
     public static final DeferredItem<FaceMaskItem> FACE_MASK =
             ITEMS.register("face_mask", () -> new FaceMaskItem(new Item.Properties().stacksTo(1)));
