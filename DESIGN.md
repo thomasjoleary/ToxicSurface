@@ -1,0 +1,209 @@
+# ToxicSurface — Design & Technical Spec
+
+> Status: **Design phase** (no implementation code yet). This document is the
+> agreed spec to build against. Last updated 2026-06-19.
+
+A NeoForge mod that turns the surface of the world toxic after a configurable
+in-game time, forcing players into sealed bases, air filtration, hazmat gear,
+and machines to reclaim the world. Designed to slot into a Create /
+Create: Aeronautics modpack.
+
+---
+
+## 1. Target stack
+
+| Thing | Choice | Why |
+|---|---|---|
+| MC version | **1.21.1** | Common ground for Create 6.x and Create: Aeronautics' current builds |
+| Loader | **NeoForge** | Where Create: Aeronautics is actively maintained (1.3.0-era, mid-2026) |
+| Mappings | Mojmap (official) | NeoForge standard on 1.21.1 |
+| Build | Gradle + ModDevGradle/NeoGradle | Standard NeoForge toolchain |
+| Floating-island worldgen | **Sky Archipelago** (NeoForge 1.21.1) | Purpose-built for Create: Aeronautics airship gameplay; ideal pack companion |
+
+**API note:** 1.21.1 is a very different world from the common 1.20.1 tutorials.
+Item state is **Data Components** (1.20.5+), not NBT. Armor materials are
+data-driven records. Fluids, capabilities, and networking use NeoForge's newer
+systems. We build against current NeoForge 1.21.1 docs.
+
+---
+
+## 2. The two hard problems
+
+### 2a. Enclosure detection ("is this air sealed from the toxic atmosphere?")
+Canonical prior art: **Galacticraft's oxygen sealer**.
+
+- **Per-entity bounded flood-fill** from the entity's head block through passable
+  air. Reaches "open atmosphere" within a block budget → **exposed/toxic**.
+  Closes off inside a pocket smaller than the budget → **sealed/safe**.
+- **Cache mandatory**: result keyed by air-pocket, invalidated when a block in
+  the pocket's bounding box changes. Effect checks run throttled (~every 10
+  ticks), not every tick.
+- **Budget tradeoff**: a sealed base larger than the budget is misread as
+  exposed. Mitigation: connected-component cache, flood-fill a pocket once and
+  reuse. **Highest correctness risk in the mod — prototype first.**
+
+### 2b. Water → sludge conversion at world scale
+Real sludge fluid, so we convert actual blocks — but never billions at once.
+
+- Each chunk gets a **"toxified" flag** (chunk attachment / SavedData). After the
+  toxicity start time, when a chunk loads within simulation distance, a
+  **throttled queued pass** (N blocks/tick globally) converts water below Y into
+  sludge, then sets the flag so it never re-runs.
+- Cleansers run the reverse pass within radius.
+
+---
+
+## 3. System-by-system design
+
+### World toxicity state (server-authoritative, per-level)
+- `SavedData` per affected dimension: `toxicityStartTick` (set when world first
+  crosses the configured time) + config snapshot.
+- Default affected dimension: Overworld only (configurable whitelist).
+
+### Escalation mode
+- The toxic Y ceiling **rises over time** at a configurable spread speed
+  (blocks per in-game day; `0` = static line). Turns the hazard into a creeping
+  apocalypse and pushes players upward — strong synergy with airships/sky
+  islands as the late-game safe zone.
+
+### Toxic gas (virtual region + client fog)
+- An air block is toxic if `time ≥ start` AND `y ≤ currentToxicY` AND not in a
+  sealed pocket AND not inside a cleanser bubble.
+- **Players**: unprotected → **Poison + Nausea** (throttled, server-side).
+- **Animals & crops**: die / break when in toxic gas (passive mobs take toxic
+  damage; crop blocks decay). **Hostile mobs unaffected for now** (mutant mobs
+  are a future addition).
+- **Toxic rain**: surface weather particle/overlay effect while it's raining in
+  toxified areas, reinforcing the "don't go outside" mood. Drives sealed
+  greenhouse farming.
+- Client renders **fog + particle haze** when the camera block is toxic, via
+  NeoForge fog render events. Server syncs timer, current Y, config, and nearby
+  cleanser bubbles so the client computes fog locally and responsively.
+
+### Toxic sludge (real custom fluid)
+- Custom flowing fluid (NeoForge `BaseFlowingFluid` + `FluidType`), behaves like
+  water (flows, bucket-able, swimmable, **depletes the air bar → drowning**).
+- Entities inside: **2 damage every 0.5s + Poison**.
+- **Destroys organic items**: `ItemEntity`s matching food / `#minecraft:logs` /
+  `#minecraft:leaves` / a custom `#toxicsurface:organic` tag are consumed in
+  sludge.
+- Sludge bucket is a real fluid bucket item.
+- **Create integration**: exposes the standard fluid-handler capability so sludge
+  is **pumpable through Create pipes/pumps** and storable in Create tanks.
+
+### Filters & masks (Data Components)
+- **Clean Air Filter** ← **2 wool** (shapeless).
+- **Face Mask** ← **clean filter + 2 string**. Component stores
+  `{ filterInstalled: bool, remainingTicks }`. Lasts ~2 min (2400 ticks) of
+  active protection; **remaining filter time shown as the item durability bar**.
+  Counts down only while actually in toxic gas (configurable to always-tick).
+- **Worn in the helmet slot** (mutually exclusive with the hazmat helmet — a
+  deliberate early-game vs end-game tradeoff).
+- Dirty (used) filter can be **swapped/replaced** in the mask.
+- **Washing dirty filters — two paths:**
+  1. **Vanilla craft**: dirty filter + water bucket → clean filter **+ sludge
+     bucket returned** (custom recipe; the returned bucket's remainder is set to
+     a sludge bucket). Reverse: sludge bucket + clean filter → water bucket.
+  2. **Create washing**: running a dirty filter through Create's washing
+     (encased fan + flowing water / bulk washing) → clean filter. Convenience
+     path; no bucket return.
+
+### Hazmat suit (custom armor set)
+- Crafted from Hazmat Material + iron; helmet/chest/legs/boots via data-driven
+  `ArmorMaterial`.
+- **Helmet**: visor overlay — vignette/edge-darkening HUD so you "see through the
+  visor." Immersion extras: fog-up effect + muffled breathing audio; cracked
+  visor when damaged.
+- **Chestpiece**: stores **up to 10 filters** (Data Component), consumed at
+  **half the mask's rate** while in toxic gas. Full powered suit → **gas
+  immunity**.
+- **Sludge**: a full hazmat suit **negates all sludge contact damage**, but the
+  player **can still drown** in sludge (the suit is not a rebreather).
+
+### Weaver (machine block)
+- Crafted from **6 iron + 2 sticks**.
+- Block entity with a sided `ItemStackHandler`: inputs **kelp + wool**, outputs
+  **Hazmat Material**.
+- **Runs on furnace fuel** like a normal furnace. **A redstone signal STOPS it**
+  (powered = halted; unpowered = runs when fueled + supplied).
+- **Hopper-automatable** (kelp/wool in, material out).
+
+### Cleanser (machine block)
+- Crafted from **4 iron + 2 gold + 2 diamond**.
+- Consumes furnace fuel; **purges gas in a sphere** and **reverts sludge → water**
+  within range.
+- Range tiers **8 / 16 / 32 / 64 / 128**, set by **input redstone signal**;
+  **hopper** fuel input.
+- Fuel cost: base furnace rate at 8 blocks, **exponential** with range
+  (cost ∝ (range/8)^k; `k` in config).
+- **Create variant (Mechanical Cleanser)**: powered by Create **rotational
+  force** (stress/RPM) instead of fuel — range scales with supplied RPM/stress.
+
+### Config (server config — syncs in multiplayer)
+- Time-to-toxic, toxic Y (start), **escalation spread speed**, sludge damage &
+  interval, poison/nausea levels, mask duration & tick mode, suit capacity &
+  rate, cleanser tiers & fuel exponent, affected dimensions, enclosure flood-fill
+  budget, toggles for animal/crop death and toxic rain.
+
+---
+
+## 4. Multiplayer model
+All hazard logic (damage, effects, conversion, sealing checks) is
+**server-authoritative**. Clients only **render** (fog, particles, suit HUD,
+toxic rain) and receive synced state via NeoForge payload networking. Config is
+server-driven and synced. Baked into the architecture, not bolted on.
+
+---
+
+## 5. Phased roadmap
+
+1. **Foundations** — NeoForge 1.21.1 project, registries, config spec, CI/dev world.
+2. **Hazard core (risky stuff first)** — toxicity timer + SavedData + escalation,
+   sludge fluid, virtual gas effects, **enclosure flood-fill + cache**, client
+   fog. *Prototype enclosure detection before proceeding.*
+3. **Lazy world conversion** — chunk toxified-flag + throttled water→sludge queue;
+   organic-item destruction; animal/crop death; toxic rain.
+4. **Filters & masks** — items, Data Components, durability display, wash/return
+   recipes, mask wear.
+5. **Hazmat suit** — armor set, chest filter storage + consumption, helmet visor
+   overlay + immersion, sludge-damage immunity (still drowns).
+6. **Machines** — Weaver (fuel + redstone-stop), then Cleanser (redstone range,
+   fuel curve, hopper I/O, sludge reversion).
+7. **Create integration** — sludge in Create pipes/tanks, Create washing for
+   filters, Mechanical Cleanser variant.
+8. **Polish & pack integration** — JEI/EMI recipe support, Jade tooltips, balance
+   pass, Create / Aeronautics / Sky Archipelago compat testing.
+
+---
+
+## 6. Open risks
+- **Create: Aeronautics maturity** — young, API-churny; pin exact compatible
+  Create + Aeronautics + Sable + Sky Archipelago build numbers.
+- **Enclosure correctness** for very large bases (budget tuning).
+- **Sludge on moving Create/Aeronautics contraptions** — edge-case testing.
+- **Create API coupling** — washing recipes and rotational power tie us to Create
+  internals; gate behind soft-dependency so the mod still loads standalone.
+
+---
+
+## 7. Future / stretch ideas
+- **Mutant mobs** immune to the gas, spawning in toxified surface at night.
+- **Geiger / air-quality meter** item that ticks faster near the toxic line.
+- **Decontamination/refill station** that recharges suit filters from a tank.
+- **Sealed greenhouse** progression for surface farming under glass.
+
+---
+
+## Decision log
+- Target: **1.21.1 / NeoForge**.
+- Gas safety model: **sealed enclosures protect you** (Galacticraft-style).
+- World representation: **real sludge fluid, virtual gas**.
+- Hazmat suit: **negates all sludge damage, but players still drown** in sludge.
+- Air filter = **2 wool**; face mask = **clean filter + 2 string**, durability =
+  filter time, **helmet slot**.
+- Weaver: **furnace fuel**, **redstone signal stops it**.
+- **Escalation mode** with configurable spread speed.
+- **Toxic rain**; **animals + crops die** to gas; **hostile mobs unaffected** (for now).
+- **Mechanical Cleanser** (Create rotation); **sludge pumpable** through Create pipes.
+- Dirty filters cleanable via **Create washing** (plus the bucket recipe).
+- **Visor immersion** included.
