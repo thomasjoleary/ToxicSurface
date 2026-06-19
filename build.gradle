@@ -62,6 +62,11 @@ repositories {
 
 dependencies {
     // Optional soft-dependencies on Create / Aeronautics are added in Phase 7.
+
+    // JUnit 5 for pure-logic unit tests (e.g. the enclosure flood-fill, DESIGN.md §10).
+    testImplementation platform('org.junit:junit-bom:5.10.2')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 // Expand gradle.properties tokens into the mods.toml template at build time.
