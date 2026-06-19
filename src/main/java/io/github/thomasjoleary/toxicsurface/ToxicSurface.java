@@ -7,6 +7,7 @@ import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
 import io.github.thomasjoleary.toxicsurface.registry.ModAttachments;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlocks;
 import io.github.thomasjoleary.toxicsurface.registry.ModCreativeTabs;
+import io.github.thomasjoleary.toxicsurface.registry.ModDataComponents;
 import io.github.thomasjoleary.toxicsurface.registry.ModFluids;
 import io.github.thomasjoleary.toxicsurface.registry.ModItems;
 import net.neoforged.bus.api.IEventBus;
@@ -25,6 +26,7 @@ public final class ToxicSurface {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public ToxicSurface(IEventBus modEventBus, ModContainer modContainer) {
+        ModDataComponents.DATA_COMPONENTS.register(modEventBus);
         ModFluids.FLUID_TYPES.register(modEventBus);
         ModFluids.FLUIDS.register(modEventBus);
         ModBlocks.BLOCKS.register(modEventBus);

@@ -1,0 +1,11 @@
+{
+    "type": "minecraft:crafting_shapeless",
+    "ingredients": [
+        "#minecraft:wool",
+        "#minecraft:wool"
+    ],
+    "result": {
+        "id": "toxicsurface:clean_air_filter",
+        "count": 1
+    }
+}
