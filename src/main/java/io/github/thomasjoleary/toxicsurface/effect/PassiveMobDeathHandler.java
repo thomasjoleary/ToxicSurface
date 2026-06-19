@@ -1,0 +1,41 @@
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+package io.github.thomasjoleary.toxicsurface.effect;
+
+import io.github.thomasjoleary.toxicsurface.ToxicSurface;
+import io.github.thomasjoleary.toxicsurface.world.ToxicityTicker;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.monster.Enemy;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.tick.EntityTickEvent;
+
+/**
+ * All passive mobs die in toxic gas (DESIGN.md §3) — animals, tamed, name-tagged and
+ * villagers alike, no exceptions. Hostile mobs (anything {@link Enemy}) are immune for
+ * now (mutant mobs are a future addition). Throttled and server-side.
+ */
+@EventBusSubscriber(modid = ToxicSurface.MODID)
+public final class PassiveMobDeathHandler {
+    private static final int THROTTLE_TICKS = 20; // ~once per second
+
+    private PassiveMobDeathHandler() {}
+
+    @SubscribeEvent
+    public static void onEntityTick(EntityTickEvent.Post event) {
+        if (!(event.getEntity() instanceof Mob mob) || mob instanceof Enemy) {
+            return;
+        }
+        if (!(mob.level() instanceof ServerLevel level) || mob.tickCount % THROTTLE_TICKS != 0) {
+            return;
+        }
+        if (!ToxicityTicker.isAffected(level)) {
+            return;
+        }
+        if (GasExposure.isInToxicGas(level, mob.getX(), mob.getEyeY(), mob.getZ())) {
+            // TODO Phase 2 polish: custom "toxic" damage type; magic bypasses armour for now.
+            mob.hurt(mob.damageSources().magic(), Float.MAX_VALUE);
+        }
+    }
+}
