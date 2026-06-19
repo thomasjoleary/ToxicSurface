@@ -4,11 +4,13 @@ package io.github.thomasjoleary.toxicsurface.effect;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
+import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig.MaskTickMode;
 import io.github.thomasjoleary.toxicsurface.core.enclosure.EnclosureScanner;
 import io.github.thomasjoleary.toxicsurface.core.enclosure.LevelPassabilityProbe;
-import io.github.thomasjoleary.toxicsurface.core.enclosure.ScanResult;
+import io.github.thomasjoleary.toxicsurface.core.equipment.MaskFilter;
 import io.github.thomasjoleary.toxicsurface.core.gas.AirBarModel;
 import io.github.thomasjoleary.toxicsurface.core.gas.GasModel;
+import io.github.thomasjoleary.toxicsurface.item.FaceMaskItem;
 import io.github.thomasjoleary.toxicsurface.network.GasStatePayload;
 import io.github.thomasjoleary.toxicsurface.world.ToxicityTicker;
 import java.util.HashMap;
@@ -16,10 +18,14 @@ import java.util.Map;
 import java.util.UUID;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -54,7 +60,9 @@ public final class GasEffectHandler {
             return;
         }
 
-        boolean exposed = ToxicityTicker.isAffected(level) && isExposedToGas(level, player);
+        boolean inGas = ToxicityTicker.isAffected(level) && isInToxicGasAtHead(level, player);
+        boolean protectedByMask = updateMaskAndIsProtected(level, player, inGas);
+        boolean exposed = inGas && !protectedByMask;
 
         int drain = ToxicSurfaceConfig.AIR_BAR_DRAIN_TICKS.get();
         int refill = ToxicSurfaceConfig.AIR_BAR_REFILL_TICKS.get();
@@ -72,7 +80,8 @@ public final class GasEffectHandler {
         }
     }
 
-    private static boolean isExposedToGas(ServerLevel level, Player player) {
+    /** Toxic gas at the player's head, ignoring protection (creative/spectator are never exposed). */
+    private static boolean isInToxicGasAtHead(ServerLevel level, Player player) {
         if (player.isCreative() || player.isSpectator()) {
             return false;
         }
@@ -86,12 +95,52 @@ public final class GasEffectHandler {
         // Only pay for the flood-fill when the head is actually under the ceiling.
         boolean sealed = false;
         if (active && y <= ceiling) {
-            ScanResult result = EnclosureScanner.scan(
-                    x, y, z, new LevelPassabilityProbe(level), ToxicSurfaceConfig.ENCLOSURE_FLOOD_FILL_BUDGET.get());
-            sealed = result.isSealed();
+            sealed = EnclosureScanner.scan(
+                            x,
+                            y,
+                            z,
+                            new LevelPassabilityProbe(level),
+                            ToxicSurfaceConfig.ENCLOSURE_FLOOD_FILL_BUDGET.get())
+                    .isSealed();
         }
         boolean inCleanser = false; // TODO Phase 6: cleanser purge bubbles.
-        return GasModel.isToxicGas(active, y, ceiling, sealed, inCleanser) && !isProtected(player);
+        return GasModel.isToxicGas(active, y, ceiling, sealed, inCleanser);
+    }
+
+    /**
+     * Ticks down the worn mask's filter and reports whether it currently protects the
+     * player (DESIGN.md §3). The filter drains only in gas ({@code IN_GAS_ONLY}) or
+     * always ({@code ALWAYS}); a cough warns when it runs out mid-exposure.
+     */
+    private static boolean updateMaskAndIsProtected(ServerLevel level, Player player, boolean inGas) {
+        ItemStack mask = player.getItemBySlot(EquipmentSlot.HEAD);
+        if (!(mask.getItem() instanceof FaceMaskItem)) {
+            return false;
+        }
+        int before = FaceMaskItem.remaining(mask);
+        boolean tickNow = ToxicSurfaceConfig.MASK_TICK_MODE.get() == MaskTickMode.ALWAYS || inGas;
+        if (MaskFilter.isActive(before) && tickNow) {
+            int after = MaskFilter.consume(before, THROTTLE_TICKS);
+            FaceMaskItem.setRemaining(mask, after);
+            if (inGas && MaskFilter.justExpired(before, after)) {
+                playFilterExpiryWarning(level, player);
+            }
+            return MaskFilter.isActive(after);
+        }
+        return MaskFilter.isActive(before);
+    }
+
+    private static void playFilterExpiryWarning(ServerLevel level, Player player) {
+        // TODO Phase 4 polish: dedicated cough sound + client HUD flash payload.
+        level.playSound(
+                null,
+                player.getX(),
+                player.getY(),
+                player.getZ(),
+                SoundEvents.PLAYER_HURT_DROWN,
+                SoundSource.PLAYERS,
+                0.7F,
+                1.0F);
     }
 
     private static void applyExposureEffects(Player player, int air) {
@@ -106,11 +155,6 @@ public final class GasEffectHandler {
             // TODO Phase 2 polish: custom datapack DamageType for "toxic"; vanilla source for now.
             player.hurt(player.damageSources().magic(), damage);
         }
-    }
-
-    /** Mask / hazmat-suit protection lands in Phases 4–5; unprotected for now. */
-    private static boolean isProtected(Player player) {
-        return false;
     }
 
     @SubscribeEvent
