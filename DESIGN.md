@@ -328,6 +328,51 @@ server-driven and synced. Baked into the architecture, not bolted on.
 
 ---
 
+## 5b. Implementation progress (build log)
+
+> Status as of 2026-06-19. Target verified: **NeoForge 21.1.77 / MC 1.21.1 / Java 21**.
+> Every NeoForge layer compiles and runs the standalone GameTest in CI; risky logic
+> is split into Minecraft-free classes covered by **36 pure unit tests** (all green).
+> A recurring pattern: pure algorithm + thin NeoForge adapter, verified per-commit.
+
+**Phase 1 — Foundations ✅ (merged)**
+- ModDevGradle build (NeoForge 1.21.1 / Java 21), `neoforge.mods.toml`, registries,
+  creative tab, `ToxicSurfaceConfig` server spec mirroring §3/§8.
+- Spotless (Palantir + LGPL SPDX headers), GitHub Actions CI (lint + standalone
+  build/GameTest), SessionStart hook.
+
+**Phase 2 — Hazard core ✅ (merged)**
+- Enclosure flood-fill + connected-component cache (§2a) — *prototyped first*.
+- Toxicity timer + escalation + per-dimension `SavedData`; derived ceiling Y.
+- Virtual gas predicate + drowning-style air bar (nausea → lethal toxic damage),
+  throttled per-player.
+- Toxic sludge fluid (`FluidType` + still/flowing), `LiquidBlock`, bucket; contact
+  damage + Poison + organic-item destruction; drowning via `canDrown`.
+- Client fog driven by a server→client exposure payload.
+
+**Phase 3 — Lazy world conversion ✅ (merged)**
+- Budgeted, surface-anchored water→sludge conversion with a per-chunk applied-depth
+  attachment (incremental, idempotent, FULL-mode aware).
+- Passive-mob death in gas (animals, tamed, named, villagers; hostiles immune).
+- Sky-exposed foliage decay (toxic rain accelerates it).
+- "The Air Has Turned" advancement on activation.
+
+**Phase 4 — Filters & masks ✅ (CI-green; branch `claude/phase4-filters-masks`)**
+- Clean filter (2 wool); face mask (filter + 2 string) worn in the helmet slot via
+  `canEquip`, with a `MaskData` filter-time component shown as a durability bar.
+- Mask protects from gas and consumes its filter; cough warning on mid-gas expiry.
+- Dirty-filter wash loop: refilling a mask ejects a used filter (custom recipe);
+  washing (`used + water bucket → clean filter`, **returns a sludge bucket**) and the
+  reverse (`clean + sludge bucket → water bucket`, returns a used filter).
+
+**Carried-forward polish / TODO** (tracked in-code):
+custom "toxic" `DamageType`; HUD flash + dedicated cough sound; air-bar HUD bubble
+row; cleanser-bubble hook in exposure; enclosure-cache wiring + block-change
+invalidation in the live effect; pre-toxicity telegraph + retroactive advancement;
+toxic-rain client overlay; accessibility sliders; **item/block textures + models**.
+
+---
+
 ## 6. Open risks
 - **Create: Aeronautics maturity** — young, API-churny; pin exact compatible
   Create + Aeronautics + Sable + Sky Archipelago build numbers.

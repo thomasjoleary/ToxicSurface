@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+package io.github.thomasjoleary.toxicsurface.registry;
+
+import io.github.thomasjoleary.toxicsurface.ToxicSurface;
+import io.github.thomasjoleary.toxicsurface.item.MaskData;
+import java.util.function.Supplier;
+import net.minecraft.core.component.DataComponentType;
+import net.neoforged.neoforge.registries.DeferredRegister;
+
+/** Custom Data Components (DESIGN.md §3). */
+public final class ModDataComponents {
+    public static final DeferredRegister.DataComponents DATA_COMPONENTS =
+            DeferredRegister.createDataComponents(ToxicSurface.MODID);
+
+    public static final Supplier<DataComponentType<MaskData>> MASK_DATA = DATA_COMPONENTS.registerComponentType(
+            "mask_data", builder -> builder.persistent(MaskData.CODEC).networkSynchronized(MaskData.STREAM_CODEC));
+
+    private ModDataComponents() {}
+}

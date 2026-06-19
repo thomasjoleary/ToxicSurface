@@ -1,0 +1,17 @@
+{
+    "type": "minecraft:crafting_shapeless",
+    "ingredients": [
+        "toxicsurface:clean_air_filter",
+        "minecraft:string",
+        "minecraft:string"
+    ],
+    "result": {
+        "id": "toxicsurface:face_mask",
+        "count": 1,
+        "components": {
+            "toxicsurface:mask_data": {
+                "remaining_ticks": 2400
+            }
+        }
+    }
+}

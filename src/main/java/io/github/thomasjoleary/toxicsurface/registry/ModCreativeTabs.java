@@ -21,6 +21,8 @@ public final class ModCreativeTabs {
                     .icon(() -> new ItemStack(ModItems.CLEAN_AIR_FILTER.get()))
                     .displayItems((parameters, output) -> {
                         output.accept(ModItems.CLEAN_AIR_FILTER.get());
+                        output.accept(ModItems.USED_AIR_FILTER.get());
+                        output.accept(ModItems.FACE_MASK.get());
                         output.accept(ModItems.SLUDGE_BUCKET.get());
                     })
                     .build());
