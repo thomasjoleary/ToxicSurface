@@ -4,6 +4,7 @@ package io.github.thomasjoleary.toxicsurface.registry;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.item.FaceMaskItem;
+import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -11,10 +12,13 @@ import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**
- * Item registry: air filters, the face mask (DESIGN.md §3 Filters &amp; masks) and the
- * toxic sludge bucket (DESIGN.md §3 Toxic sludge).
+ * Item registry: air filters, the face mask, the hazmat suit (DESIGN.md §3) and the
+ * toxic sludge bucket.
  */
 public final class ModItems {
+    /** Durability factor for hazmat armour (iron is 15, diamond 33). */
+    private static final int HAZMAT_DURABILITY = 25;
+
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(ToxicSurface.MODID);
 
     /** Clean filter; crafted from 2 wool, installed into a face mask. */
@@ -33,6 +37,25 @@ public final class ModItems {
             () -> new BucketItem(
                     ModFluids.SLUDGE.get(),
                     new Item.Properties().craftRemainder(Items.BUCKET).stacksTo(1)));
+
+    /** Woven hazmat material (Weaver output in Phase 6); crafts the hazmat suit. */
+    public static final DeferredItem<Item> HAZMAT_MATERIAL = ITEMS.registerSimpleItem("hazmat_material");
+
+    public static final DeferredItem<ArmorItem> HAZMAT_HELMET =
+            ITEMS.register("hazmat_helmet", () -> armor(ArmorItem.Type.HELMET));
+    public static final DeferredItem<ArmorItem> HAZMAT_CHESTPLATE =
+            ITEMS.register("hazmat_chestplate", () -> armor(ArmorItem.Type.CHESTPLATE));
+    public static final DeferredItem<ArmorItem> HAZMAT_LEGGINGS =
+            ITEMS.register("hazmat_leggings", () -> armor(ArmorItem.Type.LEGGINGS));
+    public static final DeferredItem<ArmorItem> HAZMAT_BOOTS =
+            ITEMS.register("hazmat_boots", () -> armor(ArmorItem.Type.BOOTS));
+
+    private static ArmorItem armor(ArmorItem.Type type) {
+        return new ArmorItem(
+                ModArmorMaterials.HAZMAT,
+                type,
+                new Item.Properties().durability(type.getDurability(HAZMAT_DURABILITY)));
+    }
 
     private ModItems() {}
 }

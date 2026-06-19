@@ -4,6 +4,7 @@ package io.github.thomasjoleary.toxicsurface;
 
 import com.mojang.logging.LogUtils;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
+import io.github.thomasjoleary.toxicsurface.registry.ModArmorMaterials;
 import io.github.thomasjoleary.toxicsurface.registry.ModAttachments;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlocks;
 import io.github.thomasjoleary.toxicsurface.registry.ModCreativeTabs;
@@ -28,6 +29,7 @@ public final class ToxicSurface {
 
     public ToxicSurface(IEventBus modEventBus, ModContainer modContainer) {
         ModDataComponents.DATA_COMPONENTS.register(modEventBus);
+        ModArmorMaterials.ARMOR_MATERIALS.register(modEventBus);
         ModFluids.FLUID_TYPES.register(modEventBus);
         ModFluids.FLUIDS.register(modEventBus);
         ModBlocks.BLOCKS.register(modEventBus);

@@ -234,8 +234,12 @@ These are client options, not server config — each player tunes their own view
   visor." Immersion extras: fog-up effect + muffled breathing audio; cracked
   visor when damaged.
 - **Chestpiece**: stores **up to 10 filters** (Data Component), consumed at
-  **half the mask's rate** while in toxic gas. Full powered suit → **gas
-  immunity** (toxic air bar stays full while filters remain).
+  **half the mask's rate** while in toxic gas. The chest is what protects you —
+  **not the suit itself**: while it holds filter charge the toxic air bar stays
+  full, and when the filters run out protection drops just like a mask. The suit's
+  edge over a mask is **bigger capacity + half-rate consumption** (far longer
+  between swaps, and no fiddly helmet-slot mask swapping), **not** unconditional
+  immunity. An empty chest offers no gas protection.
 
 ### HUD gauge
 - While wearing a face mask or hazmat suit, an on-screen **HUD readout** displays:

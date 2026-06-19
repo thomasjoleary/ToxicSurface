@@ -1,0 +1,15 @@
+{
+    "type": "minecraft:crafting_shaped",
+    "pattern": [
+        "H H",
+        "I I"
+    ],
+    "key": {
+        "H": "toxicsurface:hazmat_material",
+        "I": "minecraft:iron_ingot"
+    },
+    "result": {
+        "id": "toxicsurface:hazmat_boots",
+        "count": 1
+    }
+}
