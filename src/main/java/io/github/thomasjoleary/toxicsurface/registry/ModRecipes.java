@@ -3,6 +3,7 @@
 package io.github.thomasjoleary.toxicsurface.registry;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
+import io.github.thomasjoleary.toxicsurface.item.FilterWashRecipe;
 import io.github.thomasjoleary.toxicsurface.item.MaskRefillRecipe;
 import java.util.function.Supplier;
 import net.minecraft.core.registries.Registries;
@@ -17,6 +18,9 @@ public final class ModRecipes {
 
     public static final Supplier<RecipeSerializer<MaskRefillRecipe>> MASK_REFILL = RECIPE_SERIALIZERS.register(
             "mask_refill", () -> new SimpleCraftingRecipeSerializer<>(MaskRefillRecipe::new));
+
+    public static final Supplier<RecipeSerializer<FilterWashRecipe>> FILTER_WASH = RECIPE_SERIALIZERS.register(
+            "filter_wash", () -> new SimpleCraftingRecipeSerializer<>(FilterWashRecipe::new));
 
     private ModRecipes() {}
 }
