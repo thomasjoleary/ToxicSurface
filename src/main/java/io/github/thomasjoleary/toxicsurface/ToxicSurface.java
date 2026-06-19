@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 package io.github.thomasjoleary.toxicsurface;
 
 import com.mojang.logging.LogUtils;

@@ -3,6 +3,7 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'net.neoforged.moddev' version '2.0.78'
+    id 'com.diffplug.spotless' version '6.25.0'
 }
 
 version = mod_version
@@ -54,6 +55,7 @@ neoForge {
 
 repositories {
     mavenLocal()
+    mavenCentral() // for tooling deps like the Spotless formatter
     // Create / Aeronautics maven coordinates will be added here when the
     // optional integration (DESIGN.md §9) lands.
 }
@@ -84,6 +86,22 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
 }
 sourceSets.main.resources.srcDir generateModMetadata
 neoForge.ideSyncTask generateModMetadata
+
+// Code style / linting. Spotless is pure source formatting, so it runs without
+// the NeoForge dependencies (handy while the NeoForge maven is allowlisted).
+// Run `./gradlew spotlessApply` to fix, `./gradlew spotlessCheck` to verify
+// (spotlessCheck is wired into `check`).
+spotless {
+    java {
+        target 'src/*/java/**/*.java'
+        palantirJavaFormat()        // google-java-format fork: 4-space indent, 120 cols
+        importOrder()
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+        licenseHeader '// SPDX-License-Identifier: LGPL-3.0-or-later\n\n'
+    }
+}
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
