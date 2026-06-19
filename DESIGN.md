@@ -45,28 +45,46 @@ Canonical prior art: **Galacticraft's oxygen sealer**.
 ### 2b. Water → sludge conversion at world scale
 Real sludge fluid, so we convert actual blocks — but never billions at once.
 
-- Each chunk gets a **"toxified" flag** (chunk attachment / SavedData). After the
-  toxicity start time, when a chunk loads within simulation distance, a
-  **throttled queued pass** (N blocks/tick globally) converts water into
-  sludge, then sets the flag so it never re-runs.
+- Each chunk stores a **toxified marker** (chunk attachment / SavedData) recording
+  the **sludge depth already applied** to it. After the toxicity start time, when
+  a chunk loads within simulation distance, a **throttled queued pass**
+  (N blocks/tick globally) converts the appropriate water band into sludge and
+  updates the marker. A chunk is only re-queued when escalation has **deepened**
+  the band beyond what's already applied — so each pass only does incremental work
+  and no block is converted twice.
 - Cleansers run the reverse pass within radius.
 
-#### Open water / oceans — **depth-banded conversion** (recommended)
+#### Open water / oceans — **surface-anchored, escalation-deepening band**
 Converting whole oceans top-to-bottom is the worst case for both performance
 (deep ocean chunks hold thousands of water blocks each) and gameplay (entire
-seas gone). Instead of "all water below Y," convert only a **band** hugging the
-toxic line:
+seas gone). Instead of "all water below Y," convert a **band that hugs the water
+surface** and **deepens over time** — it never sweeps up from the world floor:
 
-- Convert water only between `currentToxicY` and `currentToxicY - sludgeDepth`
-  (default **`sludgeDepth = 8`**). Water deeper than that band stays clean water.
-- **Result:** oceans get a **toxic sludge "skin"** at/near the surface line over
-  still-clean depths. This bounds per-column conversion cost to a constant
-  regardless of ocean depth (solving the "billions of blocks" risk by capping
-  *depth*, not just global rate), kills surface aquatic life, and creates the
-  interesting **stilted-base-over-a-sludge-sea** play you wanted — while divers
-  can punch through to clean (but dark, drowning) water below.
-- As the escalation line rises, the band rises with it, converting newly-exposed
-  water.
+- **Anchor to the water surface, not the toxic line.** For each water column in a
+  toxified chunk, find the local **water surface Y** (top water block via a
+  water-aware heightmap). Convert downward from that surface by the *current*
+  sludge depth. This guarantees the sludge always sits where players interact with
+  it (the ocean top), regardless of how high the toxic ceiling has climbed into
+  the air above.
+- **Only convert columns inside the toxic zone:** a column is eligible when its
+  water surface `Y ≤ currentToxicY`. High lakes above the line wait until the line
+  reaches them.
+- **Depth scales *proportionally* with escalation** (not 1:1 with the Y rise):
+
+  ```
+  toxicProgress    = clamp01((currentToxicY - toxicStartY) / (escalationMaxY - toxicStartY))
+  currentSludgeDepth = round( sludgeDepthMin + toxicProgress * (sludgeDepthMax - sludgeDepthMin) )
+  ```
+
+  At the start the ocean has a **thin skin** (`sludgeDepthMin`, default 4); as the
+  toxic ceiling climbs toward `escalationMaxY`, the skin **thickens toward**
+  `sludgeDepthMax` (default 24). The whole ocean only fully converts if
+  `sludgeDepthMax` is set deep enough to reach the floor **and** the line has
+  reached its max — by default, deep oceans keep clean water below.
+- **Result:** a sludge skin over clean depths that grows downward as the
+  apocalypse escalates — bounds per-column cost to a constant, kills surface
+  aquatic life, enables **stilted-base-over-a-sludge-sea** play, and lets divers
+  punch through to clean (but dark, drowning) water below.
 - **Pack/biome lever:** a biome tag **`#toxicsurface:protected_water`** (empty by
   default) lets a pack exempt specific water bodies entirely — e.g. keep certain
   ocean biomes clean as buildable safe frontiers. A config flag also exposes a
@@ -262,7 +280,8 @@ Gameplay knobs with **proposed defaults** (all server-config, balance-tunable):
 | `toxicDamagePerSecond` | `2.0` | Real damage after the bar empties (kills) |
 | `nauseaWhileDraining` | `true` | Nausea applied during drain, not after |
 | `sludgeDamage` / `sludgeIntervalTicks` | `2.0` / `10` (0.5 s) | Sludge contact damage + Poison |
-| `sludgeDepth` | `8` | Depth band of water→sludge conversion below the line |
+| `sludgeDepthMin` | `4` | Starting band depth below the water surface (thin skin) |
+| `sludgeDepthMax` | `24` | Band depth when the toxic line reaches `escalationMaxY` |
 | `waterConversionMode` | `BANDED` | `BANDED` (depth-capped) or `FULL` (whole column) |
 | `maskDurationTicks` | `2400` (2 min) | Active filter time for a face mask |
 | `maskTickMode` | `IN_GAS_ONLY` | `IN_GAS_ONLY` or `ALWAYS` |
@@ -393,32 +412,24 @@ Create: Aeronautics as **optional** dependencies and degrades cleanly:
 
 ## 11. Project identity & mod metadata
 
-First-mod guidance — these are **set-once and painful to change later**, so we
-lock them in Phase 1. Items marked **(decide)** need your input.
+First-mod identity — **set-once and painful to change later**, locked in Phase 1:
 
-- **Mod ID** — lowercase `a–z 0–9 _`, globally unique, appears everywhere as the
-  namespace (`toxicsurface:sludge`, config folder, lang keys). **Proposed:
-  `toxicsurface`.** *(decide — confirm)*
-- **Java package / Maven group** — reverse-domain to avoid class clashes. If you
-  don't own a domain, the convention is `io.github.<your-github-username>`.
-  **Proposed base package: `io.github.thomasjoleary.toxicsurface`**, Maven
-  `group = io.github.thomasjoleary`. *(decide — confirm username/handle)*
-- **Display name / author** — shown in the Mods list. Display name `ToxicSurface`;
-  **author (decide)**.
+- **Mod ID** — `toxicsurface` (lowercase, globally unique; the namespace
+  everywhere: `toxicsurface:sludge`, config folder, lang keys).
+- **Java package / Maven group** — base package
+  `io.github.thomasjoleary.toxicsurface`, Maven `group = io.github.thomasjoleary`.
+- **Display name** — `ToxicSurface`. **Author** — `chooboy`.
 - **Version** — semantic versioning starting `0.1.0`; jar named
   `toxicsurface-<mcversion>-<modversion>.jar` (e.g. `toxicsurface-1.21.1-0.1.0.jar`).
-- **`neoforge.mods.toml`** carries: `modId`, `version`, `displayName`, `authors`,
-  `description`, `license`, and `[[dependencies]]` (neoforge + minecraft required;
-  create + aeronautics optional, see §9).
-- **License (decide):**
-  | Option | Effect | Fit |
-  |---|---|---|
-  | **MIT** | Anyone may use/modify/include; just keep the notice | Simplest; most pack-friendly *(recommended)* |
-  | **LGPL-3.0** | Includable in packs, but modifications to *this* mod must be shared | Copyleft, still pack-friendly |
-  | **All Rights Reserved / custom** | You grant permissions explicitly (CurseForge default) | Maximum control, more friction for contributors |
-
-Once you confirm mod ID, package/handle, author, and license, I'll add a
-`README.md` and `LICENSE` and these values become the Phase-1 scaffolding inputs.
+- **License** — **LGPL-3.0-or-later.** Anyone may include the mod in packs and
+  link against it, **but modifications to the mod itself must be published under
+  the same license** — so a changed build can't be passed off as the original
+  without it being known. (`LICENSE` = GPL-3.0 text, `LICENSE.LESSER` = the LGPL
+  additional permissions, per the FSF's standard layout.)
+- **`neoforge.mods.toml`** carries: `modId`, `version`, `displayName`,
+  `authors = "chooboy"`, `description`, `license = "LGPL-3.0-or-later"`, and
+  `[[dependencies]]` (neoforge + minecraft required; create + aeronautics
+  optional, see §9).
 
 ---
 
@@ -437,9 +448,10 @@ Once you confirm mod ID, package/handle, author, and license, I'll add a
 - **Respiration / water-breathing do NOT affect the toxic air bar**, but **do**
   extend vanilla drowning in **sludge** (relevant when suited, since the suit
   isn't a rebreather).
-- **Open water:** **depth-banded** water→sludge conversion (default 8 blocks below
-  the line) — sludge skin over clean depths; `FULL` mode + `#protected_water`
-  biome tag as config levers. Solves the ocean-scale perf/gameplay problem.
+- **Open water:** **surface-anchored sludge band** that **deepens proportionally**
+  with escalation (depth `4 → 24` as toxic Y climbs to its max), hugging the water
+  top rather than sweeping up from the floor. Sludge skin over clean depths;
+  `FULL` mode + `#protected_water` biome tag as config levers.
 - **Escalation ceiling** (`escalationMaxY`): line stops at a max Y, default below
   world height (can be set to world height).
 - **Dimensions:** Overworld toxic by default; others **opt-in** via whitelist.
@@ -461,5 +473,6 @@ Once you confirm mod ID, package/handle, author, and license, I'll add a
 - **Config defaults table** + **engine performance budgets** added (§3, §8).
 - **Soft-dependency contract** for Create/Aeronautics; CI tests standalone (§9).
 - **GameTest** suite for flood-fill / conversion / air-bar / recipes (§10).
-- **Project identity** (mod ID, package, version, license) — **open, awaiting
-  user input** (§11).
+- **Project identity** (§11): mod ID `toxicsurface`, package
+  `io.github.thomasjoleary.toxicsurface`, author **chooboy**, license
+  **LGPL-3.0-or-later**, version `0.1.0`.
