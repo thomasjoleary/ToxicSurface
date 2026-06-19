@@ -19,7 +19,10 @@ public final class ModCreativeTabs {
             CREATIVE_MODE_TABS.register("main", () -> CreativeModeTab.builder()
                     .title(Component.translatable("itemGroup.toxicsurface"))
                     .icon(() -> new ItemStack(ModItems.CLEAN_AIR_FILTER.get()))
-                    .displayItems((parameters, output) -> output.accept(ModItems.CLEAN_AIR_FILTER.get()))
+                    .displayItems((parameters, output) -> {
+                        output.accept(ModItems.CLEAN_AIR_FILTER.get());
+                        output.accept(ModItems.SLUDGE_BUCKET.get());
+                    })
                     .build());
 
     private ModCreativeTabs() {}

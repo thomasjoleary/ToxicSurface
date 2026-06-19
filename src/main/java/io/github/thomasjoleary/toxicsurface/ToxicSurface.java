@@ -4,7 +4,9 @@ package io.github.thomasjoleary.toxicsurface;
 
 import com.mojang.logging.LogUtils;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
+import io.github.thomasjoleary.toxicsurface.registry.ModBlocks;
 import io.github.thomasjoleary.toxicsurface.registry.ModCreativeTabs;
+import io.github.thomasjoleary.toxicsurface.registry.ModFluids;
 import io.github.thomasjoleary.toxicsurface.registry.ModItems;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -22,6 +24,9 @@ public final class ToxicSurface {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public ToxicSurface(IEventBus modEventBus, ModContainer modContainer) {
+        ModFluids.FLUID_TYPES.register(modEventBus);
+        ModFluids.FLUIDS.register(modEventBus);
+        ModBlocks.BLOCKS.register(modEventBus);
         ModItems.ITEMS.register(modEventBus);
         ModCreativeTabs.CREATIVE_MODE_TABS.register(modEventBus);
 
