@@ -1,0 +1,13 @@
+{
+    "replace": false,
+    "values": [
+        "minecraft:kelp",
+        "minecraft:dried_kelp",
+        "minecraft:sugar_cane",
+        "minecraft:bamboo",
+        "minecraft:sweet_berries",
+        "minecraft:glow_berries",
+        "minecraft:wheat",
+        "minecraft:wheat_seeds"
+    ]
+}
