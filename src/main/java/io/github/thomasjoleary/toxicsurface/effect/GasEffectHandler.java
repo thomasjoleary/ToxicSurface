@@ -9,11 +9,13 @@ import io.github.thomasjoleary.toxicsurface.core.enclosure.LevelPassabilityProbe
 import io.github.thomasjoleary.toxicsurface.core.enclosure.ScanResult;
 import io.github.thomasjoleary.toxicsurface.core.gas.AirBarModel;
 import io.github.thomasjoleary.toxicsurface.core.gas.GasModel;
+import io.github.thomasjoleary.toxicsurface.network.GasStatePayload;
 import io.github.thomasjoleary.toxicsurface.world.ToxicityTicker;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -22,6 +24,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * Drives the toxic air bar for players in toxic gas (DESIGN.md §3). Server-side and
@@ -47,11 +50,11 @@ public final class GasEffectHandler {
         if (!(player.level() instanceof ServerLevel level)) {
             return;
         }
-        if (player.tickCount % THROTTLE_TICKS != 0 || !ToxicityTicker.isAffected(level)) {
+        if (player.tickCount % THROTTLE_TICKS != 0) {
             return;
         }
 
-        boolean exposed = isExposedToGas(level, player);
+        boolean exposed = ToxicityTicker.isAffected(level) && isExposedToGas(level, player);
 
         int drain = ToxicSurfaceConfig.AIR_BAR_DRAIN_TICKS.get();
         int refill = ToxicSurfaceConfig.AIR_BAR_REFILL_TICKS.get();
@@ -61,6 +64,11 @@ public final class GasEffectHandler {
 
         if (exposed) {
             applyExposureEffects(player, air);
+        }
+
+        // Sync exposure to the client so it can render fog (DESIGN.md §3, §4).
+        if (player instanceof ServerPlayer serverPlayer) {
+            PacketDistributor.sendToPlayer(serverPlayer, new GasStatePayload(exposed));
         }
     }
 
