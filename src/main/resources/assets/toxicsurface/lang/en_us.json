@@ -3,5 +3,7 @@
     "item.toxicsurface.clean_air_filter": "Clean Air Filter",
     "item.toxicsurface.sludge_bucket": "Toxic Sludge Bucket",
     "block.toxicsurface.sludge": "Toxic Sludge",
-    "fluid_type.toxicsurface.sludge": "Toxic Sludge"
+    "fluid_type.toxicsurface.sludge": "Toxic Sludge",
+    "advancement.toxicsurface.the_air_has_turned.title": "The Air Has Turned",
+    "advancement.toxicsurface.the_air_has_turned.description": "The surface is toxic now. Seal up, filter your air, and find a way to reclaim the world."
 }

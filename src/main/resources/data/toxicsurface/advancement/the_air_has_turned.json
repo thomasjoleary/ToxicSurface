@@ -1,0 +1,27 @@
+{
+    "display": {
+        "icon": {
+            "id": "toxicsurface:sludge_bucket"
+        },
+        "title": {
+            "translate": "advancement.toxicsurface.the_air_has_turned.title"
+        },
+        "description": {
+            "translate": "advancement.toxicsurface.the_air_has_turned.description"
+        },
+        "frame": "challenge",
+        "show_toast": true,
+        "announce_to_chat": true,
+        "hidden": false
+    },
+    "criteria": {
+        "activated": {
+            "trigger": "minecraft:impossible"
+        }
+    },
+    "requirements": [
+        [
+            "activated"
+        ]
+    ]
+}

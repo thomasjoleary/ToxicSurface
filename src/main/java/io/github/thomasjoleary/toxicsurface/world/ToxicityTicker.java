@@ -5,7 +5,10 @@ package io.github.thomasjoleary.toxicsurface.world;
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
 import io.github.thomasjoleary.toxicsurface.core.toxicity.ToxicityModel;
+import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
@@ -20,6 +23,9 @@ public final class ToxicityTicker {
     /** Returned by {@link #currentToxicY} when a dimension is not yet toxic. */
     public static final int NOT_TOXIC = Integer.MIN_VALUE;
 
+    private static final ResourceLocation AIR_HAS_TURNED =
+            ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "the_air_has_turned");
+
     private ToxicityTicker() {}
 
     @SubscribeEvent
@@ -32,7 +38,19 @@ public final class ToxicityTicker {
             state.startNow(level.getGameTime());
             ToxicSurface.LOGGER.info(
                     "The air has turned toxic in {}", level.dimension().location());
-            // TODO Phase 3: fire "The Air Has Turned" advancement + pre-toxicity telegraph.
+            awardActivationAdvancement(level);
+            // TODO Phase 3 polish: pre-toxicity telegraph (countdown titles) and grant the
+            // advancement to players who join after activation.
+        }
+    }
+
+    private static void awardActivationAdvancement(ServerLevel level) {
+        AdvancementHolder advancement = level.getServer().getAdvancements().get(AIR_HAS_TURNED);
+        if (advancement == null) {
+            return;
+        }
+        for (ServerPlayer player : level.players()) {
+            player.getAdvancements().award(advancement, "activated");
         }
     }
 
