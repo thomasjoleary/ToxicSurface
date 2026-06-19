@@ -69,16 +69,50 @@ Real sludge fluid, so we convert actual blocks — but never billions at once.
 ### Toxic gas (virtual region + client fog)
 - An air block is toxic if `time ≥ start` AND `y ≤ currentToxicY` AND not in a
   sealed pocket AND not inside a cleanser bubble.
-- **Players**: unprotected → **Poison + Nausea** (throttled, server-side).
-- **Animals & crops**: die / break when in toxic gas (passive mobs take toxic
-  damage; crop blocks decay). **Hostile mobs unaffected for now** (mutant mobs
-  are a future addition).
-- **Toxic rain**: surface weather particle/overlay effect while it's raining in
-  toxified areas, reinforcing the "don't go outside" mood. Drives sealed
-  greenhouse farming.
-- Client renders **fog + particle haze** when the camera block is toxic, via
-  NeoForge fog render events. Server syncs timer, current Y, config, and nearby
-  cleanser bubbles so the client computes fog locally and responsively.
+
+#### Toxic air bar (drowning-style mechanic)
+Players exposed to toxic gas use a **toxic air bar** modeled on vanilla
+drowning, displayed as a row of bubbles (green-tinted) above the hotbar:
+
+1. **Full bar** when protected (mask/suit with active filter, or in sealed area).
+2. **Bar drains** when unprotected in toxic gas — same rate as vanilla drowning
+   (~15 seconds from full to empty). This gives unmasked players a brief window
+   to dash through gas.
+3. **When the bar empties** → **toxic damage** (not poison): 2 damage per second,
+   **which can and will kill the player**. This is real damage, not the Poison
+   effect (which caps at half a heart).
+4. **Nausea** applied while the bar is draining (not after — by then you're
+   taking damage and need to see to escape).
+5. **Bar refills** when the player re-enters clean air or activates a filter.
+
+When a mask or suit filter **runs out mid-exposure**, the bar begins draining
+from wherever it was (full, if the filter was active). A brief **HUD flash +
+cough sound** plays as a warning that protection just dropped.
+
+This replaces the previous "Poison + Nausea" model entirely. The toxic air bar
+is the core survival mechanic.
+
+#### Foliage & mob death
+- **All exposed foliage dies**: grass, flowers, vines, tree leaves, crops, and
+  saplings exposed to toxic gas wither and break over time (throttled block
+  decay). Creates a dramatic dead-world look on the surface.
+- **All passive mobs die** in toxic gas — including tamed and name-tagged animals.
+  No exceptions. Forces fully sealed barns and is unforgiving of mistakes.
+- **Hostile mobs unaffected** for now (mutant mobs are a future addition).
+
+#### Toxic rain
+- Surface weather particle/overlay effect while raining in toxified areas,
+  reinforcing the "don't go outside" mood. Accelerates foliage decay rate.
+
+#### Advancement: "The Air Has Turned"
+- When the surface first becomes toxic, all players in affected dimensions
+  receive an **advancement** ("The Air Has Turned" or similar). Acts as an
+  in-world telegraph so players aren't blindsided.
+
+#### Client rendering
+- **Fog + particle haze** when the camera block is toxic, via NeoForge fog render
+  events. Server syncs timer, current Y, config, and nearby cleanser bubbles so
+  the client computes fog locally and responsively.
 
 ### Toxic sludge (real custom fluid)
 - Custom flowing fluid (NeoForge `BaseFlowingFluid` + `FluidType`), behaves like
@@ -99,6 +133,9 @@ Real sludge fluid, so we convert actual blocks — but never billions at once.
   Counts down only while actually in toxic gas (configurable to always-tick).
 - **Worn in the helmet slot** (mutually exclusive with the hazmat helmet — a
   deliberate early-game vs end-game tradeoff).
+- When a mask's filter expires while the player is in gas, the **toxic air bar**
+  begins draining (see toxic air bar section above). A HUD flash + cough sound
+  warns the player that protection just dropped.
 - Dirty (used) filter can be **swapped/replaced** in the mask.
 - **Washing dirty filters — two paths:**
   1. **Vanilla craft**: dirty filter + water bucket → clean filter **+ sludge
@@ -116,7 +153,14 @@ Real sludge fluid, so we convert actual blocks — but never billions at once.
   visor when damaged.
 - **Chestpiece**: stores **up to 10 filters** (Data Component), consumed at
   **half the mask's rate** while in toxic gas. Full powered suit → **gas
-  immunity**.
+  immunity** (toxic air bar stays full while filters remain).
+
+### HUD gauge
+- While wearing a face mask or hazmat suit, an on-screen **HUD readout** displays:
+  - **Remaining filter time** (minutes:seconds) for the active mask or suit filter.
+  - **Chest filter count** (e.g. "7/10") when wearing a hazmat chestpiece.
+- Positioned near the toxic air bar / armor display. Pairs naturally with the
+  hazmat visor overlay (rendered inside the visor frame when suited up).
 - **Sludge**: a full hazmat suit **negates all sludge contact damage**, but the
   player **can still drown** in sludge (the suit is not a rebreather).
 
@@ -141,9 +185,10 @@ Real sludge fluid, so we convert actual blocks — but never billions at once.
 
 ### Config (server config — syncs in multiplayer)
 - Time-to-toxic, toxic Y (start), **escalation spread speed**, sludge damage &
-  interval, poison/nausea levels, mask duration & tick mode, suit capacity &
-  rate, cleanser tiers & fuel exponent, affected dimensions, enclosure flood-fill
-  budget, toggles for animal/crop death and toxic rain.
+  interval, toxic air bar drain rate, toxic damage per second (post-bar), nausea
+  level, mask duration & tick mode, suit capacity & rate, cleanser tiers & fuel
+  exponent, affected dimensions, enclosure flood-fill budget, foliage decay rate,
+  toxic rain toggle, toxic rain decay multiplier.
 
 ---
 
@@ -162,11 +207,12 @@ server-driven and synced. Baked into the architecture, not bolted on.
    sludge fluid, virtual gas effects, **enclosure flood-fill + cache**, client
    fog. *Prototype enclosure detection before proceeding.*
 3. **Lazy world conversion** — chunk toxified-flag + throttled water→sludge queue;
-   organic-item destruction; animal/crop death; toxic rain.
+   organic-item destruction; all-passive-mob death; foliage decay; toxic rain;
+   "The Air Has Turned" advancement.
 4. **Filters & masks** — items, Data Components, durability display, wash/return
-   recipes, mask wear.
-5. **Hazmat suit** — armor set, chest filter storage + consumption, helmet visor
-   overlay + immersion, sludge-damage immunity (still drowns).
+   recipes, mask wear, toxic air bar integration, filter-expire warning.
+5. **Hazmat suit** — armor set, chest filter storage + consumption, **HUD gauge**,
+   helmet visor overlay + immersion, sludge-damage immunity (still drowns).
 6. **Machines** — Weaver (fuel + redstone-stop), then Cleanser (redstone range,
    fuel curve, hopper I/O, sludge reversion).
 7. **Create integration** — sludge in Create pipes/tanks, Create washing for
@@ -198,12 +244,20 @@ server-driven and synced. Baked into the architecture, not bolted on.
 - Target: **1.21.1 / NeoForge**.
 - Gas safety model: **sealed enclosures protect you** (Galacticraft-style).
 - World representation: **real sludge fluid, virtual gas**.
+- **Toxic air bar** (drowning-style): drains when unprotected in gas; when empty,
+  **real toxic damage that kills** (not capped-at-half-heart poison). Unmasked
+  players get ~15s of exposure before damage starts.
+- **All exposed foliage dies** in toxic gas (grass, flowers, vines, leaves, crops).
+- **All passive mobs die** in gas — including tamed and named. No exceptions.
 - Hazmat suit: **negates all sludge damage, but players still drown** in sludge.
 - Air filter = **2 wool**; face mask = **clean filter + 2 string**, durability =
   filter time, **helmet slot**.
+- **HUD gauge** for remaining filter time + chest filter count.
+- **Advancement** ("The Air Has Turned") when toxicity first activates.
+- **Filter-expire warning**: HUD flash + cough sound when protection drops.
 - Weaver: **furnace fuel**, **redstone signal stops it**.
 - **Escalation mode** with configurable spread speed.
-- **Toxic rain**; **animals + crops die** to gas; **hostile mobs unaffected** (for now).
+- **Toxic rain** accelerates foliage decay.
 - **Mechanical Cleanser** (Create rotation); **sludge pumpable** through Create pipes.
 - Dirty filters cleanable via **Create washing** (plus the bucket recipe).
-- **Visor immersion** included.
+- **Visor immersion** included (fog-up, muffled breathing, cracked visor on damage).
