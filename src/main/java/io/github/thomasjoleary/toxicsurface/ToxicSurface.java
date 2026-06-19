@@ -1,0 +1,31 @@
+package io.github.thomasjoleary.toxicsurface;
+
+import com.mojang.logging.LogUtils;
+import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
+import io.github.thomasjoleary.toxicsurface.registry.ModCreativeTabs;
+import io.github.thomasjoleary.toxicsurface.registry.ModItems;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
+import org.slf4j.Logger;
+
+/**
+ * Mod entrypoint. This is Phase 1 scaffolding (DESIGN.md §5) — registries and the
+ * server config spec are wired up; gameplay systems land in later phases.
+ */
+@Mod(ToxicSurface.MODID)
+public final class ToxicSurface {
+    public static final String MODID = "toxicsurface";
+    public static final Logger LOGGER = LogUtils.getLogger();
+
+    public ToxicSurface(IEventBus modEventBus, ModContainer modContainer) {
+        ModItems.ITEMS.register(modEventBus);
+        ModCreativeTabs.CREATIVE_MODE_TABS.register(modEventBus);
+
+        // Server config — server-authoritative and synced in multiplayer (DESIGN.md §3, §4).
+        modContainer.registerConfig(ModConfig.Type.SERVER, ToxicSurfaceConfig.SPEC);
+
+        LOGGER.info("ToxicSurface initializing — see DESIGN.md for the full spec");
+    }
+}
