@@ -4,6 +4,7 @@ package io.github.thomasjoleary.toxicsurface;
 
 import com.mojang.logging.LogUtils;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
+import io.github.thomasjoleary.toxicsurface.registry.ModAttachments;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlocks;
 import io.github.thomasjoleary.toxicsurface.registry.ModCreativeTabs;
 import io.github.thomasjoleary.toxicsurface.registry.ModFluids;
@@ -29,6 +30,7 @@ public final class ToxicSurface {
         ModBlocks.BLOCKS.register(modEventBus);
         ModItems.ITEMS.register(modEventBus);
         ModCreativeTabs.CREATIVE_MODE_TABS.register(modEventBus);
+        ModAttachments.ATTACHMENT_TYPES.register(modEventBus);
 
         // Server config — server-authoritative and synced in multiplayer (DESIGN.md §3, §4).
         modContainer.registerConfig(ModConfig.Type.SERVER, ToxicSurfaceConfig.SPEC);
