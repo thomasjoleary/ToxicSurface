@@ -360,9 +360,9 @@ server-driven and synced. Baked into the architecture, not bolted on.
 
 ## 5b. Implementation progress (build log)
 
-> Status as of 2026-06-19. Target verified: **NeoForge 21.1.77 / MC 1.21.1 / Java 21**.
+> Status as of 2026-06-20. Target verified: **NeoForge 21.1.77 / MC 1.21.1 / Java 21**.
 > Every NeoForge layer compiles and runs the standalone GameTest in CI; risky logic
-> is split into Minecraft-free classes covered by **36 pure unit tests** (all green).
+> is split into Minecraft-free classes covered by **40 pure unit tests** (all green).
 > A recurring pattern: pure algorithm + thin NeoForge adapter, verified per-commit.
 
 **Phase 1 — Foundations ✅ (merged)**
@@ -394,6 +394,26 @@ server-driven and synced. Baked into the architecture, not bolted on.
 - Dirty-filter wash loop: refilling a mask ejects a used filter (custom recipe);
   washing (`used + water bucket → clean filter`, **returns a sludge bucket**) and the
   reverse (`clean + sludge bucket → water bucket`, returns a used filter).
+
+**Phase 5 — Hazmat suit ✅ (merged)**
+- Data-driven `hazmat` armour material (iron-tier, Hazmat-Material repair); four
+  hazmat pieces. Gas protection needs **helmet + chestpiece** worn together.
+- Chestpiece stores up to 10 filters in a `minecraft:container` component, swapped
+  via a dedicated **filter-inventory screen** (`HazmatChestMenu`/`Screen`); crafted
+  empty. Suit burns filters at half the mask rate; HUD gauge + visor overlay.
+
+**Phase 6 — Machines 🚧 (CI-green; branch `claude/phase6-machines`)**
+- **Weaver** (textile/filtration fabricator): furnace-fuelled, redstone-halt,
+  hopper-automatable; hard-coded recipes (kelp + wool → Hazmat Material; 1 wool **or**
+  2 string → clean filter; clean filter + charcoal/coal → **carbon filter**). GUI with
+  progress arrow + fuel flame.
+- **Carbon (activated) filter**: `carbonFilterDurationMultiplier`× life; `MaskData`
+  tracks max so the bar scales; mask refill + suit are carbon-aware; spent carbon
+  degrades to a plain used filter. (Suit repair uses the vanilla anvil — Hazmat
+  Material is the armour's repair ingredient.)
+- **Cleanser** core: furnace-fuelled reclamation block that reverts sludge → water in
+  a budgeted sphere; **range set in its menu** (-8/-1/+1/+8 steppers) with a **redstone
+  tier override**; fuel cost ∝ (range/8)^k. *Next:* gas-purge bubble (client-synced).
 
 **Carried-forward polish / TODO** (tracked in-code):
 custom "toxic" `DamageType`; HUD flash + dedicated cough sound; air-bar HUD bubble
