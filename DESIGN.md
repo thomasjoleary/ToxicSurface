@@ -402,7 +402,7 @@ server-driven and synced. Baked into the architecture, not bolted on.
   via a dedicated **filter-inventory screen** (`HazmatChestMenu`/`Screen`); crafted
   empty. Suit burns filters at half the mask rate; HUD gauge + visor overlay.
 
-**Phase 6 — Machines 🚧 (CI-green; branch `claude/phase6-machines`)**
+**Phase 6 — Machines ✅ (CI-green; branch `claude/phase6-machines`)**
 - **Weaver** (textile/filtration fabricator): furnace-fuelled, redstone-halt,
   hopper-automatable; hard-coded recipes (kelp + wool → Hazmat Material; 1 wool **or**
   2 string → clean filter; clean filter + charcoal/coal → **carbon filter**). GUI with
@@ -411,13 +411,15 @@ server-driven and synced. Baked into the architecture, not bolted on.
   tracks max so the bar scales; mask refill + suit are carbon-aware; spent carbon
   degrades to a plain used filter. (Suit repair uses the vanilla anvil — Hazmat
   Material is the armour's repair ingredient.)
-- **Cleanser** core: furnace-fuelled reclamation block that reverts sludge → water in
-  a budgeted sphere; **range set in its menu** (-8/-1/+1/+8 steppers) with a **redstone
-  tier override**; fuel cost ∝ (range/8)^k. *Next:* gas-purge bubble (client-synced).
+- **Cleanser**: furnace-fuelled reclamation block that reverts sludge → water in a
+  budgeted sphere **and** keeps breathable air in range (server-authoritative purge
+  bubble feeding the gas predicate + client fog). **Range set in its menu**
+  (-8/-1/+1/+8 steppers) with a **redstone tier override**; fuel cost ∝ (range/8)^k;
+  only runs in an affected, already-toxic dimension.
 
 **Carried-forward polish / TODO** (tracked in-code):
 custom "toxic" `DamageType`; HUD flash + dedicated cough sound; air-bar HUD bubble
-row; cleanser-bubble hook in exposure; enclosure-cache wiring + block-change
+row; cleanser purge-bubble particles/visual; enclosure-cache wiring + block-change
 invalidation in the live effect; pre-toxicity telegraph + retroactive advancement;
 toxic-rain client overlay; accessibility sliders; **item/block textures + models**.
 

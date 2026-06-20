@@ -7,10 +7,13 @@ import io.github.thomasjoleary.toxicsurface.core.machine.CleanserRange;
 import io.github.thomasjoleary.toxicsurface.menu.CleanserMenu;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlockEntities;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlocks;
+import io.github.thomasjoleary.toxicsurface.world.CleanserBubbles;
+import io.github.thomasjoleary.toxicsurface.world.ToxicityTicker;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -126,6 +129,18 @@ public class CleanserBlockEntity extends BlockEntity implements MenuProvider {
                 ToxicSurfaceConfig.CLEANSER_TIERS.get(),
                 ToxicSurfaceConfig.CLEANSER_MAX_RANGE.get());
 
+        // Only run where there is something to clean: an affected, already-toxic dimension.
+        boolean canRun = level instanceof ServerLevel sl
+                && ToxicityTicker.isAffected(sl)
+                && ToxicityTicker.currentToxicY(sl) != ToxicityTicker.NOT_TOXIC;
+        if (!canRun) {
+            if (level instanceof ServerLevel sl) {
+                CleanserBubbles.remove(sl, pos);
+            }
+            return;
+        }
+        ServerLevel serverLevel = (ServerLevel) level;
+
         int cost = Math.max(1, (int) Math.round(
                 CleanserRange.fuelCostMultiplier(be.effectiveRange, ToxicSurfaceConfig.CLEANSER_FUEL_EXPONENT.get())));
 
@@ -137,7 +152,10 @@ public class CleanserBlockEntity extends BlockEntity implements MenuProvider {
             // Larger ranges burn through the current charge faster.
             be.litTime = Math.max(0, be.litTime - (cost - 1));
             be.revertSludge(level, pos, be.effectiveRange);
+            CleanserBubbles.update(serverLevel, pos, be.effectiveRange); // keep breathable air in range
             changed = true;
+        } else {
+            CleanserBubbles.remove(serverLevel, pos); // out of fuel: the bubble collapses
         }
 
         if (changed) {

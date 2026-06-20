@@ -13,6 +13,7 @@ import io.github.thomasjoleary.toxicsurface.core.gas.GasModel;
 import io.github.thomasjoleary.toxicsurface.item.FaceMaskItem;
 import io.github.thomasjoleary.toxicsurface.item.HazmatSuit;
 import io.github.thomasjoleary.toxicsurface.network.GasStatePayload;
+import io.github.thomasjoleary.toxicsurface.world.CleanserBubbles;
 import io.github.thomasjoleary.toxicsurface.world.ToxicityTicker;
 import java.util.HashMap;
 import java.util.Map;
@@ -104,7 +105,7 @@ public final class GasEffectHandler {
                             ToxicSurfaceConfig.ENCLOSURE_FLOOD_FILL_BUDGET.get())
                     .isSealed();
         }
-        boolean inCleanser = false; // TODO Phase 6: cleanser purge bubbles.
+        boolean inCleanser = CleanserBubbles.isInside(level, x, y, z);
         return GasModel.isToxicGas(active, y, ceiling, sealed, inCleanser);
     }
 

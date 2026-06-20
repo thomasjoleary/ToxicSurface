@@ -4,7 +4,9 @@ package io.github.thomasjoleary.toxicsurface.block;
 
 import com.mojang.serialization.MapCodec;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlockEntities;
+import io.github.thomasjoleary.toxicsurface.world.CleanserBubbles;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -64,6 +66,9 @@ public class CleanserBlock extends BaseEntityBlock {
             ItemStackHandler items = cleanser.getItems();
             for (int i = 0; i < items.getSlots(); i++) {
                 Block.popResource(level, pos, items.getStackInSlot(i));
+            }
+            if (level instanceof ServerLevel serverLevel) {
+                CleanserBubbles.remove(serverLevel, pos);
             }
         }
         super.onRemove(state, level, pos, newState, movedByPiston);
