@@ -2,16 +2,24 @@
 
 package io.github.thomasjoleary.toxicsurface;
 
+import io.github.thomasjoleary.toxicsurface.compat.CreateCompat;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlockEntities;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 
-/** Mod-bus setup that isn't tied to a registry (DESIGN.md §3 Machines). */
+/** Mod-bus setup that isn't tied to a registry (DESIGN.md §3 Machines, §9 Create compat). */
 @EventBusSubscriber(modid = ToxicSurface.MODID, bus = EventBusSubscriber.Bus.MOD)
 public final class ModBusEvents {
     private ModBusEvents() {}
+
+    @SubscribeEvent
+    public static void commonSetup(FMLCommonSetupEvent event) {
+        ToxicSurface.LOGGER.info(
+                "Create integration {} (DESIGN.md §9)", CreateCompat.isLoaded() ? "enabled" : "disabled");
+    }
 
     @SubscribeEvent
     public static void registerCapabilities(RegisterCapabilitiesEvent event) {

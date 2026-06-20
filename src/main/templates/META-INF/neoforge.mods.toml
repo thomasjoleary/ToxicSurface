@@ -24,11 +24,12 @@ versionRange = "${minecraft_version_range}"
 ordering = "NONE"
 side = "BOTH"
 
-# Optional soft-dependencies (DESIGN.md §9). The mod loads standalone; uncomment
-# and pin versions when the Create / Aeronautics integration lands (Phase 7).
-# [[dependencies.${mod_id}]]
-# modId = "create"
-# type = "optional"
-# versionRange = "[6.0.0,)"
-# ordering = "AFTER"
-# side = "BOTH"
+# Optional soft-dependencies (DESIGN.md §9). The mod loads and plays standalone;
+# Create-coupled features activate only when Create is present (datapack recipes are
+# condition-gated; runtime-Java paths are guarded by CreateCompat#isLoaded).
+[[dependencies.${mod_id}]]
+modId = "create"
+type = "optional"
+versionRange = "[6.0.0,)"
+ordering = "AFTER"
+side = "BOTH"

@@ -417,6 +417,18 @@ server-driven and synced. Baked into the architecture, not bolted on.
   (-8/-1/+1/+8 steppers) with a **redstone tier override**; fuel cost ∝ (range/8)^k;
   only runs in an affected, already-toxic dimension.
 
+**Phase 7 — Create integration 🚧 (branch `claude/phase7-create`)**
+- Soft-dependency foundation (DESIGN.md §9): `CreateCompat#isLoaded` gate (no hard
+  Create class references at load time), Create declared an **optional** dependency,
+  common-setup logs whether the integration is active. Compiles + GameTests standalone.
+- Datapack fan-washing: `create:splashing` `used → clean` filter, **condition-gated**
+  on `create` so it's inert without Create. Sludge already pumps/stores via Create
+  (it's a real NeoForge fluid) — no code needed.
+- *Constraint:* the **Mechanical Weaver/Cleanser** (Create kinetic API) and the exact
+  Create recipe schema can't be compiled/verified in the standalone sandbox or current
+  CI; they need a **Create-on-classpath build** (a second CI job pulling Create's
+  maven) — the next increment.
+
 **Carried-forward polish / TODO** (tracked in-code):
 custom "toxic" `DamageType`; HUD flash + dedicated cough sound; air-bar HUD bubble
 row; cleanser purge-bubble particles/visual; enclosure-cache wiring + block-change
