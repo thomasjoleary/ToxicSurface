@@ -4,12 +4,14 @@ package io.github.thomasjoleary.toxicsurface;
 
 import com.mojang.logging.LogUtils;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
+import io.github.thomasjoleary.toxicsurface.registry.ModArmorMaterials;
 import io.github.thomasjoleary.toxicsurface.registry.ModAttachments;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlocks;
 import io.github.thomasjoleary.toxicsurface.registry.ModCreativeTabs;
 import io.github.thomasjoleary.toxicsurface.registry.ModDataComponents;
 import io.github.thomasjoleary.toxicsurface.registry.ModFluids;
 import io.github.thomasjoleary.toxicsurface.registry.ModItems;
+import io.github.thomasjoleary.toxicsurface.registry.ModMenus;
 import io.github.thomasjoleary.toxicsurface.registry.ModRecipes;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -28,6 +30,7 @@ public final class ToxicSurface {
 
     public ToxicSurface(IEventBus modEventBus, ModContainer modContainer) {
         ModDataComponents.DATA_COMPONENTS.register(modEventBus);
+        ModArmorMaterials.ARMOR_MATERIALS.register(modEventBus);
         ModFluids.FLUID_TYPES.register(modEventBus);
         ModFluids.FLUIDS.register(modEventBus);
         ModBlocks.BLOCKS.register(modEventBus);
@@ -35,6 +38,7 @@ public final class ToxicSurface {
         ModCreativeTabs.CREATIVE_MODE_TABS.register(modEventBus);
         ModAttachments.ATTACHMENT_TYPES.register(modEventBus);
         ModRecipes.RECIPE_SERIALIZERS.register(modEventBus);
+        ModMenus.MENUS.register(modEventBus);
 
         // Server config — server-authoritative and synced in multiplayer (DESIGN.md §3, §4).
         modContainer.registerConfig(ModConfig.Type.SERVER, ToxicSurfaceConfig.SPEC);

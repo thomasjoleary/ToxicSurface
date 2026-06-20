@@ -23,6 +23,11 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.CLEAN_AIR_FILTER.get());
                         output.accept(ModItems.USED_AIR_FILTER.get());
                         output.accept(ModItems.FACE_MASK.get());
+                        output.accept(ModItems.HAZMAT_MATERIAL.get());
+                        output.accept(ModItems.HAZMAT_HELMET.get());
+                        output.accept(ModItems.HAZMAT_CHESTPLATE.get());
+                        output.accept(ModItems.HAZMAT_LEGGINGS.get());
+                        output.accept(ModItems.HAZMAT_BOOTS.get());
                         output.accept(ModItems.SLUDGE_BUCKET.get());
                     })
                     .build());
