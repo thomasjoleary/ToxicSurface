@@ -256,24 +256,41 @@ These are client options, not server config — each player tunes their own view
 - **Sludge**: a full hazmat suit **negates all sludge contact damage**, but the
   player **can still drown** in sludge (the suit is not a rebreather).
 
-### Weaver (machine block)
-- Crafted from **6 iron + 2 sticks**.
-- Block entity with a sided `ItemStackHandler`: inputs **kelp + wool**, outputs
-  **Hazmat Material**.
-- **Runs on furnace fuel** like a normal furnace. **A redstone signal STOPS it**
-  (powered = halted; unpowered = runs when fueled + supplied).
-- **Hopper-automatable** (kelp/wool in, material out).
+### Weaver (machine block) — textile & filtration fabricator
+- Crafted from **6 iron + 2 sticks**. Block entity with a sided `ItemStackHandler`;
+  **runs on furnace fuel**, **a redstone signal STOPS it**, **hopper-automatable**.
+- **Recipe-driven** (custom `weaver` recipe type, datapack-extensible) rather than a
+  single hard-coded recipe — so the Weaver is the hub for all fiber/filtration gear,
+  not just a one-off Hazmat Material press. Accepts a range of fibers via a
+  **`#toxicsurface:fiber`** tag (wool, string, kelp, bamboo, dried kelp…), so it
+  isn't strictly wool-gated.
+- **Core outputs (proposed):**
+  1. **Hazmat Material** ← kelp + wool (the suit fabric). *(existing)*
+  2. **Clean Air Filter** ← **1 wool OR 2 string** (the Weaver is the bulk/efficient
+     filter source; the 2-wool hand recipe stays as a basic fallback). Makes your
+     **core consumable** a reason to keep coming back to the machine.
+  3. **Carbon Filter** ← filter + charcoal → a **long-life filter** that lasts a
+     configurable multiple of a normal filter (a clear filter-tier upgrade).
+  4. **Suit/mask repair** ← a damaged hazmat piece + Hazmat Material → repaired
+     (cheaper/lossless vs. an anvil).
+  5. *(stretch)* **Sealed-glass / canvas** intermediates for the greenhouse and other
+     sealing gear (ties into the §7 sealed-greenhouse idea).
+- **Mechanical Weaver (Create):** rotation-powered variant — runs on Create
+  **stress/RPM** instead of furnace fuel; weave speed scales with supplied RPM.
 
 ### Cleanser (machine block)
-- Crafted from **4 iron + 2 gold + 2 diamond**.
-- Consumes furnace fuel; **purges gas in a sphere** and **reverts sludge → water**
-  within range.
-- Range tiers **8 / 16 / 32 / 64 / 128**, set by **input redstone signal**;
-  **hopper** fuel input.
+- Crafted from **4 iron + 2 gold + 2 diamond**. Consumes furnace fuel (**hopper**
+  fuel input); **purges gas in a sphere** and **reverts sludge → water** within range.
+- **Range is set manually in the Cleanser's menu** (a slider/field up to a configured
+  max) — this is the primary control.
+- **Redstone input is an optional on-the-fly override:** while powered, the input
+  signal strength selects a **range tier** (8 / 16 / 32 / 64 / 128…), so players can
+  wire a lever/comparator to switch range instantly (e.g. drop to a tight radius to
+  save fuel, spike it when needed). With **no signal it uses the menu value**.
 - Fuel cost: base furnace rate at 8 blocks, **exponential** with range
   (cost ∝ (range/8)^k; `k` in config).
-- **Create variant (Mechanical Cleanser)**: powered by Create **rotational
-  force** (stress/RPM) instead of fuel — range scales with supplied RPM/stress.
+- **Mechanical Cleanser (Create):** powered by Create **rotational force**
+  (stress/RPM) instead of fuel — range scales with supplied RPM/stress.
 
 ### Config (server config — syncs in multiplayer)
 
@@ -297,8 +314,10 @@ Gameplay knobs with **proposed defaults** (all server-config, balance-tunable):
 | `maskTickMode` | `IN_GAS_ONLY` | `IN_GAS_ONLY` or `ALWAYS` |
 | `suitFilterCapacity` | `10` | Filters stored in the hazmat chestpiece |
 | `suitConsumeRateFactor` | `0.5` | Suit burns filters at half the mask rate |
-| `cleanserTiers` | `8,16,32,64,128` | Redstone-selected sphere radii |
+| `cleanserMaxRange` | `128` | Max range settable in the Cleanser's menu |
+| `cleanserTiers` | `8,16,32,64,128` | Range presets the **redstone** input quick-switches between |
 | `cleanserFuelExponent` (`k`) | `2.0` | Fuel cost ∝ `(range/8)^k` |
+| `carbonFilterDurationMultiplier` | `3.0` | Carbon (long-life) filter lifetime vs. a normal filter |
 | `affectedDimensions` | `["minecraft:overworld"]` | Opt-in whitelist |
 | `foliageDecayBlocksPerTick` | `64` | Global throttle for foliage death pass |
 | `toxicRainEnabled` | `true` | Surface toxic-rain overlay |
@@ -332,7 +351,8 @@ server-driven and synced. Baked into the architecture, not bolted on.
 6. **Machines** — Weaver (fuel + redstone-stop), then Cleanser (redstone range,
    fuel curve, hopper I/O, sludge reversion).
 7. **Create integration** — sludge in Create pipes/tanks, Create washing for
-   filters, Mechanical Cleanser variant.
+   filters, **Mechanical Cleanser** and **Mechanical Weaver** (rotation-powered)
+   variants.
 8. **Polish & pack integration** — JEI/EMI recipe support, Jade tooltips, balance
    pass, Create / Aeronautics / Sky Archipelago compat testing.
 
@@ -340,9 +360,9 @@ server-driven and synced. Baked into the architecture, not bolted on.
 
 ## 5b. Implementation progress (build log)
 
-> Status as of 2026-06-19. Target verified: **NeoForge 21.1.77 / MC 1.21.1 / Java 21**.
+> Status as of 2026-06-20. Target verified: **NeoForge 21.1.77 / MC 1.21.1 / Java 21**.
 > Every NeoForge layer compiles and runs the standalone GameTest in CI; risky logic
-> is split into Minecraft-free classes covered by **36 pure unit tests** (all green).
+> is split into Minecraft-free classes covered by **40 pure unit tests** (all green).
 > A recurring pattern: pure algorithm + thin NeoForge adapter, verified per-commit.
 
 **Phase 1 — Foundations ✅ (merged)**
@@ -375,9 +395,31 @@ server-driven and synced. Baked into the architecture, not bolted on.
   washing (`used + water bucket → clean filter`, **returns a sludge bucket**) and the
   reverse (`clean + sludge bucket → water bucket`, returns a used filter).
 
+**Phase 5 — Hazmat suit ✅ (merged)**
+- Data-driven `hazmat` armour material (iron-tier, Hazmat-Material repair); four
+  hazmat pieces. Gas protection needs **helmet + chestpiece** worn together.
+- Chestpiece stores up to 10 filters in a `minecraft:container` component, swapped
+  via a dedicated **filter-inventory screen** (`HazmatChestMenu`/`Screen`); crafted
+  empty. Suit burns filters at half the mask rate; HUD gauge + visor overlay.
+
+**Phase 6 — Machines ✅ (CI-green; branch `claude/phase6-machines`)**
+- **Weaver** (textile/filtration fabricator): furnace-fuelled, redstone-halt,
+  hopper-automatable; hard-coded recipes (kelp + wool → Hazmat Material; 1 wool **or**
+  2 string → clean filter; clean filter + charcoal/coal → **carbon filter**). GUI with
+  progress arrow + fuel flame.
+- **Carbon (activated) filter**: `carbonFilterDurationMultiplier`× life; `MaskData`
+  tracks max so the bar scales; mask refill + suit are carbon-aware; spent carbon
+  degrades to a plain used filter. (Suit repair uses the vanilla anvil — Hazmat
+  Material is the armour's repair ingredient.)
+- **Cleanser**: furnace-fuelled reclamation block that reverts sludge → water in a
+  budgeted sphere **and** keeps breathable air in range (server-authoritative purge
+  bubble feeding the gas predicate + client fog). **Range set in its menu**
+  (-8/-1/+1/+8 steppers) with a **redstone tier override**; fuel cost ∝ (range/8)^k;
+  only runs in an affected, already-toxic dimension.
+
 **Carried-forward polish / TODO** (tracked in-code):
 custom "toxic" `DamageType`; HUD flash + dedicated cough sound; air-bar HUD bubble
-row; cleanser-bubble hook in exposure; enclosure-cache wiring + block-change
+row; cleanser purge-bubble particles/visual; enclosure-cache wiring + block-change
 invalidation in the live effect; pre-toxicity telegraph + retroactive advancement;
 toxic-rain client overlay; accessibility sliders; **item/block textures + models**.
 
@@ -519,7 +561,14 @@ First-mod identity — **set-once and painful to change later**, locked in Phase
 - Weaver: **furnace fuel**, **redstone signal stops it**.
 - **Escalation mode** with configurable spread speed.
 - **Toxic rain** accelerates foliage decay.
-- **Mechanical Cleanser** (Create rotation); **sludge pumpable** through Create pipes.
+- **Mechanical Cleanser** *and* **Mechanical Weaver** (Create rotation); **sludge
+  pumpable** through Create pipes.
+- **Cleanser range**: set **manually in its menu** (primary); **redstone input is an
+  optional on-the-fly override** that selects a range tier (for lever/comparator
+  quick-switching), not the only control.
+- **Weaver = textile/filtration fabricator**: recipe-driven hub for Hazmat Material,
+  air filters (incl. a **Carbon long-life filter** tier), and suit repair; accepts a
+  **`#toxicsurface:fiber`** tag of inputs.
 - Dirty filters cleanable via **Create washing** (plus the bucket recipe).
 - **Visor immersion** included (fog-up, muffled breathing, cracked visor on damage).
 - **Pre-toxicity telegraph**: escalating title/chat warnings before activation

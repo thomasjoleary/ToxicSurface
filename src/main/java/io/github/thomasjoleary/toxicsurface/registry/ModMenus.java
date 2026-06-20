@@ -3,7 +3,9 @@
 package io.github.thomasjoleary.toxicsurface.registry;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
+import io.github.thomasjoleary.toxicsurface.menu.CleanserMenu;
 import io.github.thomasjoleary.toxicsurface.menu.HazmatChestMenu;
+import io.github.thomasjoleary.toxicsurface.menu.WeaverMenu;
 import java.util.function.Supplier;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
@@ -18,6 +20,12 @@ public final class ModMenus {
     public static final Supplier<MenuType<HazmatChestMenu>> HAZMAT_CHEST = MENUS.register(
             "hazmat_chest",
             () -> IMenuTypeExtension.create((id, inventory, data) -> new HazmatChestMenu(id, inventory)));
+
+    public static final Supplier<MenuType<WeaverMenu>> WEAVER = MENUS.register(
+            "weaver", () -> IMenuTypeExtension.create((id, inventory, data) -> new WeaverMenu(id, inventory)));
+
+    public static final Supplier<MenuType<CleanserMenu>> CLEANSER = MENUS.register(
+            "cleanser", () -> IMenuTypeExtension.create((id, inventory, data) -> new CleanserMenu(id, inventory)));
 
     private ModMenus() {}
 }

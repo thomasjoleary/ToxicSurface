@@ -37,8 +37,10 @@ public final class ToxicSurfaceConfig {
     public static final ModConfigSpec.EnumValue<MaskTickMode> MASK_TICK_MODE;
     public static final ModConfigSpec.IntValue SUIT_FILTER_CAPACITY;
     public static final ModConfigSpec.DoubleValue SUIT_CONSUME_RATE_FACTOR;
+    public static final ModConfigSpec.DoubleValue CARBON_FILTER_DURATION_MULTIPLIER;
 
     // --- Cleanser ---
+    public static final ModConfigSpec.IntValue CLEANSER_MAX_RANGE;
     public static final ModConfigSpec.ConfigValue<List<? extends Integer>> CLEANSER_TIERS;
     public static final ModConfigSpec.DoubleValue CLEANSER_FUEL_EXPONENT;
 
@@ -113,9 +115,14 @@ public final class ToxicSurfaceConfig {
                 b.comment("Filters stored in the hazmat chestpiece.").defineInRange("suitFilterCapacity", 10, 1, 64);
         SUIT_CONSUME_RATE_FACTOR = b.comment("Suit burns filters at this fraction of the mask rate (0.5 = half).")
                 .defineInRange("suitConsumeRateFactor", 0.5, 0.0, 1.0);
+        CARBON_FILTER_DURATION_MULTIPLIER = b.comment(
+                        "A carbon (activated) filter lasts this many times longer than a plain filter.")
+                .defineInRange("carbonFilterDurationMultiplier", 3.0, 1.0, 100.0);
         b.pop();
 
         b.push("cleanser");
+        CLEANSER_MAX_RANGE = b.comment("Maximum sphere radius settable in the Cleanser's menu (the primary control).")
+                .defineInRange("cleanserMaxRange", 128, 1, 256);
         CLEANSER_TIERS = b.comment("Redstone-selected cleanser sphere radii, ascending.")
                 .defineList(
                         "cleanserTiers", List.of(8, 16, 32, 64, 128), () -> 8, o -> o instanceof Integer i && i > 0);

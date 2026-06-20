@@ -6,6 +6,7 @@ import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.item.FaceMaskItem;
 import io.github.thomasjoleary.toxicsurface.item.HazmatChestItem;
 import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -27,6 +28,13 @@ public final class ModItems {
 
     /** Spent filter ejected when refilling a mask; wash it back to clean (DESIGN.md §3). */
     public static final DeferredItem<Item> USED_AIR_FILTER = ITEMS.registerSimpleItem("used_air_filter");
+
+    /**
+     * Activated-carbon filter (DESIGN.md §3): a clean filter treated with charcoal in the
+     * Weaver. Lasts {@code carbonFilterDurationMultiplier}× a plain filter; degrades to a
+     * plain used filter when spent (re-treat after washing).
+     */
+    public static final DeferredItem<Item> CARBON_AIR_FILTER = ITEMS.registerSimpleItem("carbon_air_filter");
 
     /** Helmet-slot mask whose installed filter time is its durability bar. */
     public static final DeferredItem<FaceMaskItem> FACE_MASK =
@@ -55,6 +63,14 @@ public final class ModItems {
             ITEMS.register("hazmat_leggings", () -> armor(ArmorItem.Type.LEGGINGS));
     public static final DeferredItem<ArmorItem> HAZMAT_BOOTS =
             ITEMS.register("hazmat_boots", () -> armor(ArmorItem.Type.BOOTS));
+
+    /** Block item for the Weaver machine (DESIGN.md §3). */
+    public static final DeferredItem<BlockItem> WEAVER =
+            ITEMS.register("weaver", () -> new BlockItem(ModBlocks.WEAVER.get(), new Item.Properties()));
+
+    /** Block item for the Cleanser machine (DESIGN.md §3). */
+    public static final DeferredItem<BlockItem> CLEANSER =
+            ITEMS.register("cleanser", () -> new BlockItem(ModBlocks.CLEANSER.get(), new Item.Properties()));
 
     private static ArmorItem armor(ArmorItem.Type type) {
         return new ArmorItem(

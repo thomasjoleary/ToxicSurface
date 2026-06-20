@@ -42,8 +42,8 @@ public final class EquipmentHudOverlay {
     private static void drawFilterGauge(GuiGraphics graphics, Minecraft mc, ItemStack head, ItemStack chest) {
         String text = null;
         if (HazmatSuit.isChestpiece(chest)) {
-            int clean = HazmatSuit.cleanFilterCount(chest);
-            text = "Filters " + clean + "/" + HazmatSuit.CAPACITY + "  " + formatTime(HazmatSuit.activeTicks(chest));
+            int usable = HazmatSuit.usableFilterCount(chest);
+            text = "Filters " + usable + "/" + HazmatSuit.CAPACITY + "  " + formatTime(HazmatSuit.activeTicks(chest));
         } else if (head.getItem() instanceof FaceMaskItem && FaceMaskItem.remaining(head) > 0) {
             text = "Filter " + formatTime(FaceMaskItem.remaining(head));
         }

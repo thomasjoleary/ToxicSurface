@@ -35,7 +35,7 @@ public class FaceMaskItem extends Item {
 
     @Override
     public int getBarWidth(ItemStack stack) {
-        int max = Math.max(1, ToxicSurfaceConfig.MASK_DURATION_TICKS.get());
+        int max = Math.max(1, maxTicks(stack));
         return Mth.clamp(Math.round(13.0F * remaining(stack) / max), 0, 13);
     }
 
@@ -49,8 +49,22 @@ public class FaceMaskItem extends Item {
         return data == null ? 0 : data.remainingTicks();
     }
 
+    /** Full lifetime of the installed filter; falls back to the plain-filter config. */
+    public static int maxTicks(ItemStack stack) {
+        MaskData data = stack.get(ModDataComponents.MASK_DATA.get());
+        int max = data == null ? 0 : data.maxTicks();
+        return max > 0 ? max : ToxicSurfaceConfig.MASK_DURATION_TICKS.get();
+    }
+
+    /** Installs a fresh filter with the given lifetime (sets both remaining and max). */
+    public static void install(ItemStack stack, int lifetimeTicks) {
+        int life = Math.max(0, lifetimeTicks);
+        stack.set(ModDataComponents.MASK_DATA.get(), new MaskData(life, life));
+    }
+
+    /** Updates the remaining time while preserving the installed filter's max lifetime. */
     public static void setRemaining(ItemStack stack, int ticks) {
-        stack.set(ModDataComponents.MASK_DATA.get(), new MaskData(Math.max(0, ticks)));
+        stack.set(ModDataComponents.MASK_DATA.get(), new MaskData(Math.max(0, ticks), maxTicks(stack)));
     }
 
     public static boolean hasActiveFilter(ItemStack stack) {

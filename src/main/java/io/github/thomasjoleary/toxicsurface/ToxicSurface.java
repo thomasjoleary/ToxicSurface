@@ -6,6 +6,7 @@ import com.mojang.logging.LogUtils;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
 import io.github.thomasjoleary.toxicsurface.registry.ModArmorMaterials;
 import io.github.thomasjoleary.toxicsurface.registry.ModAttachments;
+import io.github.thomasjoleary.toxicsurface.registry.ModBlockEntities;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlocks;
 import io.github.thomasjoleary.toxicsurface.registry.ModCreativeTabs;
 import io.github.thomasjoleary.toxicsurface.registry.ModDataComponents;
@@ -34,6 +35,7 @@ public final class ToxicSurface {
         ModFluids.FLUID_TYPES.register(modEventBus);
         ModFluids.FLUIDS.register(modEventBus);
         ModBlocks.BLOCKS.register(modEventBus);
+        ModBlockEntities.BLOCK_ENTITIES.register(modEventBus);
         ModItems.ITEMS.register(modEventBus);
         ModCreativeTabs.CREATIVE_MODE_TABS.register(modEventBus);
         ModAttachments.ATTACHMENT_TYPES.register(modEventBus);

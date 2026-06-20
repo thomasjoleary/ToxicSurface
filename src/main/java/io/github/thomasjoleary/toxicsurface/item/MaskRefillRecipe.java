@@ -15,10 +15,11 @@ import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
 
 /**
- * Refilling a face mask: {@code face mask + clean air filter → full face mask}, and
- * the spent filter is ejected as a used (dirty) filter for washing (DESIGN.md §3
- * Filters & masks). A custom recipe is needed because vanilla crafting yields a single
- * output — the dirty filter comes back as a remaining grid item.
+ * Refilling a face mask: {@code face mask + clean (or carbon) air filter → full face
+ * mask}, and the spent filter is ejected as a used (dirty) filter for washing (DESIGN.md
+ * §3 Filters & masks). A carbon filter installs a longer-life charge. A custom recipe is
+ * needed because vanilla crafting yields a single output — the dirty filter comes back as
+ * a remaining grid item.
  */
 public class MaskRefillRecipe extends CustomRecipe {
     public MaskRefillRecipe(CraftingBookCategory category) {
@@ -39,7 +40,7 @@ public class MaskRefillRecipe extends CustomRecipe {
                     return false;
                 }
                 mask = true;
-            } else if (stack.is(ModItems.CLEAN_AIR_FILTER.get())) {
+            } else if (AirFilter.isClean(stack)) {
                 if (filter) {
                     return false;
                 }
@@ -54,7 +55,14 @@ public class MaskRefillRecipe extends CustomRecipe {
     @Override
     public ItemStack assemble(CraftingInput input, HolderLookup.Provider registries) {
         ItemStack mask = new ItemStack(ModItems.FACE_MASK.get());
-        FaceMaskItem.setRemaining(mask, ToxicSurfaceConfig.MASK_DURATION_TICKS.get());
+        int lifetime = ToxicSurfaceConfig.MASK_DURATION_TICKS.get();
+        for (int i = 0; i < input.size(); i++) {
+            if (AirFilter.isClean(input.getItem(i))) {
+                lifetime = AirFilter.lifetimeTicks(input.getItem(i));
+                break;
+            }
+        }
+        FaceMaskItem.install(mask, lifetime);
         return mask;
     }
 

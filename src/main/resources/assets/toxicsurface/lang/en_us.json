@@ -1,6 +1,7 @@
 {
     "itemGroup.toxicsurface": "ToxicSurface",
     "item.toxicsurface.clean_air_filter": "Clean Air Filter",
+    "item.toxicsurface.carbon_air_filter": "Carbon Air Filter",
     "item.toxicsurface.used_air_filter": "Used Air Filter",
     "item.toxicsurface.face_mask": "Face Mask",
     "item.toxicsurface.hazmat_material": "Hazmat Material",
@@ -11,6 +12,8 @@
     "item.toxicsurface.sludge_bucket": "Toxic Sludge Bucket",
     "container.toxicsurface.hazmat_chest": "Hazmat Chestpiece",
     "block.toxicsurface.sludge": "Toxic Sludge",
+    "block.toxicsurface.weaver": "Weaver",
+    "block.toxicsurface.cleanser": "Cleanser",
     "fluid_type.toxicsurface.sludge": "Toxic Sludge",
     "advancement.toxicsurface.the_air_has_turned.title": "The Air Has Turned",
     "advancement.toxicsurface.the_air_has_turned.description": "The surface is toxic now. Seal up, filter your air, and find a way to reclaim the world."

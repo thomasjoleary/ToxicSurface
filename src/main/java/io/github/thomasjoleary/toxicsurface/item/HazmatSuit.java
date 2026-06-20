@@ -46,23 +46,35 @@ public final class HazmatSuit {
         chest.set(DataComponents.CONTAINER, ItemContainerContents.fromItems(items));
     }
 
-    /** Number of clean (usable) filters currently loaded in the chest. */
-    public static int cleanFilterCount(ItemStack chest) {
+    /** Number of usable filters (plain or carbon) currently loaded in the chest. */
+    public static int usableFilterCount(ItemStack chest) {
         int count = 0;
         SimpleContainer container = loadFilters(chest);
         for (int i = 0; i < container.getContainerSize(); i++) {
-            if (container.getItem(i).is(ModItems.CLEAN_AIR_FILTER.get())) {
+            if (AirFilter.isClean(container.getItem(i))) {
                 count++;
             }
         }
         return count;
     }
 
-    /** Burns one clean filter (turns it into a used filter in place). Returns true if one was burned. */
+    /** Full lifetime in ticks of the next filter that would be burned, or {@code 0} if none. */
+    public static int nextFilterLifetime(ItemStack chest) {
+        SimpleContainer container = loadFilters(chest);
+        for (int i = 0; i < container.getContainerSize(); i++) {
+            ItemStack stack = container.getItem(i);
+            if (AirFilter.isClean(stack)) {
+                return AirFilter.lifetimeTicks(stack);
+            }
+        }
+        return 0;
+    }
+
+    /** Burns the next usable filter (turns it into a plain used filter in place). Returns true if one was burned. */
     public static boolean burnOneFilter(ItemStack chest) {
         SimpleContainer container = loadFilters(chest);
         for (int i = 0; i < container.getContainerSize(); i++) {
-            if (container.getItem(i).is(ModItems.CLEAN_AIR_FILTER.get())) {
+            if (AirFilter.isClean(container.getItem(i))) {
                 container.setItem(i, new ItemStack(ModItems.USED_AIR_FILTER.get()));
                 saveFilters(chest, container);
                 return true;

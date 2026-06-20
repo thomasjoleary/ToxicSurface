@@ -1,0 +1,16 @@
+{
+    "type": "minecraft:crafting_shaped",
+    "pattern": [
+        "III",
+        "S S",
+        "III"
+    ],
+    "key": {
+        "I": "minecraft:iron_ingot",
+        "S": "minecraft:stick"
+    },
+    "result": {
+        "id": "toxicsurface:weaver",
+        "count": 1
+    }
+}

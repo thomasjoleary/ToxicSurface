@@ -98,7 +98,9 @@ public class HazmatChestMenu extends AbstractContainerMenu {
 
         @Override
         public boolean mayPlace(ItemStack stack) {
-            return stack.is(ModItems.CLEAN_AIR_FILTER.get()) || stack.is(ModItems.USED_AIR_FILTER.get());
+            return stack.is(ModItems.CLEAN_AIR_FILTER.get())
+                    || stack.is(ModItems.CARBON_AIR_FILTER.get())
+                    || stack.is(ModItems.USED_AIR_FILTER.get());
         }
 
         @Override
