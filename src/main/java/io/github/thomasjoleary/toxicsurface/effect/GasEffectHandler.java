@@ -8,9 +8,12 @@ import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig.MaskTickMo
 import io.github.thomasjoleary.toxicsurface.core.enclosure.EnclosureScanner;
 import io.github.thomasjoleary.toxicsurface.core.enclosure.LevelPassabilityProbe;
 import io.github.thomasjoleary.toxicsurface.core.equipment.MaskFilter;
+import io.github.thomasjoleary.toxicsurface.core.equipment.SuitFilter;
 import io.github.thomasjoleary.toxicsurface.core.gas.AirBarModel;
 import io.github.thomasjoleary.toxicsurface.core.gas.GasModel;
 import io.github.thomasjoleary.toxicsurface.item.FaceMaskItem;
+import io.github.thomasjoleary.toxicsurface.item.HazmatSuit;
+import io.github.thomasjoleary.toxicsurface.item.SuitData;
 import io.github.thomasjoleary.toxicsurface.network.GasStatePayload;
 import io.github.thomasjoleary.toxicsurface.world.ToxicityTicker;
 import java.util.HashMap;
@@ -61,8 +64,8 @@ public final class GasEffectHandler {
         }
 
         boolean inGas = ToxicityTicker.isAffected(level) && isInToxicGasAtHead(level, player);
-        boolean protectedByMask = updateMaskAndIsProtected(level, player, inGas);
-        boolean exposed = inGas && !protectedByMask;
+        boolean isProtected = updateProtection(level, player, inGas);
+        boolean exposed = inGas && !isProtected;
 
         int drain = ToxicSurfaceConfig.AIR_BAR_DRAIN_TICKS.get();
         int refill = ToxicSurfaceConfig.AIR_BAR_REFILL_TICKS.get();
@@ -105,6 +108,41 @@ public final class GasEffectHandler {
         }
         boolean inCleanser = false; // TODO Phase 6: cleanser purge bubbles.
         return GasModel.isToxicGas(active, y, ceiling, sealed, inCleanser);
+    }
+
+    /**
+     * Resolves gas protection (DESIGN.md §3). A hazmat chestpiece with filter charge
+     * takes priority (bigger capacity, half-rate consumption); otherwise a worn face
+     * mask is used. Returns whether the player is currently protected.
+     */
+    private static boolean updateProtection(ServerLevel level, Player player, boolean inGas) {
+        ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
+        if (HazmatSuit.isChestpiece(chest) && HazmatSuit.filterCount(chest) > 0) {
+            return updateSuitAndIsProtected(level, player, chest, inGas);
+        }
+        return updateMaskAndIsProtected(level, player, inGas);
+    }
+
+    /** Burns the chest's filters at half the mask rate while protecting; warns on the last one. */
+    private static boolean updateSuitAndIsProtected(ServerLevel level, Player player, ItemStack chest, boolean inGas) {
+        SuitData data = HazmatSuit.data(chest);
+        if (data == null) {
+            return false;
+        }
+        int filtersBefore = data.filters();
+        boolean tickNow = ToxicSurfaceConfig.MASK_TICK_MODE.get() == MaskTickMode.ALWAYS || inGas;
+        if (filtersBefore > 0 && tickNow) {
+            int delta =
+                    Math.max(1, (int) Math.round(THROTTLE_TICKS * ToxicSurfaceConfig.SUIT_CONSUME_RATE_FACTOR.get()));
+            SuitFilter.State next = SuitFilter.consume(
+                    filtersBefore, data.activeTicks(), delta, ToxicSurfaceConfig.MASK_DURATION_TICKS.get());
+            HazmatSuit.setData(chest, new SuitData(next.filters(), next.activeTicks()));
+            if (inGas && SuitFilter.justExpired(filtersBefore, next.filters())) {
+                playFilterExpiryWarning(level, player);
+            }
+            return SuitFilter.isActive(next.filters());
+        }
+        return SuitFilter.isActive(filtersBefore);
     }
 
     /**

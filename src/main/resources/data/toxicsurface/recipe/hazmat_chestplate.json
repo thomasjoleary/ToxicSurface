@@ -11,6 +11,12 @@
     },
     "result": {
         "id": "toxicsurface:hazmat_chestplate",
-        "count": 1
+        "count": 1,
+        "components": {
+            "toxicsurface:suit_data": {
+                "filters": 10,
+                "active_ticks": 2400
+            }
+        }
     }
 }

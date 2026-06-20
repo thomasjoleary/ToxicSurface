@@ -4,6 +4,7 @@ package io.github.thomasjoleary.toxicsurface.registry;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.item.MaskData;
+import io.github.thomasjoleary.toxicsurface.item.SuitData;
 import java.util.function.Supplier;
 import net.minecraft.core.component.DataComponentType;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -15,6 +16,9 @@ public final class ModDataComponents {
 
     public static final Supplier<DataComponentType<MaskData>> MASK_DATA = DATA_COMPONENTS.registerComponentType(
             "mask_data", builder -> builder.persistent(MaskData.CODEC).networkSynchronized(MaskData.STREAM_CODEC));
+
+    public static final Supplier<DataComponentType<SuitData>> SUIT_DATA = DATA_COMPONENTS.registerComponentType(
+            "suit_data", builder -> builder.persistent(SuitData.CODEC).networkSynchronized(SuitData.STREAM_CODEC));
 
     private ModDataComponents() {}
 }
