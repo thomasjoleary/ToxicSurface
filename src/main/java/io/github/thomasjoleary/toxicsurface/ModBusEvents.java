@@ -20,5 +20,10 @@ public final class ModBusEvents {
                 Capabilities.ItemHandler.BLOCK,
                 ModBlockEntities.WEAVER.get(),
                 (weaver, side) -> weaver.getItemHandler());
+        // Expose the Cleanser's fuel slot for hopper automation.
+        event.registerBlockEntity(
+                Capabilities.ItemHandler.BLOCK,
+                ModBlockEntities.CLEANSER.get(),
+                (cleanser, side) -> cleanser.getItemHandler());
     }
 }

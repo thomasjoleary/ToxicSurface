@@ -3,6 +3,7 @@
 package io.github.thomasjoleary.toxicsurface.registry;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
+import io.github.thomasjoleary.toxicsurface.menu.CleanserMenu;
 import io.github.thomasjoleary.toxicsurface.menu.HazmatChestMenu;
 import io.github.thomasjoleary.toxicsurface.menu.WeaverMenu;
 import java.util.function.Supplier;
@@ -22,6 +23,9 @@ public final class ModMenus {
 
     public static final Supplier<MenuType<WeaverMenu>> WEAVER = MENUS.register(
             "weaver", () -> IMenuTypeExtension.create((id, inventory, data) -> new WeaverMenu(id, inventory)));
+
+    public static final Supplier<MenuType<CleanserMenu>> CLEANSER = MENUS.register(
+            "cleanser", () -> IMenuTypeExtension.create((id, inventory, data) -> new CleanserMenu(id, inventory)));
 
     private ModMenus() {}
 }

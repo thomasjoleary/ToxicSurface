@@ -3,6 +3,7 @@
 package io.github.thomasjoleary.toxicsurface.registry;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
+import io.github.thomasjoleary.toxicsurface.block.CleanserBlockEntity;
 import io.github.thomasjoleary.toxicsurface.block.WeaverBlockEntity;
 import java.util.function.Supplier;
 import net.minecraft.core.registries.Registries;
@@ -16,6 +17,10 @@ public final class ModBlockEntities {
 
     public static final Supplier<BlockEntityType<WeaverBlockEntity>> WEAVER = BLOCK_ENTITIES.register(
             "weaver", () -> BlockEntityType.Builder.of(WeaverBlockEntity::new, ModBlocks.WEAVER.get())
+                    .build(null));
+
+    public static final Supplier<BlockEntityType<CleanserBlockEntity>> CLEANSER = BLOCK_ENTITIES.register(
+            "cleanser", () -> BlockEntityType.Builder.of(CleanserBlockEntity::new, ModBlocks.CLEANSER.get())
                     .build(null));
 
     private ModBlockEntities() {}

@@ -68,6 +68,10 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> WEAVER =
             ITEMS.register("weaver", () -> new BlockItem(ModBlocks.WEAVER.get(), new Item.Properties()));
 
+    /** Block item for the Cleanser machine (DESIGN.md §3). */
+    public static final DeferredItem<BlockItem> CLEANSER =
+            ITEMS.register("cleanser", () -> new BlockItem(ModBlocks.CLEANSER.get(), new Item.Properties()));
+
     private static ArmorItem armor(ArmorItem.Type type) {
         return new ArmorItem(
                 ModArmorMaterials.HAZMAT,

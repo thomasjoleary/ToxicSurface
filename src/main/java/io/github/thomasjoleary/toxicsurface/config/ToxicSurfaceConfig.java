@@ -40,6 +40,7 @@ public final class ToxicSurfaceConfig {
     public static final ModConfigSpec.DoubleValue CARBON_FILTER_DURATION_MULTIPLIER;
 
     // --- Cleanser ---
+    public static final ModConfigSpec.IntValue CLEANSER_MAX_RANGE;
     public static final ModConfigSpec.ConfigValue<List<? extends Integer>> CLEANSER_TIERS;
     public static final ModConfigSpec.DoubleValue CLEANSER_FUEL_EXPONENT;
 
@@ -120,6 +121,8 @@ public final class ToxicSurfaceConfig {
         b.pop();
 
         b.push("cleanser");
+        CLEANSER_MAX_RANGE = b.comment("Maximum sphere radius settable in the Cleanser's menu (the primary control).")
+                .defineInRange("cleanserMaxRange", 128, 1, 256);
         CLEANSER_TIERS = b.comment("Redstone-selected cleanser sphere radii, ascending.")
                 .defineList(
                         "cleanserTiers", List.of(8, 16, 32, 64, 128), () -> 8, o -> o instanceof Integer i && i > 0);

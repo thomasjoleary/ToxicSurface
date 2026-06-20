@@ -3,6 +3,7 @@
 package io.github.thomasjoleary.toxicsurface.registry;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
+import io.github.thomasjoleary.toxicsurface.block.CleanserBlock;
 import io.github.thomasjoleary.toxicsurface.block.WeaverBlock;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.SoundType;
@@ -32,6 +33,13 @@ public final class ModBlocks {
     public static final DeferredBlock<WeaverBlock> WEAVER = BLOCKS.register(
             "weaver",
             () -> new WeaverBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(3.5F)
+                    .sound(SoundType.METAL)));
+
+    public static final DeferredBlock<CleanserBlock> CLEANSER = BLOCKS.register(
+            "cleanser",
+            () -> new CleanserBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.METAL)
                     .strength(3.5F)
                     .sound(SoundType.METAL)));
