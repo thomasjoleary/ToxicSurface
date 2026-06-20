@@ -5,6 +5,8 @@ package io.github.thomasjoleary.toxicsurface.block;
 import com.mojang.serialization.MapCodec;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlockEntities;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
@@ -13,6 +15,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
 import net.neoforged.neoforge.items.ItemStackHandler;
 
 /** The Weaver machine block (DESIGN.md §3) — see {@link WeaverBlockEntity}. */
@@ -36,6 +39,15 @@ public class WeaverBlock extends BaseEntityBlock {
     @Override
     protected RenderShape getRenderShape(BlockState state) {
         return RenderShape.MODEL;
+    }
+
+    @Override
+    protected InteractionResult useWithoutItem(
+            BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
+        if (!level.isClientSide && level.getBlockEntity(pos) instanceof WeaverBlockEntity weaver) {
+            player.openMenu(weaver);
+        }
+        return InteractionResult.SUCCESS;
     }
 
     @Override

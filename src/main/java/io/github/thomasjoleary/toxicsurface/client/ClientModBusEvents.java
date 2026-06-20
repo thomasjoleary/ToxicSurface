@@ -26,5 +26,6 @@ public final class ClientModBusEvents {
     @SubscribeEvent
     public static void registerScreens(RegisterMenuScreensEvent event) {
         event.register(ModMenus.HAZMAT_CHEST.get(), HazmatChestScreen::new);
+        event.register(ModMenus.WEAVER.get(), WeaverScreen::new);
     }
 }

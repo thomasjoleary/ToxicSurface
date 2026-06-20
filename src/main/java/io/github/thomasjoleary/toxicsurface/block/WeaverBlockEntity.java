@@ -2,13 +2,19 @@
 
 package io.github.thomasjoleary.toxicsurface.block;
 
+import io.github.thomasjoleary.toxicsurface.menu.WeaverMenu;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlockEntities;
 import io.github.thomasjoleary.toxicsurface.registry.ModItems;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -25,7 +31,7 @@ import net.neoforged.neoforge.items.ItemStackHandler;
  * via a small hard-coded recipe table (datapack-driven recipes are a future
  * enhancement). A redstone signal halts it; the item handler is hopper-automatable.
  */
-public class WeaverBlockEntity extends BlockEntity {
+public class WeaverBlockEntity extends BlockEntity implements MenuProvider {
     public static final int SLOT_INPUT_A = 0;
     public static final int SLOT_INPUT_B = 1;
     public static final int SLOT_FUEL = 2;
@@ -103,6 +109,16 @@ public class WeaverBlockEntity extends BlockEntity {
 
     public ContainerData getDataAccess() {
         return data;
+    }
+
+    @Override
+    public Component getDisplayName() {
+        return Component.translatable("block.toxicsurface.weaver");
+    }
+
+    @Override
+    public AbstractContainerMenu createMenu(int containerId, Inventory playerInventory, Player player) {
+        return new WeaverMenu(containerId, playerInventory, this);
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, WeaverBlockEntity be) {
