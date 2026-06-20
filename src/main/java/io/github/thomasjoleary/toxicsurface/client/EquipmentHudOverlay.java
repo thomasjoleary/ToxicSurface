@@ -2,10 +2,8 @@
 
 package io.github.thomasjoleary.toxicsurface.client;
 
-import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
 import io.github.thomasjoleary.toxicsurface.item.FaceMaskItem;
 import io.github.thomasjoleary.toxicsurface.item.HazmatSuit;
-import io.github.thomasjoleary.toxicsurface.item.SuitData;
 import io.github.thomasjoleary.toxicsurface.registry.ModItems;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -43,10 +41,9 @@ public final class EquipmentHudOverlay {
 
     private static void drawFilterGauge(GuiGraphics graphics, Minecraft mc, ItemStack head, ItemStack chest) {
         String text = null;
-        if (HazmatSuit.isChestpiece(chest) && HazmatSuit.filterCount(chest) > 0) {
-            SuitData data = HazmatSuit.data(chest);
-            int capacity = ToxicSurfaceConfig.SUIT_FILTER_CAPACITY.get();
-            text = "Filters " + data.filters() + "/" + capacity + "  " + formatTime(data.activeTicks());
+        if (HazmatSuit.isChestpiece(chest)) {
+            int clean = HazmatSuit.cleanFilterCount(chest);
+            text = "Filters " + clean + "/" + HazmatSuit.CAPACITY + "  " + formatTime(HazmatSuit.activeTicks(chest));
         } else if (head.getItem() instanceof FaceMaskItem && FaceMaskItem.remaining(head) > 0) {
             text = "Filter " + formatTime(FaceMaskItem.remaining(head));
         }

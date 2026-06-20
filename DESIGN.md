@@ -243,8 +243,9 @@ These are client options, not server config — each player tunes their own view
 - **Gas protection requires the helmet *and* chest** worn together — the helmet
   seals the breathing path, the chest holds the filters. Wearing just one does
   nothing for gas.
-- The chestpiece **crafts empty**; load it with clean filters via a refill recipe
-  (`chest + clean filters → loaded chest`, capped at capacity).
+- The chestpiece **crafts empty** and has its own **filter inventory** — sneak +
+  right-click it to open a screen with up to 10 filter slots, so clean filters can
+  be swapped in and out directly (spent ones come back as used filters to wash).
 
 ### HUD gauge
 - While wearing a face mask or hazmat suit, an on-screen **HUD readout** displays:

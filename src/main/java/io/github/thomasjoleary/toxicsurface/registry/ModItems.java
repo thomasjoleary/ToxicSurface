@@ -4,6 +4,7 @@ package io.github.thomasjoleary.toxicsurface.registry;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.item.FaceMaskItem;
+import io.github.thomasjoleary.toxicsurface.item.HazmatChestItem;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.Item;
@@ -43,8 +44,13 @@ public final class ModItems {
 
     public static final DeferredItem<ArmorItem> HAZMAT_HELMET =
             ITEMS.register("hazmat_helmet", () -> armor(ArmorItem.Type.HELMET));
-    public static final DeferredItem<ArmorItem> HAZMAT_CHESTPLATE =
-            ITEMS.register("hazmat_chestplate", () -> armor(ArmorItem.Type.CHESTPLATE));
+    public static final DeferredItem<HazmatChestItem> HAZMAT_CHESTPLATE = ITEMS.register(
+            "hazmat_chestplate",
+            () -> new HazmatChestItem(
+                    ModArmorMaterials.HAZMAT,
+                    new Item.Properties()
+                            .durability(ArmorItem.Type.CHESTPLATE.getDurability(HAZMAT_DURABILITY))
+                            .stacksTo(1)));
     public static final DeferredItem<ArmorItem> HAZMAT_LEGGINGS =
             ITEMS.register("hazmat_leggings", () -> armor(ArmorItem.Type.LEGGINGS));
     public static final DeferredItem<ArmorItem> HAZMAT_BOOTS =
