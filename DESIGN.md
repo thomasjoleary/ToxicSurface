@@ -240,6 +240,11 @@ These are client options, not server config — each player tunes their own view
   edge over a mask is **bigger capacity + half-rate consumption** (far longer
   between swaps, and no fiddly helmet-slot mask swapping), **not** unconditional
   immunity. An empty chest offers no gas protection.
+- **Gas protection requires the helmet *and* chest** worn together — the helmet
+  seals the breathing path, the chest holds the filters. Wearing just one does
+  nothing for gas.
+- The chestpiece **crafts empty**; load it with clean filters via a refill recipe
+  (`chest + clean filters → loaded chest`, capped at capacity).
 
 ### HUD gauge
 - While wearing a face mask or hazmat suit, an on-screen **HUD readout** displays:
