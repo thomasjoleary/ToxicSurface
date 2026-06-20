@@ -244,7 +244,14 @@ public class WeaverBlockEntity extends BlockEntity implements MenuProvider {
                         Ingredient.EMPTY,
                         0,
                         new ItemStack(ModItems.CLEAN_AIR_FILTER.get()),
-                        100));
+                        100),
+                new WeaveRecipe(
+                        Ingredient.of(ModItems.CLEAN_AIR_FILTER.get()),
+                        1,
+                        Ingredient.of(Items.CHARCOAL, Items.COAL),
+                        1,
+                        new ItemStack(ModItems.CARBON_AIR_FILTER.get()),
+                        150));
     }
 
     /** A two-input weave recipe (the second ingredient may be {@link Ingredient#EMPTY} for single-input recipes). */

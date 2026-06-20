@@ -116,7 +116,7 @@ public final class GasEffectHandler {
     private static boolean updateProtection(ServerLevel level, Player player, boolean inGas) {
         // The suit only protects (and burns filters) with BOTH helmet and chest worn.
         ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
-        if (HazmatSuit.hasSuitCore(player) && HazmatSuit.cleanFilterCount(chest) > 0) {
+        if (HazmatSuit.hasSuitCore(player) && HazmatSuit.usableFilterCount(chest) > 0) {
             return updateSuitAndIsProtected(level, player, chest, inGas);
         }
         return updateMaskAndIsProtected(level, player, inGas);
@@ -124,34 +124,33 @@ public final class GasEffectHandler {
 
     /** Burns the chest's filters at half the mask rate while protecting; warns on the last one. */
     private static boolean updateSuitAndIsProtected(ServerLevel level, Player player, ItemStack chest, boolean inGas) {
-        int cleanBefore = HazmatSuit.cleanFilterCount(chest);
-        if (cleanBefore <= 0) {
+        int usableBefore = HazmatSuit.usableFilterCount(chest);
+        if (usableBefore <= 0) {
             return false;
         }
         boolean tickNow = ToxicSurfaceConfig.MASK_TICK_MODE.get() == MaskTickMode.ALWAYS || inGas;
         if (!tickNow) {
             return true; // protected but not burning (e.g. IN_GAS_ONLY out of gas)
         }
-        int full = ToxicSurfaceConfig.MASK_DURATION_TICKS.get();
         int active = HazmatSuit.activeTicks(chest);
         if (active <= 0) {
-            active = full; // start burning a fresh filter
+            active = HazmatSuit.nextFilterLifetime(chest); // start burning the next filter (carbon-aware)
         }
         int delta = Math.max(1, (int) Math.round(THROTTLE_TICKS * ToxicSurfaceConfig.SUIT_CONSUME_RATE_FACTOR.get()));
         active -= delta;
 
-        int cleanAfter = cleanBefore;
+        int usableAfter = usableBefore;
         if (active <= 0) {
-            HazmatSuit.burnOneFilter(chest); // turns the spent clean filter into a used one
-            cleanAfter = cleanBefore - 1;
-            active = cleanAfter > 0 ? full : 0;
+            HazmatSuit.burnOneFilter(chest); // turns the spent filter into a plain used one
+            usableAfter = usableBefore - 1;
+            active = usableAfter > 0 ? HazmatSuit.nextFilterLifetime(chest) : 0;
         }
         HazmatSuit.setActiveTicks(chest, active);
 
-        if (inGas && cleanAfter <= 0) {
+        if (inGas && usableAfter <= 0) {
             playFilterExpiryWarning(level, player);
         }
-        return cleanAfter > 0;
+        return usableAfter > 0;
     }
 
     /**

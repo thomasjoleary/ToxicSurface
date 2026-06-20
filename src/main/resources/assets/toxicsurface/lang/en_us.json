@@ -1,6 +1,7 @@
 {
     "itemGroup.toxicsurface": "ToxicSurface",
     "item.toxicsurface.clean_air_filter": "Clean Air Filter",
+    "item.toxicsurface.carbon_air_filter": "Carbon Air Filter",
     "item.toxicsurface.used_air_filter": "Used Air Filter",
     "item.toxicsurface.face_mask": "Face Mask",
     "item.toxicsurface.hazmat_material": "Hazmat Material",

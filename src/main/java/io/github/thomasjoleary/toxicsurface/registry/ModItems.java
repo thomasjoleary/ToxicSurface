@@ -29,6 +29,13 @@ public final class ModItems {
     /** Spent filter ejected when refilling a mask; wash it back to clean (DESIGN.md §3). */
     public static final DeferredItem<Item> USED_AIR_FILTER = ITEMS.registerSimpleItem("used_air_filter");
 
+    /**
+     * Activated-carbon filter (DESIGN.md §3): a clean filter treated with charcoal in the
+     * Weaver. Lasts {@code carbonFilterDurationMultiplier}× a plain filter; degrades to a
+     * plain used filter when spent (re-treat after washing).
+     */
+    public static final DeferredItem<Item> CARBON_AIR_FILTER = ITEMS.registerSimpleItem("carbon_air_filter");
+
     /** Helmet-slot mask whose installed filter time is its durability bar. */
     public static final DeferredItem<FaceMaskItem> FACE_MASK =
             ITEMS.register("face_mask", () -> new FaceMaskItem(new Item.Properties().stacksTo(1)));
