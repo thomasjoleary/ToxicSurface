@@ -38,6 +38,15 @@ public final class HazmatSuit {
         return isChestpiece(chest) && filterCount(chest) > 0;
     }
 
+    /**
+     * Gas protection requires <em>both</em> the hazmat helmet and chestpiece worn
+     * (DESIGN.md §3): the helmet seals the breathing path, the chest holds the filters.
+     */
+    public static boolean hasSuitCore(Player player) {
+        return player.getItemBySlot(EquipmentSlot.HEAD).is(ModItems.HAZMAT_HELMET.get())
+                && player.getItemBySlot(EquipmentSlot.CHEST).is(ModItems.HAZMAT_CHESTPLATE.get());
+    }
+
     /** True when all four hazmat pieces are worn — required for sludge-contact immunity. */
     public static boolean isFullSuit(Player player) {
         return player.getItemBySlot(EquipmentSlot.HEAD).is(ModItems.HAZMAT_HELMET.get())

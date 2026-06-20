@@ -116,8 +116,9 @@ public final class GasEffectHandler {
      * mask is used. Returns whether the player is currently protected.
      */
     private static boolean updateProtection(ServerLevel level, Player player, boolean inGas) {
+        // The suit only protects (and burns filters) with BOTH helmet and chest worn.
         ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
-        if (HazmatSuit.isChestpiece(chest) && HazmatSuit.filterCount(chest) > 0) {
+        if (HazmatSuit.hasSuitCore(player) && HazmatSuit.filterCount(chest) > 0) {
             return updateSuitAndIsProtected(level, player, chest, inGas);
         }
         return updateMaskAndIsProtected(level, player, inGas);
