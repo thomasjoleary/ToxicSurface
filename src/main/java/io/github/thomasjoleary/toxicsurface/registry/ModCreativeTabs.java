@@ -28,6 +28,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.HAZMAT_CHESTPLATE.get());
                         output.accept(ModItems.HAZMAT_LEGGINGS.get());
                         output.accept(ModItems.HAZMAT_BOOTS.get());
+                        output.accept(ModItems.WEAVER.get());
                         output.accept(ModItems.SLUDGE_BUCKET.get());
                     })
                     .build());

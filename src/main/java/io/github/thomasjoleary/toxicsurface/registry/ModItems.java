@@ -6,6 +6,7 @@ import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.item.FaceMaskItem;
 import io.github.thomasjoleary.toxicsurface.item.HazmatChestItem;
 import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -55,6 +56,10 @@ public final class ModItems {
             ITEMS.register("hazmat_leggings", () -> armor(ArmorItem.Type.LEGGINGS));
     public static final DeferredItem<ArmorItem> HAZMAT_BOOTS =
             ITEMS.register("hazmat_boots", () -> armor(ArmorItem.Type.BOOTS));
+
+    /** Block item for the Weaver machine (DESIGN.md §3). */
+    public static final DeferredItem<BlockItem> WEAVER =
+            ITEMS.register("weaver", () -> new BlockItem(ModBlocks.WEAVER.get(), new Item.Properties()));
 
     private static ArmorItem armor(ArmorItem.Type type) {
         return new ArmorItem(

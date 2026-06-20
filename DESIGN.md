@@ -266,9 +266,9 @@ These are client options, not server config — each player tunes their own view
   isn't strictly wool-gated.
 - **Core outputs (proposed):**
   1. **Hazmat Material** ← kelp + wool (the suit fabric). *(existing)*
-  2. **Clean Air Filter** ← fiber (the Weaver is the bulk/efficient filter source;
-     the 2-wool hand recipe stays as a basic fallback). Makes your **core consumable**
-     a reason to keep coming back to the machine.
+  2. **Clean Air Filter** ← **1 wool OR 2 string** (the Weaver is the bulk/efficient
+     filter source; the 2-wool hand recipe stays as a basic fallback). Makes your
+     **core consumable** a reason to keep coming back to the machine.
   3. **Carbon Filter** ← filter + charcoal → a **long-life filter** that lasts a
      configurable multiple of a normal filter (a clear filter-tier upgrade).
   4. **Suit/mask repair** ← a damaged hazmat piece + Hazmat Material → repaired
