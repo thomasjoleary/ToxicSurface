@@ -64,3 +64,33 @@ jobs:
           name: toxicsurface-jar
           path: build/libs/*.jar
           if-no-files-found: warn
+
+  build-with-create:
+    name: Build & GameTest (with Create)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # Compiles our Create-coupled code (Mechanical Weaver/Cleanser, etc.)
+      # against the pinned real Create API — catches API drift the standalone
+      # job can't, since Create is compileOnly there too but only this job also
+      # loads it at runtime below.
+      - name: Compile against Create
+        run: ./gradlew compileJava --no-daemon --stacktrace
+
+      # Boots a dedicated server with Create (+ its jarJar'd Flywheel/Ponder)
+      # ON the classpath via -PcreateRuntime=true and runs the GameTest suite.
+      # Complements the standalone job: that one guards "loads without Create"
+      # (DESIGN.md §9), this one guards the Create integration actually loads
+      # and coexists — no duplicate registration, guards fire correctly (§10).
+      - name: Run GameTests (with Create)
+        run: ./gradlew runGameTestServer -PcreateRuntime=true --no-daemon --stacktrace

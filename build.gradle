@@ -90,8 +90,15 @@ dependencies {
     compileOnly("net.createmod.ponder:ponder-neoforge:${ponder_version}") { transitive = false }
 
     // Optional: load Create at runtime for the "Build with Create" GameTest job.
+    // The full (non-slim) jar jarJars everything FML needs to load Create —
+    // Flywheel + Ponder (its required mods) and the Registrate library — so a
+    // single entry brings the whole mandatory graph. transitive=false keeps
+    // Create's heavy *optional* POM deps (JEI, FTB, Farmer's Delight, …) off the
+    // classpath; FML only needs the jarJar'd mandatory mods, not those.
     if (createRuntime) {
-        additionalRuntimeClasspath "com.simibubi.create:create-1.21.1:${create_version}"
+        additionalRuntimeClasspath("com.simibubi.create:create-1.21.1:${create_version}") {
+            transitive = false
+        }
     }
 
     // JUnit 5 for pure-logic unit tests (e.g. the enclosure flood-fill, DESIGN.md §10).
