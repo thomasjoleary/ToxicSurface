@@ -4,21 +4,16 @@ package io.github.thomasjoleary.toxicsurface.block;
 
 import io.github.thomasjoleary.toxicsurface.menu.WeaverMenu;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlockEntities;
-import io.github.thomasjoleary.toxicsurface.registry.ModItems;
-import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.tags.ItemTags;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -42,8 +37,6 @@ public class WeaverBlockEntity extends BlockEntity implements MenuProvider {
     public static final int DATA_LIT_DURATION = 1;
     public static final int DATA_PROGRESS = 2;
     public static final int DATA_MAX_PROGRESS = 3;
-
-    private static final List<WeaveRecipe> RECIPES = buildRecipes();
 
     private final ItemStackHandler items = new ItemStackHandler(SLOT_COUNT) {
         @Override
@@ -127,7 +120,9 @@ public class WeaverBlockEntity extends BlockEntity implements MenuProvider {
             be.litTime--;
         }
 
-        WeaveRecipe recipe = level.hasNeighborSignal(pos) ? null : be.findRecipe();
+        WeaverLogic.WeaveRecipe recipe = level.hasNeighborSignal(pos)
+                ? null
+                : WeaverLogic.find(be.items.getStackInSlot(SLOT_INPUT_A), be.items.getStackInSlot(SLOT_INPUT_B));
         if (recipe != null && be.canOutput(recipe.result())) {
             if (be.litTime <= 0) {
                 changed |= be.consumeFuel();
@@ -170,17 +165,6 @@ public class WeaverBlockEntity extends BlockEntity implements MenuProvider {
         return true;
     }
 
-    private WeaveRecipe findRecipe() {
-        ItemStack a = items.getStackInSlot(SLOT_INPUT_A);
-        ItemStack b = items.getStackInSlot(SLOT_INPUT_B);
-        for (WeaveRecipe recipe : RECIPES) {
-            if (recipe.matches(a, b)) {
-                return recipe;
-            }
-        }
-        return null;
-    }
-
     private boolean canOutput(ItemStack result) {
         ItemStack out = items.getStackInSlot(SLOT_OUTPUT);
         if (out.isEmpty()) {
@@ -190,7 +174,7 @@ public class WeaverBlockEntity extends BlockEntity implements MenuProvider {
                 && out.getCount() + result.getCount() <= out.getMaxStackSize();
     }
 
-    private void craft(WeaveRecipe recipe) {
+    private void craft(WeaverLogic.WeaveRecipe recipe) {
         recipe.consume(items.getStackInSlot(SLOT_INPUT_A), items.getStackInSlot(SLOT_INPUT_B));
         ItemStack out = items.getStackInSlot(SLOT_OUTPUT);
         if (out.isEmpty()) {
@@ -220,75 +204,5 @@ public class WeaverBlockEntity extends BlockEntity implements MenuProvider {
         litDuration = tag.getInt("LitDuration");
         progress = tag.getInt("Progress");
         maxProgress = tag.getInt("MaxProgress");
-    }
-
-    private static List<WeaveRecipe> buildRecipes() {
-        return List.of(
-                new WeaveRecipe(
-                        Ingredient.of(Items.KELP),
-                        1,
-                        Ingredient.of(ItemTags.WOOL),
-                        1,
-                        new ItemStack(ModItems.HAZMAT_MATERIAL.get()),
-                        200),
-                new WeaveRecipe(
-                        Ingredient.of(ItemTags.WOOL),
-                        1,
-                        Ingredient.EMPTY,
-                        0,
-                        new ItemStack(ModItems.CLEAN_AIR_FILTER.get()),
-                        100),
-                new WeaveRecipe(
-                        Ingredient.of(Items.STRING),
-                        2,
-                        Ingredient.EMPTY,
-                        0,
-                        new ItemStack(ModItems.CLEAN_AIR_FILTER.get()),
-                        100),
-                new WeaveRecipe(
-                        Ingredient.of(ModItems.CLEAN_AIR_FILTER.get()),
-                        1,
-                        Ingredient.of(Items.CHARCOAL, Items.COAL),
-                        1,
-                        new ItemStack(ModItems.CARBON_AIR_FILTER.get()),
-                        150));
-    }
-
-    /** A two-input weave recipe (the second ingredient may be {@link Ingredient#EMPTY} for single-input recipes). */
-    private record WeaveRecipe(Ingredient a, int aCount, Ingredient b, int bCount, ItemStack result, int time) {
-        boolean singleInput() {
-            return bCount == 0;
-        }
-
-        boolean matches(ItemStack slotA, ItemStack slotB) {
-            if (singleInput()) {
-                // exactly one slot filled, matching ingredient a
-                if (!slotB.isEmpty() && !slotA.isEmpty()) {
-                    return false;
-                }
-                ItemStack only = slotA.isEmpty() ? slotB : slotA;
-                return !only.isEmpty() && a.test(only) && only.getCount() >= aCount;
-            }
-            return (matchPart(a, aCount, slotA) && matchPart(b, bCount, slotB))
-                    || (matchPart(a, aCount, slotB) && matchPart(b, bCount, slotA));
-        }
-
-        void consume(ItemStack slotA, ItemStack slotB) {
-            if (singleInput()) {
-                (slotA.isEmpty() ? slotB : slotA).shrink(aCount);
-                return;
-            }
-            if (matchPart(a, aCount, slotA) && matchPart(b, bCount, slotB)) {
-                slotA.shrink(aCount);
-                slotB.shrink(bCount);
-            } else {
-                slotA.shrink(bCount);
-                slotB.shrink(aCount);
-            }
-        }
-
-        private static boolean matchPart(Ingredient ingredient, int count, ItemStack stack) {
-            return !stack.isEmpty() && ingredient.test(stack) && stack.getCount() >= count;
-        }
     }
 }

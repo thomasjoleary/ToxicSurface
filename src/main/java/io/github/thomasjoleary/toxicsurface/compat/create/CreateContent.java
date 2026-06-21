@@ -13,6 +13,8 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredItem;
@@ -47,6 +49,21 @@ public final class CreateContent {
     public static final DeferredItem<BlockItem> MECHANICAL_CLEANSER_ITEM = ITEMS.register(
             "mechanical_cleanser", () -> new BlockItem(MECHANICAL_CLEANSER.get(), new Item.Properties()));
 
+    public static final DeferredBlock<MechanicalWeaverBlock> MECHANICAL_WEAVER = BLOCKS.register(
+            "mechanical_weaver",
+            () -> new MechanicalWeaverBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(3.5F)
+                    .sound(SoundType.METAL)));
+
+    public static final Supplier<BlockEntityType<MechanicalWeaverBlockEntity>> MECHANICAL_WEAVER_BE =
+            BLOCK_ENTITIES.register("mechanical_weaver", () -> BlockEntityType.Builder.of(
+                            MechanicalWeaverBlockEntity::new, MECHANICAL_WEAVER.get())
+                    .build(null));
+
+    public static final DeferredItem<BlockItem> MECHANICAL_WEAVER_ITEM =
+            ITEMS.register("mechanical_weaver", () -> new BlockItem(MECHANICAL_WEAVER.get(), new Item.Properties()));
+
     private CreateContent() {}
 
     /** Attaches the Create-only registries to the mod bus. Call only when Create is loaded. */
@@ -55,11 +72,19 @@ public final class CreateContent {
         BLOCK_ENTITIES.register(modBus);
         ITEMS.register(modBus);
         modBus.addListener(CreateContent::addToCreativeTab);
+        modBus.addListener(CreateContent::registerCapabilities);
     }
 
-    /** Surfaces the Mechanical Cleanser in the mod's creative tab (only when Create is loaded). */
+    /** Exposes the Mechanical Weaver's inventory so hoppers/Create pipes can automate it. */
+    private static void registerCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerBlockEntity(
+                Capabilities.ItemHandler.BLOCK, MECHANICAL_WEAVER_BE.get(), (weaver, side) -> weaver.getItemHandler());
+    }
+
+    /** Surfaces the Create machines in the mod's creative tab (only when Create is loaded). */
     private static void addToCreativeTab(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == ModCreativeTabs.MAIN.getKey()) {
+            event.accept(MECHANICAL_WEAVER_ITEM.get());
             event.accept(MECHANICAL_CLEANSER_ITEM.get());
         }
     }
