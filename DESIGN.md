@@ -417,17 +417,33 @@ server-driven and synced. Baked into the architecture, not bolted on.
   (-8/-1/+1/+8 steppers) with a **redstone tier override**; fuel cost ∝ (range/8)^k;
   only runs in an affected, already-toxic dimension.
 
-**Phase 7 — Create integration 🚧 (branch `claude/phase7-create`)**
+**Phase 7 — Create integration ✅ (CI-green; branch `claude/phase7-create-integration`)**
 - Soft-dependency foundation (DESIGN.md §9): `CreateCompat#isLoaded` gate (no hard
   Create class references at load time), Create declared an **optional** dependency,
-  common-setup logs whether the integration is active. Compiles + GameTests standalone.
-- Datapack fan-washing: `create:splashing` `used → clean` filter, **condition-gated**
-  on `create` so it's inert without Create. Sludge already pumps/stores via Create
-  (it's a real NeoForge fluid) — no code needed.
-- *Constraint:* the **Mechanical Weaver/Cleanser** (Create kinetic API) and the exact
-  Create recipe schema can't be compiled/verified in the standalone sandbox or current
-  CI; they need a **Create-on-classpath build** (a second CI job pulling Create's
-  maven) — the next increment.
+  common-setup logs whether the integration is active.
+- **Build wiring:** Create **6.0.10-281** (MC 1.21.1, matches the Sky Archipelago pack)
+  pinned `compileOnly` (`transitive=false`, never bundled); Ponder added the same way
+  because Create's `SmartBlockEntity` implements `ponder.api.VirtualBlockEntity` (needed
+  to resolve the `KineticBlockEntity` hierarchy). **NeoForge bumped 21.1.77 → 21.1.234**
+  (latest 1.21.1; Create requires `[21.1.219,)` and it's the version a real Create +
+  Aeronautics pack runs); the mod's own range stays `[21.1.0,)`.
+- **CI now runs both sides of the §9 contract.** Kept the **standalone** job (loads
+  without Create) and added **"Build & GameTest (with Create)"** (`-PcreateRuntime=true`):
+  the full Create jar jarJar's Flywheel + Ponder + Registrate, so one runtime entry pulls
+  the whole mandatory graph; it compiles against the real Create API and boots a
+  gameTestServer with Create loaded. Both jobs green.
+- **Mechanical Cleanser & Mechanical Weaver** (Create kinetic API): rotation-powered
+  siblings of the fuel machines. `DirectionalKineticBlock` + `IBE` / `KineticBlockEntity`,
+  consume stress, and scale with supplied RPM instead of fuel (range/weave-speed double
+  per speed tier, mirroring gear trains); a redstone signal or over-stressed network halts
+  them. Shared logic factored out (`SludgeReclaimer`, `WeaverLogic`) so both variants
+  behave identically; the RPM→range curve is a pure, unit-tested function. All Create
+  classes live in `compat.create` and register **only** via `CreateContent` behind the
+  `isLoaded()` gate — never classloaded in the standalone jar.
+- **Filter fan-washing:** `create:splashing` `used → clean` filter, **condition-gated** on
+  `create`; schema verified against the real Create jar. Sludge pumps/stores through Create
+  pipes & tanks automatically (it's a real NeoForge fluid exposing the standard
+  `IFluidHandler`) — no code needed.
 
 **Carried-forward polish / TODO** (tracked in-code):
 custom "toxic" `DamageType`; HUD flash + dedicated cough sound; air-bar HUD bubble
