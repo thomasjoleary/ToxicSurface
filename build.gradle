@@ -56,12 +56,43 @@ neoForge {
 repositories {
     mavenLocal()
     mavenCentral() // for tooling deps like the Spotless formatter
-    // Create / Aeronautics maven coordinates will be added here when the
-    // optional integration (DESIGN.md §9) lands.
+    // Create integration (Phase 7, DESIGN.md §7/§9). Create + Ponder + Flywheel
+    // are published here; Registrate (a runtime-only transitive) lives on tterrag.
+    maven {
+        name = "Create"
+        url = "https://maven.createmod.net"
+    }
+    maven {
+        name = "tterrag (Registrate, Flywheel mirror)"
+        url = "https://maven.tterrag.com"
+    }
+    maven {
+        name = "Modmaven (transitive mirror)"
+        url = "https://modmaven.dev"
+    }
 }
 
+// Whether to put Create (and the runtime mods it needs to load) on the dev/
+// GameTest run classpath. Off by default so the standalone CI job and local
+// runs exercise the "loads without Create" contract (DESIGN.md §9/§10). The
+// "Build with Create" CI job flips this with `-PcreateRuntime=true`.
+def createRuntime = providers.gradleProperty("createRuntime")
+        .map { it.toBoolean() }
+        .getOrElse(false)
+
 dependencies {
-    // Optional soft-dependencies on Create / Aeronautics are added in Phase 7.
+    // Optional soft-dependency on Create (DESIGN.md §9). `compileOnly` keeps it
+    // off the standalone runtime/jar entirely — the Create-touching code compiles
+    // against the real API but is only ever classloaded behind CreateCompat
+    // .isLoaded() guards. Ponder supplies VirtualBlockEntity (a SmartBlockEntity
+    // supertype); without it javac can't resolve the KineticBlockEntity hierarchy.
+    compileOnly("com.simibubi.create:create-1.21.1:${create_version}:slim") { transitive = false }
+    compileOnly("net.createmod.ponder:ponder-neoforge:${ponder_version}") { transitive = false }
+
+    // Optional: load Create at runtime for the "Build with Create" GameTest job.
+    if (createRuntime) {
+        additionalRuntimeClasspath "com.simibubi.create:create-1.21.1:${create_version}"
+    }
 
     // JUnit 5 for pure-logic unit tests (e.g. the enclosure flood-fill, DESIGN.md §10).
     testImplementation platform('org.junit:junit-bom:5.10.2')
