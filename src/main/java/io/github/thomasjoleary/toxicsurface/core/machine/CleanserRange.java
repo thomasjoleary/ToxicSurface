@@ -16,7 +16,40 @@ public final class CleanserRange {
     /** The smallest meaningful range; also the fuel-cost baseline (cost = 1.0 at this range). */
     public static final int BASE_RANGE = 8;
 
+    /**
+     * Minimum absolute rotation speed (RPM) the Mechanical Cleanser needs to run at the
+     * smallest range tier. Below this the kinetic machine is idle. Each subsequent tier needs
+     * double the speed (mirrors Create's gear-train doubling), so the speed-to-range curve is
+     * the rotational analogue of the fuel Cleanser's redstone tier selection.
+     */
+    public static final float MIN_RPM = 16f;
+
     private CleanserRange() {}
+
+    /**
+     * Maps an absolute rotation speed onto the ascending tier list for the Mechanical Cleanser
+     * (DESIGN.md §3 Cleanser "Create variant"). Returns {@code 0} when {@code |rpm|} is below
+     * {@code minRpm} (machine idle); otherwise each successive tier requires double the speed of
+     * the previous one, saturating at the largest tier.
+     *
+     * @param rpm signed rotation speed; only the magnitude matters (either direction drives it)
+     * @param tiers ascending preset radii (same list the redstone Cleanser uses)
+     * @param minRpm speed needed for the first tier
+     * @return the selected radius, or 0 if there isn't enough speed to run
+     */
+    public static int rangeFromRpm(float rpm, List<? extends Integer> tiers, float minRpm) {
+        float abs = Math.abs(rpm);
+        if (tiers == null || tiers.isEmpty() || minRpm <= 0 || abs < minRpm) {
+            return 0;
+        }
+        int index = 0;
+        float threshold = minRpm;
+        for (int i = 0; i < tiers.size() && abs >= threshold; i++) {
+            index = i;
+            threshold *= 2f;
+        }
+        return tiers.get(index);
+    }
 
     /**
      * Resolves the effective sphere radius.

@@ -3,6 +3,8 @@
 package io.github.thomasjoleary.toxicsurface;
 
 import com.mojang.logging.LogUtils;
+import io.github.thomasjoleary.toxicsurface.compat.CreateCompat;
+import io.github.thomasjoleary.toxicsurface.compat.create.CreateContent;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
 import io.github.thomasjoleary.toxicsurface.registry.ModArmorMaterials;
 import io.github.thomasjoleary.toxicsurface.registry.ModAttachments;
@@ -41,6 +43,13 @@ public final class ToxicSurface {
         ModAttachments.ATTACHMENT_TYPES.register(modEventBus);
         ModRecipes.RECIPE_SERIALIZERS.register(modEventBus);
         ModMenus.MENUS.register(modEventBus);
+
+        // Create-only content (Mechanical Cleanser, …) registered behind the soft-dependency
+        // gate (DESIGN.md §9): when Create is absent this branch is skipped, so CreateContent —
+        // and the kinetic-API classes it pulls in — is never classloaded in the standalone jar.
+        if (CreateCompat.isLoaded()) {
+            CreateContent.register(modEventBus);
+        }
 
         // Server config — server-authoritative and synced in multiplayer (DESIGN.md §3, §4).
         modContainer.registerConfig(ModConfig.Type.SERVER, ToxicSurfaceConfig.SPEC);

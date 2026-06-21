@@ -6,9 +6,7 @@ import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
 import io.github.thomasjoleary.toxicsurface.core.machine.CleanserRange;
 import io.github.thomasjoleary.toxicsurface.menu.CleanserMenu;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlockEntities;
-import io.github.thomasjoleary.toxicsurface.registry.ModBlocks;
 import io.github.thomasjoleary.toxicsurface.world.CleanserBubbles;
-import io.github.thomasjoleary.toxicsurface.world.ToxicityTicker;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -21,8 +19,6 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.items.IItemHandler;
@@ -130,9 +126,7 @@ public class CleanserBlockEntity extends BlockEntity implements MenuProvider {
                 ToxicSurfaceConfig.CLEANSER_MAX_RANGE.get());
 
         // Only run where there is something to clean: an affected, already-toxic dimension.
-        boolean canRun = level instanceof ServerLevel sl
-                && ToxicityTicker.isAffected(sl)
-                && ToxicityTicker.currentToxicY(sl) != ToxicityTicker.NOT_TOXIC;
+        boolean canRun = SludgeReclaimer.canReclaim(level);
         if (!canRun) {
             if (level instanceof ServerLevel sl) {
                 CleanserBubbles.remove(sl, pos);
@@ -151,7 +145,7 @@ public class CleanserBlockEntity extends BlockEntity implements MenuProvider {
         if (be.litTime > 0) {
             // Larger ranges burn through the current charge faster.
             be.litTime = Math.max(0, be.litTime - (cost - 1));
-            be.revertSludge(level, pos, be.effectiveRange);
+            be.scanCursor = SludgeReclaimer.revertSludge(level, pos, be.effectiveRange, SCAN_BUDGET, be.scanCursor);
             CleanserBubbles.update(serverLevel, pos, be.effectiveRange); // keep breathable air in range
             changed = true;
         } else {
@@ -177,33 +171,6 @@ public class CleanserBlockEntity extends BlockEntity implements MenuProvider {
             items.setStackInSlot(SLOT_FUEL, remainder);
         }
         return true;
-    }
-
-    /** Sweeps a budgeted window of the sphere, turning sludge back into water. */
-    private void revertSludge(Level level, BlockPos pos, int range) {
-        int side = 2 * range + 1;
-        long total = (long) side * side * side;
-        if (scanCursor >= total) {
-            scanCursor = 0;
-        }
-        int rangeSq = range * range;
-        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-        for (int n = 0; n < SCAN_BUDGET; n++) {
-            if (scanCursor >= total) {
-                scanCursor = 0;
-            }
-            int idx = scanCursor++;
-            int dx = idx % side - range;
-            int dy = (idx / side) % side - range;
-            int dz = idx / (side * side) - range;
-            if (dx * dx + dy * dy + dz * dz > rangeSq) {
-                continue;
-            }
-            cursor.set(pos.getX() + dx, pos.getY() + dy, pos.getZ() + dz);
-            if (level.getBlockState(cursor).is(ModBlocks.SLUDGE_BLOCK.get())) {
-                level.setBlock(cursor, Blocks.WATER.defaultBlockState(), Block.UPDATE_ALL);
-            }
-        }
     }
 
     @Override
