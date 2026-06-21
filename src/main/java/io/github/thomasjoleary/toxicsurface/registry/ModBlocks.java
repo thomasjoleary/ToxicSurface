@@ -5,6 +5,7 @@ package io.github.thomasjoleary.toxicsurface.registry;
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.block.CleanserBlock;
 import io.github.thomasjoleary.toxicsurface.block.WeaverBlock;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -43,6 +44,18 @@ public final class ModBlocks {
                     .mapColor(MapColor.METAL)
                     .strength(3.5F)
                     .sound(SoundType.METAL)));
+
+    /**
+     * Compacted toxic waste (DESIGN.md §3, §7) — a solid storage form of the toxin captured by
+     * Create reclamation (4 toxic residue → 1 block). Base content (not Create-gated) so it
+     * persists and can grow future uses; the residue-producing recipes are the Create path.
+     */
+    public static final DeferredBlock<Block> TOXIC_WASTE_BLOCK = BLOCKS.register(
+            "toxic_waste_block",
+            () -> new Block(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_GREEN)
+                    .strength(1.5F)
+                    .sound(SoundType.MUD)));
 
     private ModBlocks() {}
 }

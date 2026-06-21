@@ -5,16 +5,16 @@
             "modid": "create"
         }
     ],
-    "type": "create:splashing",
+    "type": "create:mixing",
+    "heat_requirement": "heated",
     "ingredients": [
         {
-            "item": "toxicsurface:used_air_filter"
+            "type": "neoforge:single",
+            "amount": 250,
+            "fluid": "toxicsurface:sludge"
         }
     ],
     "results": [
-        {
-            "id": "toxicsurface:clean_air_filter"
-        },
         {
             "id": "toxicsurface:toxic_residue"
         }

@@ -32,6 +32,8 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.WEAVER.get());
                         output.accept(ModItems.CLEANSER.get());
                         output.accept(ModItems.SLUDGE_BUCKET.get());
+                        output.accept(ModItems.TOXIC_RESIDUE.get());
+                        output.accept(ModItems.TOXIC_WASTE_BLOCK.get());
                     })
                     .build());
 

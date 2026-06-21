@@ -50,6 +50,13 @@ public final class ModItems {
     /** Woven hazmat material (Weaver output in Phase 6); crafts the hazmat suit. */
     public static final DeferredItem<Item> HAZMAT_MATERIAL = ITEMS.registerSimpleItem("hazmat_material");
 
+    /**
+     * Toxic residue (DESIGN.md §3, §7) — the solid contaminant captured by Create reclamation:
+     * dropped when fan-washing a used filter and when boiling sludge down. Reconstitutes into
+     * sludge (mixing with water) or compacts into a {@link ModBlocks#TOXIC_WASTE_BLOCK}.
+     */
+    public static final DeferredItem<Item> TOXIC_RESIDUE = ITEMS.registerSimpleItem("toxic_residue");
+
     public static final DeferredItem<ArmorItem> HAZMAT_HELMET =
             ITEMS.register("hazmat_helmet", () -> armor(ArmorItem.Type.HELMET));
     public static final DeferredItem<HazmatChestItem> HAZMAT_CHESTPLATE = ITEMS.register(
@@ -71,6 +78,10 @@ public final class ModItems {
     /** Block item for the Cleanser machine (DESIGN.md §3). */
     public static final DeferredItem<BlockItem> CLEANSER =
             ITEMS.register("cleanser", () -> new BlockItem(ModBlocks.CLEANSER.get(), new Item.Properties()));
+
+    /** Block item for the compacted toxic waste block (DESIGN.md §7). */
+    public static final DeferredItem<BlockItem> TOXIC_WASTE_BLOCK = ITEMS.register(
+            "toxic_waste_block", () -> new BlockItem(ModBlocks.TOXIC_WASTE_BLOCK.get(), new Item.Properties()));
 
     private static ArmorItem armor(ArmorItem.Type type) {
         return new ArmorItem(

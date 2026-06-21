@@ -1,0 +1,24 @@
+{
+    "neoforge:conditions": [
+        {
+            "type": "neoforge:mod_loaded",
+            "modid": "create"
+        }
+    ],
+    "type": "create:filling",
+    "ingredients": [
+        {
+            "item": "toxicsurface:clean_air_filter"
+        },
+        {
+            "type": "neoforge:single",
+            "amount": 250,
+            "fluid": "toxicsurface:sludge"
+        }
+    ],
+    "results": [
+        {
+            "id": "toxicsurface:used_air_filter"
+        }
+    ]
+}

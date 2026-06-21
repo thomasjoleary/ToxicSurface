@@ -1,0 +1,14 @@
+{
+    "type": "minecraft:crafting_shaped",
+    "pattern": [
+        "RR",
+        "RR"
+    ],
+    "key": {
+        "R": "toxicsurface:toxic_residue"
+    },
+    "result": {
+        "id": "toxicsurface:toxic_waste_block",
+        "count": 1
+    }
+}
