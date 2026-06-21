@@ -444,6 +444,14 @@ server-driven and synced. Baked into the architecture, not bolted on.
   `create`; schema verified against the real Create jar. Sludge pumps/stores through Create
   pipes & tanks automatically (it's a real NeoForge fluid exposing the standard
   `IFluidHandler`) — no code needed.
+- **Sludge reclamation loop** (Create processing, all condition-gated; schemas verified):
+  a new **`toxic_residue`** item + **`toxic_waste_block`** (base content) close the
+  contamination loop — splashing a used filter now also yields residue; heated `mixing`
+  boils sludge → residue (disposal chain) while `mixing` residue + water reconstitutes
+  sludge; a `filling` spout re-dirties a clean filter with sludge; `compacting` packs
+  4 residue → a waste block (plain 4↔1 crafting too, so it works standalone). Phase 4's
+  vanilla bucket wash is untouched, so the two wash paths stay distinct (bucket vs solid
+  residue).
 
 **Carried-forward polish / TODO** (tracked in-code):
 custom "toxic" `DamageType`; HUD flash + dedicated cough sound; air-bar HUD bubble
