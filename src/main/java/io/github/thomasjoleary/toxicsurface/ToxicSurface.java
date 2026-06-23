@@ -42,6 +42,7 @@ public final class ToxicSurface {
         ModCreativeTabs.CREATIVE_MODE_TABS.register(modEventBus);
         ModAttachments.ATTACHMENT_TYPES.register(modEventBus);
         ModRecipes.RECIPE_SERIALIZERS.register(modEventBus);
+        ModRecipes.RECIPE_TYPES.register(modEventBus);
         ModMenus.MENUS.register(modEventBus);
 
         // Create-only content (Mechanical Cleanser, …) registered behind the soft-dependency

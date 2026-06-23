@@ -1,0 +1,9 @@
+{
+    "type": "toxicsurface:fan_contaminating",
+    "ingredient": {
+        "item": "toxicsurface:clean_air_filter"
+    },
+    "result": {
+        "id": "toxicsurface:used_air_filter"
+    }
+}

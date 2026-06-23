@@ -5,9 +5,12 @@ package io.github.thomasjoleary.toxicsurface.compat.create;
 import com.simibubi.create.content.kinetics.fan.processing.FanProcessingType;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
 import io.github.thomasjoleary.toxicsurface.effect.GasProtection;
+import io.github.thomasjoleary.toxicsurface.item.FanContaminatingRecipe;
 import io.github.thomasjoleary.toxicsurface.registry.ModFluids;
-import io.github.thomasjoleary.toxicsurface.registry.ModItems;
+import io.github.thomasjoleary.toxicsurface.registry.ModRecipes;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -16,6 +19,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
@@ -42,12 +47,31 @@ public class SludgeFanProcessingType implements FanProcessingType {
 
     @Override
     public boolean canProcess(ItemStack stack, Level level) {
-        return stack.is(ModItems.CLEAN_AIR_FILTER.get());
+        return findRecipe(stack, level).isPresent();
     }
 
     @Override
     public List<ItemStack> process(ItemStack stack, Level level) {
-        return List.of(new ItemStack(ModItems.USED_AIR_FILTER.get(), stack.getCount()));
+        return findRecipe(stack, level)
+                .map(holder -> {
+                    // process() is handed the whole stack and its output replaces it, so convert
+                    // every item: one result per input item (DESIGN.md §7).
+                    ItemStack result = holder.value().assemble(new SingleRecipeInput(stack), level.registryAccess());
+                    List<ItemStack> outputs = new ArrayList<>(stack.getCount());
+                    for (int i = 0; i < stack.getCount(); i++) {
+                        outputs.add(result.copy());
+                    }
+                    return outputs;
+                })
+                .orElseGet(List::of);
+    }
+
+    private static Optional<RecipeHolder<FanContaminatingRecipe>> findRecipe(ItemStack stack, Level level) {
+        if (stack.isEmpty()) {
+            return Optional.empty();
+        }
+        return level.getRecipeManager()
+                .getRecipeFor(ModRecipes.FAN_CONTAMINATING_TYPE.get(), new SingleRecipeInput(stack), level);
     }
 
     @Override
