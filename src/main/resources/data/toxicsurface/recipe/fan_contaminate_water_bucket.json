@@ -1,0 +1,9 @@
+{
+    "type": "toxicsurface:fan_contaminating",
+    "ingredient": {
+        "item": "minecraft:water_bucket"
+    },
+    "result": {
+        "id": "toxicsurface:sludge_bucket"
+    }
+}
