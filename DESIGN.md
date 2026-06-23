@@ -451,9 +451,11 @@ server-driven and synced. Baked into the architecture, not bolted on.
   water reconstitutes sludge; `compacting` packs 4 residue → a waste block (plain 4↔1
   crafting too, so it works standalone). A **custom `FanProcessingType`**
   (`sludge_contaminating`, registered into Create's `FAN_PROCESSING_TYPE` registry) makes
-  fans blowing through **sludge** re-dirty clean filters — the fan-driven inverse of the
-  water splashing wash. Phase 4's vanilla bucket wash is untouched, so the wash paths stay
-  distinct (bucket vs solid residue).
+  fans blowing through **sludge** re-dirty filters — the fan-driven inverse of the water
+  splashing wash. It is **data-driven**: a base `toxicsurface:fan_contaminating` recipe type
+  (loads standalone) supplies the transforms, so packs can add more as JSON; the airflow also
+  **affects entities like the gas** (nausea + toxic damage, respecting mask/suit). Phase 4's
+  vanilla bucket wash is untouched, so the wash paths stay distinct (bucket vs solid residue).
 
 **Carried-forward polish / TODO** (tracked in-code):
 custom "toxic" `DamageType`; HUD flash + dedicated cough sound; air-bar HUD bubble
