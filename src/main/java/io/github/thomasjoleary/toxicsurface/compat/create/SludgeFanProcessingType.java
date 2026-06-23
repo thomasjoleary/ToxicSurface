@@ -3,12 +3,18 @@
 package io.github.thomasjoleary.toxicsurface.compat.create;
 
 import com.simibubi.create.content.kinetics.fan.processing.FanProcessingType;
+import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
+import io.github.thomasjoleary.toxicsurface.effect.GasProtection;
 import io.github.thomasjoleary.toxicsurface.registry.ModFluids;
 import io.github.thomasjoleary.toxicsurface.registry.ModItems;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -56,6 +62,21 @@ public class SludgeFanProcessingType implements FanProcessingType {
 
     @Override
     public void affectEntity(Entity entity, Level level) {
-        // No airflow effect on entities; sludge contact damage is handled by the fluid itself.
+        // Create calls this server-side for entities caught in the airflow (the same hook lava
+        // uses to set them on fire). Sludge airflow hits them like standing in toxic gas.
+        if (level.isClientSide || !(entity instanceof LivingEntity living)) {
+            return;
+        }
+        // Protected / creative / spectator players breathe easy — same rules as the gas (§3).
+        if (entity instanceof Player player
+                && (player.isCreative() || player.isSpectator() || GasProtection.isProtected(player))) {
+            return;
+        }
+        living.addEffect(new MobEffectInstance(MobEffects.CONFUSION, 100, 0, false, false));
+        // Throttle the toxic damage to match the gas's lethal rate (toxicDamagePerSecond).
+        if (living.tickCount % 10 == 0) {
+            float perHalfSecond = (float) (ToxicSurfaceConfig.TOXIC_DAMAGE_PER_SECOND.get() * 0.5);
+            living.hurt(living.damageSources().magic(), perHalfSecond);
+        }
     }
 }
