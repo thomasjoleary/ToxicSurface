@@ -16,6 +16,7 @@
             "id": "toxicsurface:clean_air_filter"
         },
         {
+            "chance": 0.12,
             "id": "toxicsurface:toxic_residue"
         }
     ]

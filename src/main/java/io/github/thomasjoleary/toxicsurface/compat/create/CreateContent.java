@@ -2,10 +2,12 @@
 
 package io.github.thomasjoleary.toxicsurface.compat.create;
 
+import com.simibubi.create.api.registry.CreateBuiltInRegistries;
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.registry.ModCreativeTabs;
 import java.util.function.Supplier;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.SoundType;
@@ -19,6 +21,7 @@ import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.RegisterEvent;
 
 /**
  * Create-only content, registered ONLY when Create is present (DESIGN.md §9). The deferred
@@ -73,6 +76,19 @@ public final class CreateContent {
         ITEMS.register(modBus);
         modBus.addListener(CreateContent::addToCreativeTab);
         modBus.addListener(CreateContent::registerCapabilities);
+        modBus.addListener(CreateContent::registerFanProcessing);
+    }
+
+    /**
+     * Registers the sludge fan-processing type into Create's built-in registry: fans blowing
+     * through sludge re-dirty clean filters (the inverse of water splashing). Done via
+     * {@link RegisterEvent} so we don't need a typed DeferredRegister for Create's registry.
+     */
+    private static void registerFanProcessing(RegisterEvent event) {
+        event.register(
+                CreateBuiltInRegistries.FAN_PROCESSING_TYPE.key(),
+                ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "sludge_contaminating"),
+                SludgeFanProcessingType::new);
     }
 
     /** Exposes the Mechanical Weaver's inventory so hoppers/Create pipes can automate it. */
