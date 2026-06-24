@@ -8,6 +8,7 @@ import io.github.thomasjoleary.toxicsurface.core.machine.CleanserRange;
 import io.github.thomasjoleary.toxicsurface.menu.CleanserMenu;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlockEntities;
 import io.github.thomasjoleary.toxicsurface.world.CleanserBubbles;
+import io.github.thomasjoleary.toxicsurface.world.CleanserVisual;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -148,6 +149,7 @@ public class CleanserBlockEntity extends BlockEntity implements MenuProvider, Ja
             be.litTime = Math.max(0, be.litTime - (cost - 1));
             be.scanCursor = SludgeReclaimer.revertSludge(level, pos, be.effectiveRange, SCAN_BUDGET, be.scanCursor);
             CleanserBubbles.update(serverLevel, pos, be.effectiveRange); // keep breathable air in range
+            CleanserVisual.tick(serverLevel, pos, be.effectiveRange); // green clean-air dome particles
             changed = true;
         } else {
             CleanserBubbles.remove(serverLevel, pos); // out of fuel: the bubble collapses

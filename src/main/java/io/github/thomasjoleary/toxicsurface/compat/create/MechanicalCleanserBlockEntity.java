@@ -7,6 +7,7 @@ import io.github.thomasjoleary.toxicsurface.block.SludgeReclaimer;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
 import io.github.thomasjoleary.toxicsurface.core.machine.CleanserRange;
 import io.github.thomasjoleary.toxicsurface.world.CleanserBubbles;
+import io.github.thomasjoleary.toxicsurface.world.CleanserVisual;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.state.BlockState;
@@ -60,6 +61,7 @@ public class MechanicalCleanserBlockEntity extends KineticBlockEntity {
         if (range > 0 && SludgeReclaimer.canReclaim(level)) {
             scanCursor = SludgeReclaimer.revertSludge(level, pos, range, SCAN_BUDGET, scanCursor);
             CleanserBubbles.update((ServerLevel) level, pos, range); // keep breathable air in range
+            CleanserVisual.tick((ServerLevel) level, pos, range); // green clean-air dome particles
         } else if (level instanceof ServerLevel sl) {
             CleanserBubbles.remove(sl, pos); // idle / unpowered: the bubble collapses
         }
