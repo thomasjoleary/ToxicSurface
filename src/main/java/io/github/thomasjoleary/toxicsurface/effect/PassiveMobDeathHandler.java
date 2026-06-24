@@ -3,6 +3,7 @@
 package io.github.thomasjoleary.toxicsurface.effect;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
+import io.github.thomasjoleary.toxicsurface.registry.ModDamageTypes;
 import io.github.thomasjoleary.toxicsurface.world.SmogClouds;
 import io.github.thomasjoleary.toxicsurface.world.ToxicityTicker;
 import net.minecraft.server.level.ServerLevel;
@@ -36,8 +37,7 @@ public final class PassiveMobDeathHandler {
             return;
         }
         if (GasExposure.isInToxicGas(level, mob.getX(), mob.getEyeY(), mob.getZ())) {
-            // TODO Phase 2 polish: custom "toxic" damage type; magic bypasses armour for now.
-            mob.hurt(mob.damageSources().magic(), Float.MAX_VALUE);
+            mob.hurt(ModDamageTypes.toxic(mob.level()), Float.MAX_VALUE);
         }
     }
 }

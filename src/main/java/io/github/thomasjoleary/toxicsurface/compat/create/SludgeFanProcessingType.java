@@ -6,6 +6,7 @@ import com.simibubi.create.content.kinetics.fan.processing.FanProcessingType;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
 import io.github.thomasjoleary.toxicsurface.effect.GasProtection;
 import io.github.thomasjoleary.toxicsurface.item.FanContaminatingRecipe;
+import io.github.thomasjoleary.toxicsurface.registry.ModDamageTypes;
 import io.github.thomasjoleary.toxicsurface.registry.ModFluids;
 import io.github.thomasjoleary.toxicsurface.registry.ModRecipes;
 import java.util.ArrayList;
@@ -100,7 +101,7 @@ public class SludgeFanProcessingType implements FanProcessingType {
         // Throttle the toxic damage to match the gas's lethal rate (toxicDamagePerSecond).
         if (living.tickCount % 10 == 0) {
             float perHalfSecond = (float) (ToxicSurfaceConfig.TOXIC_DAMAGE_PER_SECOND.get() * 0.5);
-            living.hurt(living.damageSources().magic(), perHalfSecond);
+            living.hurt(ModDamageTypes.toxic(living.level()), perHalfSecond);
         }
     }
 }

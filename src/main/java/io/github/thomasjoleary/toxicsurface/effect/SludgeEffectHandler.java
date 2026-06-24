@@ -5,6 +5,7 @@ package io.github.thomasjoleary.toxicsurface.effect;
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
 import io.github.thomasjoleary.toxicsurface.item.HazmatSuit;
+import io.github.thomasjoleary.toxicsurface.registry.ModDamageTypes;
 import io.github.thomasjoleary.toxicsurface.registry.ModFluids;
 import io.github.thomasjoleary.toxicsurface.registry.ModTags;
 import net.minecraft.core.component.DataComponents;
@@ -55,7 +56,7 @@ public final class SludgeEffectHandler {
             int interval = ToxicSurfaceConfig.SLUDGE_INTERVAL_TICKS.get();
             if (living.tickCount % interval == 0) {
                 float damage = (float) (double) ToxicSurfaceConfig.SLUDGE_DAMAGE.get();
-                living.hurt(living.damageSources().magic(), damage);
+                living.hurt(ModDamageTypes.toxic(living.level()), damage);
                 living.addEffect(new MobEffectInstance(MobEffects.POISON, interval + 20, 0));
             }
         }

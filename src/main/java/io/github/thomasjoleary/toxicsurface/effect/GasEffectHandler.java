@@ -11,6 +11,7 @@ import io.github.thomasjoleary.toxicsurface.core.gas.GasModel;
 import io.github.thomasjoleary.toxicsurface.item.FaceMaskItem;
 import io.github.thomasjoleary.toxicsurface.item.HazmatSuit;
 import io.github.thomasjoleary.toxicsurface.network.GasStatePayload;
+import io.github.thomasjoleary.toxicsurface.registry.ModDamageTypes;
 import io.github.thomasjoleary.toxicsurface.world.CleanserBubbles;
 import io.github.thomasjoleary.toxicsurface.world.SmogClouds;
 import io.github.thomasjoleary.toxicsurface.world.ToxicityTicker;
@@ -199,8 +200,7 @@ public final class GasEffectHandler {
         } else {
             // Bar empty: real, lethal toxic damage (not capped Poison).
             float damage = (float) (ToxicSurfaceConfig.TOXIC_DAMAGE_PER_SECOND.get() * THROTTLE_TICKS / 20.0);
-            // TODO Phase 2 polish: custom datapack DamageType for "toxic"; vanilla source for now.
-            player.hurt(player.damageSources().magic(), damage);
+            player.hurt(ModDamageTypes.toxic(player.level()), damage);
         }
     }
 
