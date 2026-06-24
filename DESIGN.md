@@ -547,7 +547,8 @@ server-driven and synced. Baked into the architecture, not bolted on.
 - **Pre-toxicity telegraph + retroactive advancement** (Phase 3 carry-over, now done): before
   activation, `ToxicityTicker` fires an escalating title + subtitle + chat warning
   (`ToxicityTelegraph`) the first tick the countdown crosses each configured threshold
-  (`telegraphWarningTicks`, default 3 days / 1 day / 1 hour / 10 min; `telegraphEnabled` toggle).
+  (`telegraphWarningTicks`, default 3 in-game days / 1 in-game day / 5 min / 1 min — day-scale
+  warnings shown in in-game days, the final countdown in real-time minutes; `telegraphEnabled` toggle).
   The crossed-stage count is persisted on `ToxicityState`, so it survives restarts and collapses any
   multi-threshold jump (e.g. a pollution spike) into one announcement with the true remaining time.
   The "The Air Has Turned" advancement is now also granted **retroactively** — players who log in or

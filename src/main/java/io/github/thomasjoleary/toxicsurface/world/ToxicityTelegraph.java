@@ -18,8 +18,8 @@ import net.minecraft.server.level.ServerPlayer;
  */
 public final class ToxicityTelegraph {
     private static final int TICKS_PER_MC_DAY = 24_000;
-    private static final int TICKS_PER_MC_HOUR = 1_000;
-    private static final double TICKS_PER_MC_MINUTE = TICKS_PER_MC_HOUR / 60.0;
+    private static final int TICKS_PER_REAL_MINUTE = 1_200; // 20 ticks/s * 60
+    private static final int TICKS_PER_REAL_SECOND = 20;
 
     private ToxicityTelegraph() {}
 
@@ -39,17 +39,21 @@ public final class ToxicityTelegraph {
         }
     }
 
-    /** Largest-unit, in-game-time label for a tick count (e.g. "3 days", "1 hour", "10 minutes"). */
+    /**
+     * Friendly remaining-time label: in-game <b>days</b> at the day scale (matching the world's
+     * day-based framing), then real-time <b>minutes</b>/<b>seconds</b> for the final countdown
+     * (e.g. "3 days", "1 day", "5 minutes", "30 seconds").
+     */
     static String formatDuration(int ticks) {
         if (ticks >= TICKS_PER_MC_DAY) {
             long days = Math.round(ticks / (double) TICKS_PER_MC_DAY);
             return days + (days == 1 ? " day" : " days");
         }
-        if (ticks >= TICKS_PER_MC_HOUR) {
-            long hours = Math.round(ticks / (double) TICKS_PER_MC_HOUR);
-            return hours + (hours == 1 ? " hour" : " hours");
+        if (ticks >= TICKS_PER_REAL_MINUTE) {
+            long minutes = Math.round(ticks / (double) TICKS_PER_REAL_MINUTE);
+            return minutes + (minutes == 1 ? " minute" : " minutes");
         }
-        long minutes = Math.max(1, Math.round(ticks / TICKS_PER_MC_MINUTE));
-        return minutes + (minutes == 1 ? " minute" : " minutes");
+        long seconds = Math.max(1, Math.round(ticks / (double) TICKS_PER_REAL_SECOND));
+        return seconds + (seconds == 1 ? " second" : " seconds");
     }
 }

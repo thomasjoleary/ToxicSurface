@@ -90,11 +90,11 @@ public final class ToxicSurfaceConfig {
                 .define("telegraphEnabled", true);
         TELEGRAPH_WARNING_TICKS = b.comment(
                         "Ticks-before-activation at which to fire a warning, each once as the clock crosses it"
-                                + " (72000=3 days, 24000=1 day, 1000=1 hour, 167~=10 minutes).")
+                                + " (72000=3 in-game days, 24000=1 in-game day, 6000=5 minutes, 1200=1 minute).")
                 .defineList(
                         "telegraphWarningTicks",
-                        List.of(72_000, 24_000, 1_000, 167),
-                        () -> 1_000,
+                        List.of(72_000, 24_000, 6_000, 1_200),
+                        () -> 1_200,
                         o -> o instanceof Integer i && i > 0);
         b.pop();
 
