@@ -58,8 +58,6 @@ public class WasteGeneratorBlockEntity extends GeneratingKineticBlockEntity {
     private int litRpm;
     /** Stress capacity added by the unit currently combusting. */
     private float litCapacity;
-    /** Clean-burn ticks left on the scrubber filter currently loaded (0 = venting raw). */
-    private int scrubTicks;
 
     public WasteGeneratorBlockEntity(BlockPos pos, BlockState state) {
         super(CreateContent.WASTE_GENERATOR_BE.get(), pos, state);
@@ -112,9 +110,8 @@ public class WasteGeneratorBlockEntity extends GeneratingKineticBlockEntity {
         }
 
         if (running()) {
-            // A loaded scrubber filter captures the exhaust so it runs clean; otherwise it vents.
-            scrubTicks = ExhaustScrubber.advance(server, pos, items, SLOT_FILTER, scrubTicks);
-            if (scrubTicks > 0) {
+            // A clean industrial filter captures the exhaust so it runs clean; otherwise it vents.
+            if (ExhaustScrubber.advance(items, SLOT_FILTER)) {
                 GeneratorEmissions.stop(server, pos); // scrubbed: no smog, no pollution
             } else {
                 GeneratorEmissions.emit(server, pos); // raw exhaust: smog + pollution (DESIGN.md §7)
@@ -171,7 +168,6 @@ public class WasteGeneratorBlockEntity extends GeneratingKineticBlockEntity {
         tag.putInt("BurnTicks", burnTicks);
         tag.putInt("LitRpm", litRpm);
         tag.putFloat("LitCapacity", litCapacity);
-        tag.putInt("ScrubTicks", scrubTicks);
     }
 
     @Override
@@ -183,6 +179,5 @@ public class WasteGeneratorBlockEntity extends GeneratingKineticBlockEntity {
         burnTicks = tag.getInt("BurnTicks");
         litRpm = tag.getInt("LitRpm");
         litCapacity = tag.getFloat("LitCapacity");
-        scrubTicks = tag.getInt("ScrubTicks");
     }
 }

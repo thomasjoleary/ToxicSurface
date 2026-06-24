@@ -472,15 +472,25 @@ server-driven and synced. Baked into the architecture, not bolted on.
   the per-dimension `ToxicityState` and reads as extra elapsed time, so heavy waste-burning makes
   the toxic ceiling **rise faster and the world turn toxic sooner**. Both drawbacks are
   config-tunable (`generators.generatorSmogRadius`, `generators.generatorPollutionPerTick`; set
-  either to `0` to disable). A third, **opt-out** drawback ties exhaust into the filter economy: a
-  generator can run **clean** (no smog, no pollution) only while it burns a clean/carbon filter in
-  its **scrubber slot** — the shared, Create-free `ExhaustScrubber` consumes filters at the mask
-  duration (carbon lasts the carbon-multiplier longer) and ejects each spent one as a plain
-  **used filter** for the existing wash loop. No scrubber filter → it vents raw. The Waste
-  Generator gains a second (filter) inventory slot; the Sludge Generator gains a one-slot filter
-  handler alongside its tank; both are hopper/pipe-automatable (item-type routing keeps insertion
-  unambiguous). Loads-standalone contract held: nothing here is classloaded without Create, and the
-  `GasModel`/`ToxicityState`/`ExhaustScrubber` changes are base-mod (the predicate is unit-tested).
+  either to `0` to disable). A third, **opt-out** drawback ties exhaust into the filter economy via
+  the shared, Create-free `ExhaustScrubber`: a generator runs **clean** (no smog, no pollution) only
+  while a clean **Industrial Filter** sits in its **scrubber slot**. The industrial filter is a
+  dedicated, **reusable, generator-only** consumable — crafted from **4 iron + 3 clean filters**,
+  **never** accepted by a face mask or hazmat chest — that runs a generator clean for a configurable
+  life (`generators.industrialFilterLifeTicks`, default **18000 ticks / 15 min**, ~10–20 min range)
+  before **clogging**. Its remaining life lives on the item (the `industrial_filter_life` data
+  component, shown as a green durability bar), so the block entities hold no scrubber state; when it
+  runs out the scrubber swaps it in place for a **dirty industrial filter** and the generator vents
+  raw. Cleaning is a two-step **cycle, not a discard**: a Create fan blowing **water** (`splashing`,
+  Create-gated) turns a dirty filter into a **wet** one — releasing captured `toxic_residue` 50% of
+  the time as a disposal cost — and **heat** (a vanilla `smelting`/`blasting` recipe, so a plain
+  **furnace** *or* a Create fan over **lava** works) dries the wet filter back to a fresh clean one.
+  The Waste Generator gains a second (filter) inventory slot; the Sludge Generator gains a one-slot
+  filter handler alongside its tank; both are hopper/pipe-automatable (item-type routing keeps
+  insertion unambiguous). Loads-standalone contract held: nothing here is classloaded without Create,
+  and the filter items, data component, craft + heat-dry recipes, `GasModel`, `ToxicityState`, and
+  `ExhaustScrubber` are all base-mod (only the fan-wash recipe is Create-gated; the predicate is
+  unit-tested).
 
 **Carried-forward polish / TODO** (tracked in-code):
 custom "toxic" `DamageType`; HUD flash + dedicated cough sound; air-bar HUD bubble

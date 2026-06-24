@@ -47,6 +47,7 @@ public final class ToxicSurfaceConfig {
     // --- Toxic generators (DESIGN.md §7) ---
     public static final ModConfigSpec.IntValue GENERATOR_SMOG_RADIUS;
     public static final ModConfigSpec.IntValue GENERATOR_POLLUTION_PER_TICK;
+    public static final ModConfigSpec.IntValue INDUSTRIAL_FILTER_LIFE_TICKS;
 
     // --- World ---
     public static final ModConfigSpec.ConfigValue<List<? extends String>> AFFECTED_DIMENSIONS;
@@ -142,6 +143,10 @@ public final class ToxicSurfaceConfig {
                         "Escalation ticks each running generator adds to its dimension per tick, speeding up the"
                                 + " toxic ceiling's rise (0 = no apocalypse-acceleration drawback).")
                 .defineInRange("generatorPollutionPerTick", 4, 0, 100_000);
+        INDUSTRIAL_FILTER_LIFE_TICKS = b.comment(
+                        "Clean-burn life of an industrial filter in a generator scrubber before it clogs to a dirty"
+                                + " filter, in ticks (18000 = 15 minutes; 1200 ticks = 1 minute).")
+                .defineInRange("industrialFilterLifeTicks", 18000, 1200, 72000);
         b.pop();
 
         b.push("world");

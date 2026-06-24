@@ -23,6 +23,9 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.CLEAN_AIR_FILTER.get());
                         output.accept(ModItems.CARBON_AIR_FILTER.get());
                         output.accept(ModItems.USED_AIR_FILTER.get());
+                        output.accept(ModItems.INDUSTRIAL_FILTER.get());
+                        output.accept(ModItems.DIRTY_INDUSTRIAL_FILTER.get());
+                        output.accept(ModItems.WET_INDUSTRIAL_FILTER.get());
                         output.accept(ModItems.FACE_MASK.get());
                         output.accept(ModItems.HAZMAT_MATERIAL.get());
                         output.accept(ModItems.HAZMAT_HELMET.get());

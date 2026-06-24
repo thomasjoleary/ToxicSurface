@@ -52,12 +52,9 @@ public class SludgeGeneratorBlockEntity extends GeneratingKineticBlockEntity {
 
         @Override
         public boolean isItemValid(int slot, ItemStack stack) {
-            return ExhaustScrubber.isFilter(stack); // scrubber filter slot only
+            return ExhaustScrubber.isFilter(stack); // industrial scrubber filter slot only
         }
     };
-
-    /** Clean-burn ticks left on the scrubber filter currently loaded (0 = venting raw). */
-    private int scrubTicks;
 
     public SludgeGeneratorBlockEntity(BlockPos pos, BlockState state) {
         super(CreateContent.SLUDGE_GENERATOR_BE.get(), pos, state);
@@ -104,9 +101,8 @@ public class SludgeGeneratorBlockEntity extends GeneratingKineticBlockEntity {
         boolean run = running();
         if (run) {
             tank.drain(GeneratorFuel.SLUDGE_MB_PER_TICK, IFluidHandler.FluidAction.EXECUTE);
-            // A loaded scrubber filter captures the exhaust so it runs clean; otherwise it vents.
-            scrubTicks = ExhaustScrubber.advance(server, pos, items, SLOT_FILTER, scrubTicks);
-            if (scrubTicks > 0) {
+            // A clean industrial filter captures the exhaust so it runs clean; otherwise it vents.
+            if (ExhaustScrubber.advance(items, SLOT_FILTER)) {
                 GeneratorEmissions.stop(server, pos); // scrubbed: no smog, no pollution
             } else {
                 GeneratorEmissions.emit(server, pos); // raw exhaust: smog + pollution (DESIGN.md §7)
@@ -135,7 +131,6 @@ public class SludgeGeneratorBlockEntity extends GeneratingKineticBlockEntity {
         super.write(tag, registries, clientPacket);
         tag.put("Tank", tank.writeToNBT(registries, new CompoundTag()));
         tag.put("Items", items.serializeNBT(registries));
-        tag.putInt("ScrubTicks", scrubTicks);
     }
 
     @Override
@@ -147,6 +142,5 @@ public class SludgeGeneratorBlockEntity extends GeneratingKineticBlockEntity {
         if (tag.contains("Items")) {
             items.deserializeNBT(registries, tag.getCompound("Items"));
         }
-        scrubTicks = tag.getInt("ScrubTicks");
     }
 }

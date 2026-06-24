@@ -5,6 +5,7 @@ package io.github.thomasjoleary.toxicsurface.registry;
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.item.FaceMaskItem;
 import io.github.thomasjoleary.toxicsurface.item.HazmatChestItem;
+import io.github.thomasjoleary.toxicsurface.item.IndustrialFilterItem;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.BucketItem;
@@ -35,6 +36,22 @@ public final class ModItems {
      * plain used filter when spent (re-treat after washing).
      */
     public static final DeferredItem<Item> CARBON_AIR_FILTER = ITEMS.registerSimpleItem("carbon_air_filter");
+
+    /**
+     * Industrial filter (DESIGN.md §7) — a reusable, generator-only scrubber filter (4 iron + 3
+     * clean filters). It runs a toxic generator clean until it clogs, then cycles
+     * {@link #DIRTY_INDUSTRIAL_FILTER dirty} → {@link #WET_INDUSTRIAL_FILTER wet} → clean. Never
+     * usable in a face mask or hazmat suit.
+     */
+    public static final DeferredItem<IndustrialFilterItem> INDUSTRIAL_FILTER =
+            ITEMS.register("industrial_filter", () -> new IndustrialFilterItem(new Item.Properties().stacksTo(1)));
+
+    /** A clogged industrial filter; fan-wash it (Create splashing) to a {@link #WET_INDUSTRIAL_FILTER}. */
+    public static final DeferredItem<Item> DIRTY_INDUSTRIAL_FILTER =
+            ITEMS.registerSimpleItem("dirty_industrial_filter");
+
+    /** A washed industrial filter; dry it with heat (furnace / fan + lava) back to a clean filter. */
+    public static final DeferredItem<Item> WET_INDUSTRIAL_FILTER = ITEMS.registerSimpleItem("wet_industrial_filter");
 
     /** Helmet-slot mask whose installed filter time is its durability bar. */
     public static final DeferredItem<FaceMaskItem> FACE_MASK =
