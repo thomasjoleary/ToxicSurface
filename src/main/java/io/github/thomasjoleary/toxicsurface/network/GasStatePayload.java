@@ -11,11 +11,12 @@ import net.minecraft.resources.ResourceLocation;
 
 /**
  * Server → client state for the receiving player (DESIGN.md §3, §4): whether they are exposed to
- * toxic gas ({@code inGas}, drives the fog) and their toxic air bar as a {@code 0..1} fraction
- * ({@code air}, drives the HUD bubble row). Both are resolved server-side (ceiling + sealing +
- * mask/suit state); the client only renders from them.
+ * toxic gas ({@code inGas}, drives the fog), their toxic air bar as a {@code 0..1} fraction
+ * ({@code air}, drives the HUD bubble row), and whether they stand in toxic open air regardless of
+ * protection ({@code inToxicArea}, drives the toxic-rain overlay so a masked player still sees it).
+ * All resolved server-side (ceiling + sealing + mask/suit state); the client only renders from them.
  */
-public record GasStatePayload(boolean inGas, float air) implements CustomPacketPayload {
+public record GasStatePayload(boolean inGas, float air, boolean inToxicArea) implements CustomPacketPayload {
     public static final Type<GasStatePayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "gas_state"));
 
@@ -24,6 +25,8 @@ public record GasStatePayload(boolean inGas, float air) implements CustomPacketP
             GasStatePayload::inGas,
             ByteBufCodecs.FLOAT,
             GasStatePayload::air,
+            ByteBufCodecs.BOOL,
+            GasStatePayload::inToxicArea,
             GasStatePayload::new);
 
     @Override

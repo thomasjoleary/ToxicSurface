@@ -16,6 +16,7 @@ import io.github.thomasjoleary.toxicsurface.registry.ModFluids;
 import io.github.thomasjoleary.toxicsurface.registry.ModItems;
 import io.github.thomasjoleary.toxicsurface.registry.ModMenus;
 import io.github.thomasjoleary.toxicsurface.registry.ModRecipes;
+import io.github.thomasjoleary.toxicsurface.registry.ModSounds;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -44,6 +45,7 @@ public final class ToxicSurface {
         ModRecipes.RECIPE_SERIALIZERS.register(modEventBus);
         ModRecipes.RECIPE_TYPES.register(modEventBus);
         ModMenus.MENUS.register(modEventBus);
+        ModSounds.SOUND_EVENTS.register(modEventBus);
 
         // Create-only content (Mechanical Cleanser, …) registered behind the soft-dependency
         // gate (DESIGN.md §9): when Create is absent this branch is skipped, so CreateContent —

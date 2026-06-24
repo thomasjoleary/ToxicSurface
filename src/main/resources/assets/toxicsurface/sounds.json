@@ -1,0 +1,11 @@
+{
+    "cough": {
+        "subtitle": "subtitles.toxicsurface.cough",
+        "sounds": [
+            {
+                "name": "entity.player.hurt_drown",
+                "type": "event"
+            }
+        ]
+    }
+}

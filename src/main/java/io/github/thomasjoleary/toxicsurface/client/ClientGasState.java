@@ -12,12 +12,15 @@ public final class ClientGasState {
     private static volatile boolean inGas = false;
     /** Toxic air bar as a 0..1 fraction; starts full so the HUD bubble row is hidden by default. */
     private static volatile float air = 1.0f;
+    /** In toxic open air regardless of protection — drives the toxic-rain overlay. */
+    private static volatile boolean inToxicArea = false;
 
     private ClientGasState() {}
 
-    public static void set(boolean inGasValue, float airValue) {
+    public static void set(boolean inGasValue, float airValue, boolean inToxicAreaValue) {
         inGas = inGasValue;
         air = airValue;
+        inToxicArea = inToxicAreaValue;
     }
 
     public static boolean isInGas() {
@@ -27,5 +30,10 @@ public final class ClientGasState {
     /** The local player's toxic air bar, 0 (empty) to 1 (full). */
     public static float air() {
         return air;
+    }
+
+    /** Whether the local player is in toxic open air (protection-independent). */
+    public static boolean isInToxicArea() {
+        return inToxicArea;
     }
 }

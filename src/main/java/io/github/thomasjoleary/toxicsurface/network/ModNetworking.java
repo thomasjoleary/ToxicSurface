@@ -4,6 +4,7 @@ package io.github.thomasjoleary.toxicsurface.network;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.client.ClientGasState;
+import io.github.thomasjoleary.toxicsurface.client.ClientHudEffects;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
@@ -24,6 +25,11 @@ public final class ModNetworking {
         registrar.playToClient(
                 GasStatePayload.TYPE,
                 GasStatePayload.STREAM_CODEC,
-                (payload, context) -> context.enqueueWork(() -> ClientGasState.set(payload.inGas(), payload.air())));
+                (payload, context) -> context.enqueueWork(
+                        () -> ClientGasState.set(payload.inGas(), payload.air(), payload.inToxicArea())));
+        registrar.playToClient(
+                FilterExpiryPayload.TYPE,
+                FilterExpiryPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(ClientHudEffects::triggerFilterExpiryFlash));
     }
 }

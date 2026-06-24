@@ -10,8 +10,10 @@ import io.github.thomasjoleary.toxicsurface.core.gas.AirBarModel;
 import io.github.thomasjoleary.toxicsurface.core.gas.GasModel;
 import io.github.thomasjoleary.toxicsurface.item.FaceMaskItem;
 import io.github.thomasjoleary.toxicsurface.item.HazmatSuit;
+import io.github.thomasjoleary.toxicsurface.network.FilterExpiryPayload;
 import io.github.thomasjoleary.toxicsurface.network.GasStatePayload;
 import io.github.thomasjoleary.toxicsurface.registry.ModDamageTypes;
+import io.github.thomasjoleary.toxicsurface.registry.ModSounds;
 import io.github.thomasjoleary.toxicsurface.world.CleanserBubbles;
 import io.github.thomasjoleary.toxicsurface.world.SmogClouds;
 import io.github.thomasjoleary.toxicsurface.world.ToxicityTicker;
@@ -20,7 +22,6 @@ import java.util.Map;
 import java.util.UUID;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -76,10 +77,10 @@ public final class GasEffectHandler {
             applyExposureEffects(player, air);
         }
 
-        // Sync exposure (fog) + air bar (HUD bubble row) to the client (DESIGN.md §3, §4).
+        // Sync exposure (fog) + air bar (HUD bubble row) + toxic-area (rain overlay) (DESIGN.md §3, §4).
         if (player instanceof ServerPlayer serverPlayer) {
             float airFraction = Mth.clamp((float) air / AirBarModel.fullAir(drain), 0f, 1f);
-            PacketDistributor.sendToPlayer(serverPlayer, new GasStatePayload(exposed, airFraction));
+            PacketDistributor.sendToPlayer(serverPlayer, new GasStatePayload(exposed, airFraction, inGas));
         }
     }
 
@@ -179,16 +180,18 @@ public final class GasEffectHandler {
     }
 
     private static void playFilterExpiryWarning(ServerLevel level, Player player) {
-        // TODO Phase 4 polish: dedicated cough sound + client HUD flash payload.
         level.playSound(
                 null,
                 player.getX(),
                 player.getY(),
                 player.getZ(),
-                SoundEvents.PLAYER_HURT_DROWN,
+                ModSounds.COUGH.get(),
                 SoundSource.PLAYERS,
                 0.7F,
                 1.0F);
+        if (player instanceof ServerPlayer serverPlayer) {
+            PacketDistributor.sendToPlayer(serverPlayer, FilterExpiryPayload.INSTANCE); // HUD flash cue
+        }
     }
 
     private static void applyExposureEffects(Player player, int air) {

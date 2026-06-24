@@ -23,6 +23,9 @@ public final class ClientModBusEvents {
                 EquipmentHudOverlay::render);
         event.registerAboveAll(
                 ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "toxic_air_bar"), AirBarOverlay::render);
+        event.registerAboveAll(
+                ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "screen_effects"),
+                ScreenEffectsOverlay::render);
     }
 
     @SubscribeEvent

@@ -527,13 +527,20 @@ server-driven and synced. Baked into the architecture, not bolted on.
   invalidated on the block-change events that make or break a seal (break, place, multi-place,
   fluid-formed blocks, explosions); caches clear on level unload. Block changes from pistons or
   `/setblock`-style commands aren't event-covered — a known, rare staleness gap.
+- **Polish cluster** (carry-overs, now done): (1) a data-driven `toxicsurface:toxic` **DamageType**
+  now sources all toxin damage (gas, sludge, mob death, sludge-fan), so deaths read "succumbed to
+  the toxic air". (2) **Filter-expire warning** — `ModSounds.COUGH` (a `sounds.json` placeholder
+  mapped to the vanilla choke sound until a `cough.ogg` is added) plays on expiry, and a
+  `FilterExpiryPayload` triggers a red top/bottom vignette **HUD flash** (`ClientHudEffects` +
+  `ScreenEffectsOverlay`). (3) **Toxic-rain overlay** — green wash + falling streaks while it rains
+  and the player is in toxic open air; `GasStatePayload` gained an `inToxicArea` flag (protection-
+  independent) so a masked player still sees it. Gated by `toxicRainEnabled`.
 
 **Carried-forward polish / TODO** (tracked in-code):
-custom "toxic" `DamageType`; HUD flash + dedicated cough sound; cleanser
-purge-bubble particles/visual; pre-toxicity telegraph + retroactive advancement;
-toxic-rain client overlay; accessibility sliders; JEI **recipe categories** for the
-Weaver/Cleanser/generators + an **EMI** plugin (JEI info-pages + hint tooltips are
-in); **item/block textures + models**.
+cleanser purge-bubble particles/visual; pre-toxicity telegraph + retroactive
+advancement; accessibility sliders; JEI/EMI **recipe categories** for the
+Weaver/Cleanser/generators (pending textures); **item/block textures + models**;
+a real **cough.ogg** to replace the placeholder sound.
 
 ---
 
