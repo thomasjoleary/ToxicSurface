@@ -10,6 +10,7 @@ import io.github.thomasjoleary.toxicsurface.core.conversion.SludgeConversion.Ban
 import io.github.thomasjoleary.toxicsurface.core.toxicity.ToxicityModel;
 import io.github.thomasjoleary.toxicsurface.registry.ModAttachments;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlocks;
+import io.github.thomasjoleary.toxicsurface.registry.ModFluids;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -18,12 +19,15 @@ import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.material.FluidState;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.ChunkEvent;
@@ -46,6 +50,11 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 public final class SludgeConversionManager {
     /** Effective band depth used in FULL mode (covers any realistic column). */
     private static final int FULL_MODE_DEPTH = 512;
+
+    /** Sentinel for "no liquid surface found in this column". */
+    private static final int NO_SURFACE = Integer.MIN_VALUE;
+    /** How far below the heightmap top to look for the liquid surface (covers ice caps / off-by-one). */
+    private static final int SURFACE_SCAN_DEPTH = 6;
 
     private static final Map<ResourceKey<Level>, ArrayDeque<Long>> QUEUES = new HashMap<>();
     /** Mirror of {@link #QUEUES} for O(1) dedup so the load + sweep paths don't double-enqueue. */
@@ -229,18 +238,21 @@ public final class SludgeConversionManager {
             int lz = (task.columnIndex >> 4) & 15;
             int worldX = baseX + lx;
             int worldZ = baseZ + lz;
-            int surfaceY = chunk.getHeight(Heightmap.Types.MOTION_BLOCKING, worldX, worldZ) - 1;
 
-            Band band = SludgeConversion.bandToConvert(surfaceY, ceiling, task.targetDepth, task.appliedStart);
-            if (band.present() && isWater(level, cursor.set(worldX, surfaceY, worldZ))) {
-                int low = Math.max(minY, band.low());
-                for (int y = band.high(); y >= low; y--) {
-                    if (budget <= 0) {
-                        return 0;
-                    }
-                    if (isWater(level, cursor.set(worldX, y, worldZ))) {
-                        level.setBlock(cursor, ModBlocks.SLUDGE_BLOCK.get().defaultBlockState(), Block.UPDATE_CLIENTS);
-                        budget--;
+            int surfaceY = topLiquidY(level, chunk, worldX, worldZ, cursor, minY);
+            if (surfaceY != NO_SURFACE) {
+                Band band = SludgeConversion.bandToConvert(surfaceY, ceiling, task.targetDepth, task.appliedStart);
+                if (band.present()) {
+                    int low = Math.max(minY, band.low());
+                    for (int y = band.high(); y >= low; y--) {
+                        if (budget <= 0) {
+                            return 0;
+                        }
+                        if (convertibleToSludge(level, cursor.set(worldX, y, worldZ))) {
+                            level.setBlock(
+                                    cursor, ModBlocks.SLUDGE_BLOCK.get().defaultBlockState(), Block.UPDATE_CLIENTS);
+                            budget--;
+                        }
                     }
                 }
             }
@@ -249,8 +261,36 @@ public final class SludgeConversionManager {
         return budget;
     }
 
-    private static boolean isWater(ServerLevel level, BlockPos pos) {
-        return level.getBlockState(pos).is(Blocks.WATER);
+    /**
+     * The topmost liquid Y of a column — clean water <em>or</em> already-placed sludge — which the
+     * surface band anchors to, or {@link #NO_SURFACE} if the column has no liquid near its top.
+     * Anchoring to the liquid surface (not the water specifically) keeps escalation re-passes correct
+     * once a sludge skin is present, and scanning a few blocks from the heightmap avoids any
+     * off-by-one in the surface Y so the very top block converts.
+     */
+    private static int topLiquidY(
+            ServerLevel level, LevelChunk chunk, int x, int z, BlockPos.MutableBlockPos cursor, int minY) {
+        int from = chunk.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
+        int to = Math.max(minY, from - SURFACE_SCAN_DEPTH);
+        for (int y = from; y >= to; y--) {
+            FluidState fluid = level.getFluidState(cursor.set(x, y, z));
+            if (fluid.is(FluidTags.WATER) || fluid.getFluidType() == ModFluids.SLUDGE_TYPE.get()) {
+                return y;
+            }
+        }
+        return NO_SURFACE;
+    }
+
+    /**
+     * True if the block at {@code pos} should become sludge: clean water, or an insubstantial
+     * water-logged block (seagrass, kelp, …) — never a solid water-logged build, which is left alone.
+     */
+    private static boolean convertibleToSludge(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        if (!state.getFluidState().is(FluidTags.WATER)) {
+            return false; // already sludge, air, or a non-water block
+        }
+        return state.is(Blocks.WATER) || state.getCollisionShape(level, pos).isEmpty();
     }
 
     private static int currentDepth(int ceiling) {

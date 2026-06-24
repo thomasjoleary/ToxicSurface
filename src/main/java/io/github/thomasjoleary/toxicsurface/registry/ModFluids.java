@@ -37,6 +37,10 @@ public final class ModFluids {
             ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "block/sludge_flow");
     private static final ResourceLocation SLUDGE_OVERLAY =
             ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "block/sludge_overlay");
+    /** Full-screen overlay drawn when the camera is submerged in sludge (the green "underwater"). */
+    private static final ResourceLocation SLUDGE_UNDERWATER =
+            ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "textures/misc/sludge_underwater.png");
+
     private static final int SLUDGE_TINT = 0xFF4A5D23; // opaque toxic olive-green
 
     public static final Supplier<FluidType> SLUDGE_TYPE = FLUID_TYPES.register(
@@ -70,6 +74,38 @@ public final class ModFluids {
                                 @Override
                                 public int getTintColor() {
                                     return SLUDGE_TINT;
+                                }
+
+                                // Submerged-in-sludge vision: a murky green fog + dark green screen
+                                // overlay, like vanilla water's dark-blue underwater look (DESIGN §3).
+                                @Override
+                                public org.joml.Vector3f modifyFogColor(
+                                        net.minecraft.client.Camera camera,
+                                        float partialTick,
+                                        net.minecraft.client.multiplayer.ClientLevel level,
+                                        int renderDistance,
+                                        float darkenWorldAmount,
+                                        org.joml.Vector3f fluidFogColor) {
+                                    return new org.joml.Vector3f(0.16f, 0.27f, 0.09f);
+                                }
+
+                                @Override
+                                public void modifyFogRender(
+                                        net.minecraft.client.Camera camera,
+                                        net.minecraft.client.renderer.FogRenderer.FogMode fogMode,
+                                        float renderDistance,
+                                        float partialTick,
+                                        float nearDistance,
+                                        float farDistance,
+                                        com.mojang.blaze3d.shaders.FogShape shape) {
+                                    // Thick murk — you can only see a few blocks through the sludge.
+                                    com.mojang.blaze3d.systems.RenderSystem.setShaderFogStart(0.25f);
+                                    com.mojang.blaze3d.systems.RenderSystem.setShaderFogEnd(6.0f);
+                                }
+
+                                @Override
+                                public ResourceLocation getRenderOverlayTexture(net.minecraft.client.Minecraft mc) {
+                                    return SLUDGE_UNDERWATER;
                                 }
                             });
                         }

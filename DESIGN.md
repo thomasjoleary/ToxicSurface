@@ -83,7 +83,10 @@ surface** and **deepens over time** — it never sweeps up from the world floor:
   toxic ceiling climbs toward `escalationMaxY`, the skin **thickens toward**
   `sludgeDepthMax` (default 24). The whole ocean only fully converts if
   `sludgeDepthMax` is set deep enough to reach the floor **and** the line has
-  reached its max — by default, deep oceans keep clean water below.
+  reached its max — by default, deep oceans keep clean water below. The pass anchors to the
+  **top liquid block** (water or already-placed sludge, so re-passes stay correct) and converts
+  clean water plus **insubstantial water-logged blocks** in the band (seagrass, kelp, …) — those
+  are destroyed and turned to sludge — while leaving solid water-logged builds alone.
 - **Result:** a sludge skin over clean depths that grows downward as the
   apocalypse escalates — bounds per-column cost to a constant, kills surface
   aquatic life, enables **stilted-base-over-a-sludge-sea** play, and lets divers
@@ -208,6 +211,11 @@ These are client options, not server config — each player tunes their own view
   top of clean water as a stable sheet (the §2b "skin over clean depths" model); sludge flows
   normally over air/land. (Limitation: MC fluids don't layer, so a single bucket poured into open
   water sits as a stationary blob rather than sheeting across — the conversion is the sheet path.)
+- **Submerged vision:** a camera in sludge gets a **murky green** look — `modifyFogColor` tints the
+  fog toxic-green, `modifyFogRender` pulls it in to ~6 blocks, and `getRenderOverlayTexture` draws a
+  dark-green full-screen overlay (the sludge analogue of vanilla water's dark-blue underwater).
+- **No knockback:** the `toxicsurface:toxic` damage type is in `#minecraft:no_knockback`, so toxic
+  gas and sludge damage never shove the entity.
 - **Drowning in sludge uses the vanilla breath mechanic**, so **Respiration and
   water-breathing extend it normally.** This matters most in a hazmat suit: the
   suit negates sludge *contact damage* but is **not a rebreather**, so a

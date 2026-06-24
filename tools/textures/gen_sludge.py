@@ -25,6 +25,7 @@ import zlib
 
 OUT_BLOCK = "src/main/resources/assets/toxicsurface/textures/block"
 OUT_ITEM = "src/main/resources/assets/toxicsurface/textures/item"
+OUT_MISC = "src/main/resources/assets/toxicsurface/textures/misc"
 
 FRAMES = 16
 
@@ -188,9 +189,28 @@ def gen_bucket():
     write_png(os.path.join(OUT_ITEM, "sludge_bucket.png"), size, size, px)
 
 
+def gen_underwater():
+    """Full-screen submerged overlay (tiled 4x, drawn at ~0.1 alpha): a dark murky green so the
+    camera in sludge gets the green 'underwater' tint, the way vanilla water uses a dark-blue one."""
+    size = 64
+    px = bytearray(size * size * 4)
+    for y in range(size):
+        for x in range(size):
+            n = vnoise(x * 6.0 / size, y * 6.0 / size, 0.0, 6, 6, 1, seed=7)
+            n += 0.5 * vnoise(x * 14.0 / size, y * 14.0 / size, 0.0, 14, 14, 1, seed=8)
+            n /= 1.5
+            r = int(18 + n * 26)
+            g = int(34 + n * 44)
+            b = int(12 + n * 20)
+            i = (y * size + x) * 4
+            px[i], px[i + 1], px[i + 2], px[i + 3] = r, g, b, 235
+    write_png(os.path.join(OUT_MISC, "sludge_underwater.png"), size, size, px)
+
+
 if __name__ == "__main__":
     gen_still()
     gen_flow()
     gen_overlay()
     gen_bucket()
+    gen_underwater()
     print("generated sludge textures")
