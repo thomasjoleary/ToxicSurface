@@ -3,6 +3,7 @@
 package io.github.thomasjoleary.toxicsurface.registry;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
+import io.github.thomasjoleary.toxicsurface.fluid.SludgeFluid;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import net.minecraft.core.registries.Registries;
@@ -75,9 +76,9 @@ public final class ModFluids {
                     });
 
     public static final Supplier<FlowingFluid> SLUDGE =
-            FLUIDS.register("sludge", () -> new BaseFlowingFluid.Source(ModFluids.PROPERTIES));
+            FLUIDS.register("sludge", () -> new SludgeFluid.Source(ModFluids.PROPERTIES));
     public static final Supplier<FlowingFluid> SLUDGE_FLOWING =
-            FLUIDS.register("flowing_sludge", () -> new BaseFlowingFluid.Flowing(ModFluids.PROPERTIES));
+            FLUIDS.register("flowing_sludge", () -> new SludgeFluid.Flowing(ModFluids.PROPERTIES));
 
     // Suppliers keep this lazy so it can reference the fluids/block/bucket before they register.
     public static final BaseFlowingFluid.Properties PROPERTIES = new BaseFlowingFluid.Properties(

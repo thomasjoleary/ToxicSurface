@@ -201,6 +201,10 @@ These are client options, not server config — each player tunes their own view
 - Custom flowing fluid (NeoForge `BaseFlowingFluid` + `FluidType`), behaves like
   water (flows, bucket-able, swimmable). **Submersion drowns you via the vanilla
   air supply** (the normal drowning bubble bar, *not* the toxic air bar).
+- **Floats on water:** `SludgeFluid` overrides `canSpreadTo` to refuse any water-filled
+  target cell, so sludge never sinks into or displaces water — the converted surface skin
+  sits on top of clean water (the §2b "skin over clean depths" model) instead of flowing
+  through it. It flows normally over air/land.
 - **Drowning in sludge uses the vanilla breath mechanic**, so **Respiration and
   water-breathing extend it normally.** This matters most in a hazmat suit: the
   suit negates sludge *contact damage* but is **not a rebreather**, so a
