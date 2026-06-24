@@ -10,16 +10,21 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * Server → client: whether the receiving player is currently in toxic gas
- * (DESIGN.md §3, §4). Exposure is resolved server-side (ceiling + sealing, and
- * later mask/suit state); the client just renders fog from this flag.
+ * Server → client state for the receiving player (DESIGN.md §3, §4): whether they are exposed to
+ * toxic gas ({@code inGas}, drives the fog) and their toxic air bar as a {@code 0..1} fraction
+ * ({@code air}, drives the HUD bubble row). Both are resolved server-side (ceiling + sealing +
+ * mask/suit state); the client only renders from them.
  */
-public record GasStatePayload(boolean inGas) implements CustomPacketPayload {
+public record GasStatePayload(boolean inGas, float air) implements CustomPacketPayload {
     public static final Type<GasStatePayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "gas_state"));
 
-    public static final StreamCodec<RegistryFriendlyByteBuf, GasStatePayload> STREAM_CODEC =
-            StreamCodec.composite(ByteBufCodecs.BOOL, GasStatePayload::inGas, GasStatePayload::new);
+    public static final StreamCodec<RegistryFriendlyByteBuf, GasStatePayload> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.BOOL,
+            GasStatePayload::inGas,
+            ByteBufCodecs.FLOAT,
+            GasStatePayload::air,
+            GasStatePayload::new);
 
     @Override
     public Type<? extends CustomPacketPayload> type() {

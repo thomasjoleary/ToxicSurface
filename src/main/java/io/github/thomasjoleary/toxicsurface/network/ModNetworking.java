@@ -24,6 +24,6 @@ public final class ModNetworking {
         registrar.playToClient(
                 GasStatePayload.TYPE,
                 GasStatePayload.STREAM_CODEC,
-                (payload, context) -> context.enqueueWork(() -> ClientGasState.set(payload.inGas())));
+                (payload, context) -> context.enqueueWork(() -> ClientGasState.set(payload.inGas(), payload.air())));
     }
 }

@@ -41,8 +41,8 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * the player's head is in unsealed toxic gas, steps the air bar, and applies nausea
  * (while draining) or lethal toxic damage (once empty).
  *
- * <p>Air state is kept transiently per player for now; persistence + client sync for
- * the HUD bubble row land alongside the rendering work later in Phase 2.
+ * <p>Air state is kept transiently per player (cleared on logout) and synced to the client each
+ * cycle as a 0..1 fraction, which {@code AirBarOverlay} renders as the HUD bubble row.
  */
 @EventBusSubscriber(modid = ToxicSurface.MODID)
 public final class GasEffectHandler {
@@ -77,9 +77,10 @@ public final class GasEffectHandler {
             applyExposureEffects(player, air);
         }
 
-        // Sync exposure to the client so it can render fog (DESIGN.md §3, §4).
+        // Sync exposure (fog) + air bar (HUD bubble row) to the client (DESIGN.md §3, §4).
         if (player instanceof ServerPlayer serverPlayer) {
-            PacketDistributor.sendToPlayer(serverPlayer, new GasStatePayload(exposed));
+            float airFraction = Mth.clamp((float) air / AirBarModel.fullAir(drain), 0f, 1f);
+            PacketDistributor.sendToPlayer(serverPlayer, new GasStatePayload(exposed, airFraction));
         }
     }
 

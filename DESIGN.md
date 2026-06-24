@@ -516,10 +516,14 @@ server-driven and synced. Baked into the architecture, not bolted on.
   `shouldRequestData` limits server round-trips to our machines. Jade is `compileOnly` via the
   Modrinth maven, declared `optional`/`CLIENT`. Deferred: JEI/EMI **recipe categories** (pending
   textures).
+- **Toxic air bar HUD** (Phase 2 carry-over, now done): the drowning-style green bubble row above
+  the hotbar. `GasStatePayload` now also syncs the air bar as a 0..1 fraction; `AirBarOverlay`
+  renders it from `ClientGasState` using the vanilla air sprites with a green tint, hidden when full
+  (mirroring vanilla air) and nudged up when the vanilla air row is also showing (a sludge dive).
 
 **Carried-forward polish / TODO** (tracked in-code):
-custom "toxic" `DamageType`; HUD flash + dedicated cough sound; air-bar HUD bubble
-row; cleanser purge-bubble particles/visual; enclosure-cache wiring + block-change
+custom "toxic" `DamageType`; HUD flash + dedicated cough sound; cleanser
+purge-bubble particles/visual; enclosure-cache wiring + block-change
 invalidation in the live effect; pre-toxicity telegraph + retroactive advancement;
 toxic-rain client overlay; accessibility sliders; JEI **recipe categories** for the
 Weaver/Cleanser/generators + an **EMI** plugin (JEI info-pages + hint tooltips are
