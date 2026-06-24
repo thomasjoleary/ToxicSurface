@@ -3,10 +3,13 @@
 package io.github.thomasjoleary.toxicsurface.registry;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.material.FlowingFluid;
 import net.minecraft.world.level.material.Fluid;
+import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
 import net.neoforged.neoforge.fluids.BaseFlowingFluid;
 import net.neoforged.neoforge.fluids.FluidType;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -23,13 +26,52 @@ public final class ModFluids {
             DeferredRegister.create(NeoForgeRegistries.Keys.FLUID_TYPES, ToxicSurface.MODID);
     public static final DeferredRegister<Fluid> FLUIDS = DeferredRegister.create(Registries.FLUID, ToxicSurface.MODID);
 
+    // Sludge fluid textures. No art exists yet (everything renders missing-texture), but the texture
+    // ids handed to the client extensions MUST be non-null — NeoForge's FluidSpriteCache NPEs on a null
+    // texture key while tesselating the liquid (the four "Tesselating liquid in world" crash reports).
+    private static final ResourceLocation SLUDGE_STILL =
+            ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "block/sludge_still");
+    private static final ResourceLocation SLUDGE_FLOW =
+            ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "block/sludge_flow");
+    private static final ResourceLocation SLUDGE_OVERLAY =
+            ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "block/sludge_overlay");
+    private static final int SLUDGE_TINT = 0xFF4A5D23; // opaque toxic olive-green
+
     public static final Supplier<FluidType> SLUDGE_TYPE = FLUID_TYPES.register(
             "sludge",
-            () -> new FluidType(FluidType.Properties.create()
-                    .density(3000) // denser/heavier-feeling than water
-                    .viscosity(6000) // flows sluggishly
-                    .canSwim(true)
-                    .canDrown(true)));
+            () ->
+                    new FluidType(FluidType.Properties.create()
+                            .density(3000) // denser/heavier-feeling than water
+                            .viscosity(6000) // flows sluggishly
+                            .canSwim(true)
+                            .canDrown(true)) {
+                        // initializeClient is only invoked client-side, so the client-only IClientFluidTypeExtensions
+                        // never classloads on a dedicated server (the standard NeoForge 1.21.1 fluid-render hook).
+                        @Override
+                        public void initializeClient(Consumer<IClientFluidTypeExtensions> consumer) {
+                            consumer.accept(new IClientFluidTypeExtensions() {
+                                @Override
+                                public ResourceLocation getStillTexture() {
+                                    return SLUDGE_STILL;
+                                }
+
+                                @Override
+                                public ResourceLocation getFlowingTexture() {
+                                    return SLUDGE_FLOW;
+                                }
+
+                                @Override
+                                public ResourceLocation getOverlayTexture() {
+                                    return SLUDGE_OVERLAY;
+                                }
+
+                                @Override
+                                public int getTintColor() {
+                                    return SLUDGE_TINT;
+                                }
+                            });
+                        }
+                    });
 
     public static final Supplier<FlowingFluid> SLUDGE =
             FLUIDS.register("sludge", () -> new BaseFlowingFluid.Source(ModFluids.PROPERTIES));
