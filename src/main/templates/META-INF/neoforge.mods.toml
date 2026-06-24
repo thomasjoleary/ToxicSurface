@@ -42,3 +42,12 @@ type = "optional"
 versionRange = "[19.0.0,)"
 ordering = "AFTER"
 side = "CLIENT"
+
+# EMI (Phase 8): the same info pages via EMI's own API. Client-only and additive —
+# the @EmiEntrypoint plugin loads only when EMI is present.
+[[dependencies.${mod_id}]]
+modId = "emi"
+type = "optional"
+versionRange = "[1.1.0,)"
+ordering = "AFTER"
+side = "CLIENT"

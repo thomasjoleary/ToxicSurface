@@ -3,14 +3,11 @@
 package io.github.thomasjoleary.toxicsurface.compat.jei;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
-import io.github.thomasjoleary.toxicsurface.registry.ModItems;
+import io.github.thomasjoleary.toxicsurface.compat.HintInfo;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.registration.IRecipeRegistration;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.ItemLike;
 
 /**
  * JEI integration (DESIGN.md §5 Phase 8). The toxic generators and the industrial-filter cleaning
@@ -37,24 +34,8 @@ public class ToxicSurfaceJeiPlugin implements IModPlugin {
 
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
-        info(registration, ModItems.INDUSTRIAL_FILTER.get(), "industrial_filter");
-        info(registration, ModItems.DIRTY_INDUSTRIAL_FILTER.get(), "dirty_industrial_filter");
-        info(registration, ModItems.WET_INDUSTRIAL_FILTER.get(), "wet_industrial_filter");
-        info(registration, ModItems.TOXIC_RESIDUE.get(), "toxic_residue");
-        info(registration, ModItems.TOXIC_WASTE_BLOCK.get(), "toxic_waste_block");
-        // Generator block items only exist when Create is loaded; resolve by id to avoid classloading
-        // the Create-gated compat.create classes here.
-        infoById(registration, "waste_generator");
-        infoById(registration, "sludge_generator");
-    }
-
-    private static void info(IRecipeRegistration registration, ItemLike item, String key) {
-        registration.addIngredientInfo(item, Component.translatable("jei." + ToxicSurface.MODID + "." + key + ".info"));
-    }
-
-    private static void infoById(IRecipeRegistration registration, String path) {
-        BuiltInRegistries.ITEM
-                .getOptional(ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, path))
-                .ifPresent(item -> info(registration, item, path));
+        for (HintInfo.Entry entry : HintInfo.entries()) {
+            registration.addIngredientInfo(entry.item(), HintInfo.text(entry.key()));
+        }
     }
 }

@@ -75,6 +75,11 @@ repositories {
         name = "BlameJared (JEI)"
         url = "https://maven.blamejared.com"
     }
+    // EMI (Phase 8) — the API we compile the @EmiEntrypoint plugin against.
+    maven {
+        name = "TerraformersMC (EMI)"
+        url = "https://maven.terraformersmc.com/releases"
+    }
 }
 
 // Whether to put Create (and the runtime mods it needs to load) on the dev/
@@ -100,6 +105,10 @@ dependencies {
     // use. JEI loads the plugin solely when JEI is present, so it stays off the standalone
     // runtime/jar — same contract as Create above.
     compileOnly("mezz.jei:jei-1.21.1-common-api:${jei_version}") { transitive = false }
+
+    // Optional soft-dependency on EMI (DESIGN.md §5 Phase 8). The `:api` classifier is the
+    // compile-only API; the @EmiEntrypoint plugin is loaded by EMI only when EMI is present.
+    compileOnly("dev.emi:emi-neoforge:${emi_version}:api") { transitive = false }
 
     // Optional: load Create at runtime for the "Build with Create" GameTest job.
     // The full (non-slim) jar jarJars everything FML needs to load Create —
