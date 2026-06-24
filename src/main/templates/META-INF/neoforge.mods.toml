@@ -51,3 +51,12 @@ type = "optional"
 versionRange = "[1.1.0,)"
 ordering = "AFTER"
 side = "CLIENT"
+
+# Jade (Phase 8): in-world machine tooltips. Client-only and additive — the
+# @WailaPlugin activates only when Jade is present.
+[[dependencies.${mod_id}]]
+modId = "jade"
+type = "optional"
+versionRange = "[15.0.0,)"
+ordering = "AFTER"
+side = "CLIENT"

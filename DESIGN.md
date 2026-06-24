@@ -503,6 +503,19 @@ server-driven and synced. Baked into the architecture, not bolted on.
   only when present (so it never classloads in the standalone jar), it's declared `optional` /
   `CLIENT` in the mods.toml, and the Create-gated generator items are resolved by registry id so the
   plugin never pulls in `compat.create`.
+- **EMI plugin** (Phase 8): EMI has its own API and ignores JEI plugins, so a native `@EmiEntrypoint`
+  plugin (`compat.emi`) registers the same info pages as EMI "info recipes". The (item, lang-key)
+  list is factored into a JEI/EMI-free `compat.HintInfo` so the two viewers stay in lock-step. Same
+  soft-dep contract: EMI `:api` is `compileOnly`, declared `optional`/`CLIENT`.
+- **Jade tooltips** (Phase 8): in-world machine readouts via a `@WailaPlugin` (`compat.jade`). A
+  single `MachineReadoutProvider` serves both Jade halves — server-side it harvests live state from
+  any block entity implementing the **Jade-free `JadeReadout`** interface (Cleanser range/active,
+  Weaver weave %, both generators' running/RPM/scrubber/fuel-or-sludge) into Jade's per-block NBT;
+  client-side it renders the synced primitives as lines. Reading the synced NBT (not casting to a
+  BE type) means it shows the Create-gated generators without ever referencing `compat.create`;
+  `shouldRequestData` limits server round-trips to our machines. Jade is `compileOnly` via the
+  Modrinth maven, declared `optional`/`CLIENT`. Deferred: JEI/EMI **recipe categories** (pending
+  textures).
 
 **Carried-forward polish / TODO** (tracked in-code):
 custom "toxic" `DamageType`; HUD flash + dedicated cough sound; air-bar HUD bubble

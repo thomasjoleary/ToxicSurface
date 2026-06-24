@@ -2,6 +2,7 @@
 
 package io.github.thomasjoleary.toxicsurface.block;
 
+import io.github.thomasjoleary.toxicsurface.compat.jade.JadeReadout;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
 import io.github.thomasjoleary.toxicsurface.core.machine.CleanserRange;
 import io.github.thomasjoleary.toxicsurface.menu.CleanserMenu;
@@ -31,7 +32,7 @@ import net.neoforged.neoforge.items.ItemStackHandler;
  * larger ranges. The gas-purge bubble (clean breathable air in range) lands in a
  * follow-up increment; this core handles fuel, range control, and sludge reversion.
  */
-public class CleanserBlockEntity extends BlockEntity implements MenuProvider {
+public class CleanserBlockEntity extends BlockEntity implements MenuProvider, JadeReadout {
     public static final int SLOT_FUEL = 0;
     public static final int SLOT_COUNT = 1;
 
@@ -171,6 +172,12 @@ public class CleanserBlockEntity extends BlockEntity implements MenuProvider {
             items.setStackInSlot(SLOT_FUEL, remainder);
         }
         return true;
+    }
+
+    @Override
+    public void appendJadeData(CompoundTag tag) {
+        tag.putInt("tsRange", effectiveRange);
+        tag.putBoolean("tsActive", litTime > 0);
     }
 
     @Override

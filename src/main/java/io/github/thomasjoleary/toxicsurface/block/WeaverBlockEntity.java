@@ -2,6 +2,7 @@
 
 package io.github.thomasjoleary.toxicsurface.block;
 
+import io.github.thomasjoleary.toxicsurface.compat.jade.JadeReadout;
 import io.github.thomasjoleary.toxicsurface.menu.WeaverMenu;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlockEntities;
 import net.minecraft.core.BlockPos;
@@ -26,7 +27,7 @@ import net.neoforged.neoforge.items.ItemStackHandler;
  * via a small hard-coded recipe table (datapack-driven recipes are a future
  * enhancement). A redstone signal halts it; the item handler is hopper-automatable.
  */
-public class WeaverBlockEntity extends BlockEntity implements MenuProvider {
+public class WeaverBlockEntity extends BlockEntity implements MenuProvider, JadeReadout {
     public static final int SLOT_INPUT_A = 0;
     public static final int SLOT_INPUT_B = 1;
     public static final int SLOT_FUEL = 2;
@@ -102,6 +103,14 @@ public class WeaverBlockEntity extends BlockEntity implements MenuProvider {
 
     public ContainerData getDataAccess() {
         return data;
+    }
+
+    @Override
+    public void appendJadeData(CompoundTag tag) {
+        tag.putBoolean("tsActive", litTime > 0);
+        if (maxProgress > 0 && progress > 0) {
+            tag.putInt("tsWeave", Math.min(100, progress * 100 / maxProgress));
+        }
     }
 
     @Override

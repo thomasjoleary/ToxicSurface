@@ -5,6 +5,7 @@ package io.github.thomasjoleary.toxicsurface.compat.create;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.content.kinetics.base.GeneratingKineticBlockEntity;
 import io.github.thomasjoleary.toxicsurface.block.ExhaustScrubber;
+import io.github.thomasjoleary.toxicsurface.compat.jade.JadeReadout;
 import io.github.thomasjoleary.toxicsurface.core.generator.GeneratorFuel;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlocks;
 import io.github.thomasjoleary.toxicsurface.registry.ModItems;
@@ -30,7 +31,7 @@ import net.neoforged.neoforge.items.ItemStackHandler;
  * dimension via {@link GeneratorEmissions} — free power from burning waste poisons the air and
  * hastens the apocalypse. Extends Create's kinetic API, so it is only ever loaded with Create.
  */
-public class WasteGeneratorBlockEntity extends GeneratingKineticBlockEntity {
+public class WasteGeneratorBlockEntity extends GeneratingKineticBlockEntity implements JadeReadout {
     public static final int SLOT_FUEL = 0;
     public static final int SLOT_FILTER = 1;
     public static final int SLOT_COUNT = 2;
@@ -158,6 +159,20 @@ public class WasteGeneratorBlockEntity extends GeneratingKineticBlockEntity {
         super.invalidate();
         if (level instanceof ServerLevel server) {
             GeneratorEmissions.stop(server, getBlockPos()); // collapse the smog when broken/unloaded
+        }
+    }
+
+    @Override
+    public void appendJadeData(CompoundTag tag) {
+        boolean run = running();
+        tag.putBoolean("tsRunning", run);
+        if (run) {
+            tag.putInt("tsRpm", litRpm);
+            tag.putInt("tsScrub", ExhaustScrubber.isFilter(items.getStackInSlot(SLOT_FILTER)) ? 1 : 0);
+        }
+        int fuel = items.getStackInSlot(SLOT_FUEL).getCount();
+        if (fuel > 0) {
+            tag.putInt("tsFuel", fuel);
         }
     }
 

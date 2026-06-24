@@ -80,6 +80,12 @@ repositories {
         name = "TerraformersMC (EMI)"
         url = "https://maven.terraformersmc.com/releases"
     }
+    // Jade (Phase 8) — in-world tooltip API, via the Modrinth maven.
+    maven {
+        name = "Modrinth (Jade)"
+        url = "https://api.modrinth.com/maven"
+        content { includeGroup "maven.modrinth" }
+    }
 }
 
 // Whether to put Create (and the runtime mods it needs to load) on the dev/
@@ -109,6 +115,11 @@ dependencies {
     // Optional soft-dependency on EMI (DESIGN.md §5 Phase 8). The `:api` classifier is the
     // compile-only API; the @EmiEntrypoint plugin is loaded by EMI only when EMI is present.
     compileOnly("dev.emi:emi-neoforge:${emi_version}:api") { transitive = false }
+
+    // Optional soft-dependency on Jade (DESIGN.md §5 Phase 8). The Modrinth jar carries the
+    // snownee.jade.api classes we compile the @WailaPlugin against; compileOnly keeps it off the
+    // standalone runtime/jar, and the plugin only activates when Jade is installed.
+    compileOnly("maven.modrinth:jade:${jade_version}") { transitive = false }
 
     // Optional: load Create at runtime for the "Build with Create" GameTest job.
     // The full (non-slim) jar jarJars everything FML needs to load Create —

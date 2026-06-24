@@ -5,6 +5,7 @@ package io.github.thomasjoleary.toxicsurface.compat.create;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.content.kinetics.base.GeneratingKineticBlockEntity;
 import io.github.thomasjoleary.toxicsurface.block.ExhaustScrubber;
+import io.github.thomasjoleary.toxicsurface.compat.jade.JadeReadout;
 import io.github.thomasjoleary.toxicsurface.core.generator.GeneratorFuel;
 import io.github.thomasjoleary.toxicsurface.registry.ModFluids;
 import io.github.thomasjoleary.toxicsurface.world.GeneratorEmissions;
@@ -31,7 +32,7 @@ import net.neoforged.neoforge.items.ItemStackHandler;
  * pollutes the dimension via {@link GeneratorEmissions} while running. Extends Create's kinetic
  * API, so it is only ever loaded with Create.
  */
-public class SludgeGeneratorBlockEntity extends GeneratingKineticBlockEntity {
+public class SludgeGeneratorBlockEntity extends GeneratingKineticBlockEntity implements JadeReadout {
     public static final int SLOT_FILTER = 0;
 
     /** Tank size: a few buckets of buffer so a pump can keep it topped up. */
@@ -123,6 +124,20 @@ public class SludgeGeneratorBlockEntity extends GeneratingKineticBlockEntity {
         super.invalidate();
         if (level instanceof ServerLevel server) {
             GeneratorEmissions.stop(server, getBlockPos()); // collapse the smog when broken/unloaded
+        }
+    }
+
+    @Override
+    public void appendJadeData(CompoundTag tag) {
+        boolean run = running();
+        tag.putBoolean("tsRunning", run);
+        if (run) {
+            tag.putInt("tsRpm", GeneratorFuel.SLUDGE.rpm());
+            tag.putInt("tsScrub", ExhaustScrubber.isFilter(items.getStackInSlot(SLOT_FILTER)) ? 1 : 0);
+        }
+        int mb = tank.getFluidAmount();
+        if (mb > 0) {
+            tag.putInt("tsSludge", mb);
         }
     }
 
