@@ -1,0 +1,16 @@
+{
+    "sources": [
+        {
+            "type": "minecraft:single",
+            "resource": "toxicsurface:block/sludge_still"
+        },
+        {
+            "type": "minecraft:single",
+            "resource": "toxicsurface:block/sludge_flow"
+        },
+        {
+            "type": "minecraft:single",
+            "resource": "toxicsurface:block/sludge_overlay"
+        }
+    ]
+}
