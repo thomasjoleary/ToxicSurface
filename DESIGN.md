@@ -492,6 +492,11 @@ server-driven and synced. Baked into the architecture, not bolted on.
   `ExhaustScrubber` are all base-mod (only the fan-wash recipe is Create-gated; the predicate is
   unit-tested).
 
+**Phase 8 — Polish & pack integration 🚧 (in progress; branch `claude/phase7-create-integration-ez5bsp`)**
+> Everything below is CI-green (spotlessCheck + compileJava + unit tests). The headless GameTest and
+> the visual/in-game behaviour have **not** been run in this environment — local `runClient` testing
+> is the next step (see §12). Recipe categories, a balance pass, and real-pack compat testing remain.
+
 - **JEI integration + hint tooltips** (Phase 8 start): the generator fuels and the industrial-filter
   clog/clean cycle have **no recipe view**, so the mechanics are surfaced two ways. (1) A client
   `ItemTooltipEvent` handler (`HintTooltips`) attaches gray hint lines — what fuels each generator,
@@ -665,6 +670,28 @@ First-mod identity — **set-once and painful to change later**, locked in Phase
   optional, see §9).
 
 ---
+
+## 12. Local testing & dev runs
+
+Build/run requires **JDK 21** (NeoForge 1.21.1). A newer JDK breaks Gradle itself
+("Unsupported class file major version" during build-script analysis) — point
+`JAVA_HOME` / `org.gradle.java.home` at a JDK 21.
+
+- **CI-equivalent checks** (fast, no GUI): `./gradlew spotlessCheck compileJava test`.
+- **Headless GameTest** (what CI runs): `./gradlew runGameTestServer`
+  (`-PcreateRuntime=true` for the with-Create job).
+- **Play it:** `./gradlew runClient`. Standalone loads the base mod only.
+  - **Create features** (generators, industrial filter, mechanical machines, sludge fan):
+    `./gradlew runClient -PcreateRuntime=true`.
+  - **JEI / EMI / Jade** are `compileOnly`, so they are **not** on the run classpath. To see the
+    info-pages / tooltips, add the full mods temporarily as `additionalRuntimeClasspath(...)` in
+    `build.gradle` (JEI `mezz.jei:jei-1.21.1-neoforge:${jei_version}`, EMI
+    `dev.emi:emi-neoforge:${emi_version}`, Jade `maven.modrinth:jade:${jade_version}`). JEI and EMI
+    conflict — run one at a time; Jade coexists with either.
+- **Fast-forward toxicity:** edit `run/config/toxicsurface-server.toml` →
+  `timeToToxicTicks = 2000` (watch the telegraph countdown, then activation) and reload the world.
+- **Soft-dep mavens** (now allowlisted): blamejared (JEI), terraformersmc (EMI), Modrinth (Jade,
+  redirects to `cdn.modrinth.com`), createmod/tterrag (Create).
 
 ## Decision log
 - Target: **1.21.1 / NeoForge**.
