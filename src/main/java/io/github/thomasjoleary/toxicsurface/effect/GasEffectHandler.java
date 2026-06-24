@@ -5,8 +5,6 @@ package io.github.thomasjoleary.toxicsurface.effect;
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig.MaskTickMode;
-import io.github.thomasjoleary.toxicsurface.core.enclosure.EnclosureScanner;
-import io.github.thomasjoleary.toxicsurface.core.enclosure.LevelPassabilityProbe;
 import io.github.thomasjoleary.toxicsurface.core.equipment.MaskFilter;
 import io.github.thomasjoleary.toxicsurface.core.gas.AirBarModel;
 import io.github.thomasjoleary.toxicsurface.core.gas.GasModel;
@@ -100,16 +98,12 @@ public final class GasEffectHandler {
         boolean active = ToxicityTicker.isAffected(level) && ceiling != ToxicityTicker.NOT_TOXIC;
         boolean ambient = active && y <= ceiling;
 
-        // Only pay for the flood-fill when there's actually something toxic to be sealed from.
+        // Only pay for the flood-fill when there's actually something toxic to be sealed from;
+        // the per-dimension cache reuses a pocket's result across players/ticks (DESIGN.md §2a, §8).
         boolean sealed = false;
         if (ambient || inSmog) {
-            sealed = EnclosureScanner.scan(
-                            x,
-                            y,
-                            z,
-                            new LevelPassabilityProbe(level),
-                            ToxicSurfaceConfig.ENCLOSURE_FLOOD_FILL_BUDGET.get())
-                    .isSealed();
+            sealed = EnclosureCacheHandler.isSealed(
+                    level, x, y, z, ToxicSurfaceConfig.ENCLOSURE_FLOOD_FILL_BUDGET.get());
         }
         boolean inCleanser = CleanserBubbles.isInside(level, x, y, z);
         return GasModel.isToxicGas(active, y, ceiling, sealed, inCleanser, inSmog);

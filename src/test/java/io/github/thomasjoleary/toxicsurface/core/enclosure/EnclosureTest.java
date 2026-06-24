@@ -129,6 +129,31 @@ class EnclosureTest {
         assertEquals(0, cache.pocketCount());
     }
 
+    /** A one-cell sealed pocket at a distinct coordinate, for cache-capacity tests. */
+    private static ScanResult singleCellPocket(int x, int y, int z) {
+        Set<Long> cells = new HashSet<>();
+        cells.add(CellKey.pack(x, y, z));
+        return ScanResult.sealed(cells, x, y, z, x, y, z);
+    }
+
+    @Test
+    void cache_evictsLeastRecentlyUsedBeyondCapacity() {
+        EnclosureCache cache = new EnclosureCache(2);
+        ScanResult a = singleCellPocket(0, 0, 0);
+        ScanResult b = singleCellPocket(10, 0, 0);
+        ScanResult c = singleCellPocket(20, 0, 0);
+
+        cache.putSealed(a);
+        cache.putSealed(b);
+        cache.get(0, 0, 0); // touch A so B becomes the least-recently used
+        cache.putSealed(c); // over capacity -> evict the LRU (B)
+
+        assertEquals(2, cache.pocketCount());
+        assertNotNull(cache.get(0, 0, 0)); // A retained (recently used)
+        assertNotNull(cache.get(20, 0, 0)); // C retained (just added)
+        assertNull(cache.get(10, 0, 0)); // B evicted
+    }
+
     @Test
     void cache_unrelatedChangeKeepsPocket() {
         GridProbe probe = new GridProbe();

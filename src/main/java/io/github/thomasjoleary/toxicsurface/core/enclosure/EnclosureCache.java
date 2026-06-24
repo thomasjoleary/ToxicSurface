@@ -16,17 +16,38 @@ import java.util.Map;
  * <p>Only {@code SEALED} results are cached — they are bounded and well-defined.
  * Exposed results are cheap to leave uncached and are recomputed on a throttle. When
  * a block changes, {@link #invalidate} drops every pocket whose bounding box the
- * change touches, since that change may have breached a seal.
+ * change touches, since that change may have breached a seal. The cache is bounded to
+ * {@code capacity} pockets and evicts the least-recently-used pocket past that (a hit
+ * via {@link #get} marks a pocket most-recently used), per the §8 budget.
  *
  * <p>Not thread-safe; intended to be used from the server thread.
  */
 public final class EnclosureCache {
+    /** Default pocket budget per dimension (DESIGN.md §8). */
+    public static final int DEFAULT_CAPACITY = 256;
+
+    private final int capacity;
     private final Map<Long, ScanResult> byCell = new HashMap<>();
+    /** Sealed pockets ordered least- to most-recently used (front = next to evict). */
     private final List<ScanResult> sealedPockets = new ArrayList<>();
+
+    public EnclosureCache() {
+        this(DEFAULT_CAPACITY);
+    }
+
+    public EnclosureCache(int capacity) {
+        this.capacity = Math.max(1, capacity);
+    }
 
     /** Cached result for the pocket containing this cell, or {@code null} on a miss. */
     public ScanResult get(int x, int y, int z) {
-        return byCell.get(CellKey.pack(x, y, z));
+        ScanResult result = byCell.get(CellKey.pack(x, y, z));
+        if (result != null) {
+            // LRU: a hit makes this pocket the most-recently used (move to the back).
+            sealedPockets.remove(result);
+            sealedPockets.add(result);
+        }
+        return result;
     }
 
     /** Stores a sealed result, indexing every cell of its pocket. No-op for exposed results. */
@@ -38,6 +59,18 @@ public final class EnclosureCache {
             byCell.put(cell, result);
         }
         sealedPockets.add(result);
+        while (sealedPockets.size() > capacity) {
+            evict(sealedPockets.remove(0)); // drop the least-recently used
+        }
+    }
+
+    private void evict(ScanResult pocket) {
+        for (long cell : pocket.cells()) {
+            // Only clear the mapping if it still points at the evicted pocket.
+            if (byCell.get(cell) == pocket) {
+                byCell.remove(cell);
+            }
+        }
     }
 
     /** Drops every cached pocket whose bounding box (grown by one) contains the changed block. */

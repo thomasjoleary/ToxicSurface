@@ -520,11 +520,17 @@ server-driven and synced. Baked into the architecture, not bolted on.
   the hotbar. `GasStatePayload` now also syncs the air bar as a 0..1 fraction; `AirBarOverlay`
   renders it from `ClientGasState` using the vanilla air sprites with a green tint, hidden when full
   (mirroring vanilla air) and nudged up when the vanilla air row is also showing (a sludge dive).
+- **Enclosure-cache wiring** (Phase 2 carry-over, now done): the unit-tested `EnclosureCache` is now
+  live. `EnclosureCacheHandler` holds one cache per dimension, so the sealing flood-fill runs once
+  per air pocket instead of once per exposed player every cycle; `GasEffectHandler` queries it
+  instead of scanning directly. The cache is LRU-bounded to 256 pockets/dimension (§8) and
+  invalidated on the block-change events that make or break a seal (break, place, multi-place,
+  fluid-formed blocks, explosions); caches clear on level unload. Block changes from pistons or
+  `/setblock`-style commands aren't event-covered — a known, rare staleness gap.
 
 **Carried-forward polish / TODO** (tracked in-code):
 custom "toxic" `DamageType`; HUD flash + dedicated cough sound; cleanser
-purge-bubble particles/visual; enclosure-cache wiring + block-change
-invalidation in the live effect; pre-toxicity telegraph + retroactive advancement;
+purge-bubble particles/visual; pre-toxicity telegraph + retroactive advancement;
 toxic-rain client overlay; accessibility sliders; JEI **recipe categories** for the
 Weaver/Cleanser/generators + an **EMI** plugin (JEI info-pages + hint tooltips are
 in); **item/block textures + models**.
