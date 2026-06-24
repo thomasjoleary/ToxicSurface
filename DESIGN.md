@@ -51,7 +51,10 @@ Real sludge fluid, so we convert actual blocks — but never billions at once.
   (N blocks/tick globally) converts the appropriate water band into sludge and
   updates the marker. A chunk is only re-queued when escalation has **deepened**
   the band beyond what's already applied — so each pass only does incremental work
-  and no block is converted twice.
+  and no block is converted twice. **Chunks already loaded** when the band first
+  appears (activation) or deepens fire no fresh load event, so they are **swept into
+  the queue** the moment the current depth rises — otherwise an ocean you're standing
+  next to at activation would never get its skin.
 - Cleansers run the reverse pass within radius.
 
 #### Open water / oceans — **surface-anchored, escalation-deepening band**

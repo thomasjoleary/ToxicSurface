@@ -12,7 +12,9 @@ import io.github.thomasjoleary.toxicsurface.registry.ModAttachments;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlocks;
 import java.util.ArrayDeque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -25,13 +27,20 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.ChunkEvent;
+import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
 /**
  * Lazy, budgeted water→sludge conversion (DESIGN.md §2b, §3, §8). Toxified chunks are
- * queued on load and drained at a fixed blocks-per-tick budget; each chunk converts
- * the surface-anchored band given by {@link SludgeConversion}, recording the applied
- * depth so escalation only ever does incremental work and no block is converted twice.
+ * queued and drained at a fixed blocks-per-tick budget; each chunk converts the
+ * surface-anchored band given by {@link SludgeConversion}, recording the applied depth so
+ * escalation only ever does incremental work and no block is converted twice.
+ *
+ * <p>Chunks reach the queue two ways: on {@link ChunkEvent.Load} (newly loaded toxified chunks),
+ * and via a sweep of already-loaded chunks the moment the band first appears (activation) or
+ * deepens (escalation) — those chunks fire no fresh load event, so without the sweep an ocean you
+ * are standing next to at activation would never get its sludge skin. A dedup set keeps the queue
+ * from accumulating duplicates between the two paths.
  */
 @EventBusSubscriber(modid = ToxicSurface.MODID)
 public final class SludgeConversionManager {
@@ -39,7 +48,14 @@ public final class SludgeConversionManager {
     private static final int FULL_MODE_DEPTH = 512;
 
     private static final Map<ResourceKey<Level>, ArrayDeque<Long>> QUEUES = new HashMap<>();
+    /** Mirror of {@link #QUEUES} for O(1) dedup so the load + sweep paths don't double-enqueue. */
+    private static final Map<ResourceKey<Level>, Set<Long>> QUEUED = new HashMap<>();
+    /** Currently-loaded chunks per dimension, so the sweep can reach them without a load event. */
+    private static final Map<ResourceKey<Level>, Set<Long>> LOADED = new HashMap<>();
+
     private static final Map<ResourceKey<Level>, Task> CURRENT = new HashMap<>();
+    /** Last band depth a sweep ran for, per dimension; a rise re-sweeps loaded chunks. */
+    private static final Map<ResourceKey<Level>, Integer> LAST_DEPTH = new HashMap<>();
 
     private SludgeConversionManager() {}
 
@@ -64,14 +80,39 @@ public final class SludgeConversionManager {
                 || !ToxicityTicker.isAffected(level)) {
             return;
         }
+        ResourceKey<Level> dim = level.dimension();
+        long chunkPos = chunk.getPos().toLong();
+        LOADED.computeIfAbsent(dim, k -> new HashSet<>()).add(chunkPos);
+
         int ceiling = ToxicityTicker.currentToxicY(level);
         if (ceiling == ToxicityTicker.NOT_TOXIC) {
             return;
         }
         int applied = chunk.getData(ModAttachments.APPLIED_SLUDGE_DEPTH.get());
         if (currentDepth(ceiling) > applied) {
-            QUEUES.computeIfAbsent(level.dimension(), k -> new ArrayDeque<>())
-                    .add(chunk.getPos().toLong());
+            enqueue(dim, chunkPos);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onChunkUnload(ChunkEvent.Unload event) {
+        if (event.getLevel() instanceof ServerLevel level && event.getChunk() instanceof LevelChunk chunk) {
+            Set<Long> loaded = LOADED.get(level.dimension());
+            if (loaded != null) {
+                loaded.remove(chunk.getPos().toLong());
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onLevelUnload(LevelEvent.Unload event) {
+        if (event.getLevel() instanceof ServerLevel level) {
+            ResourceKey<Level> dim = level.dimension();
+            QUEUES.remove(dim);
+            QUEUED.remove(dim);
+            LOADED.remove(dim);
+            CURRENT.remove(dim);
+            LAST_DEPTH.remove(dim);
         }
     }
 
@@ -89,16 +130,24 @@ public final class SludgeConversionManager {
         }
         ResourceKey<Level> dim = level.dimension();
         int depthNow = currentDepth(ceiling);
+
+        // The band just appeared (activation) or deepened (escalation): already-loaded chunks fired
+        // no fresh load event, so sweep them into the queue now (DESIGN.md §2b).
+        Integer lastDepth = LAST_DEPTH.get(dim);
+        if (lastDepth == null || depthNow > lastDepth) {
+            sweepLoadedChunks(level, dim, depthNow);
+            LAST_DEPTH.put(dim, depthNow);
+        }
+
         int budget = ToxicSurfaceConfig.WATER_CONVERSION_BLOCKS_PER_TICK.get();
 
         while (budget > 0) {
             Task task = CURRENT.get(dim);
             if (task == null) {
-                ArrayDeque<Long> queue = QUEUES.get(dim);
-                if (queue == null || queue.isEmpty()) {
+                Long pos = pollQueue(dim);
+                if (pos == null) {
                     return;
                 }
-                long pos = queue.poll();
                 ChunkPos cp = new ChunkPos(pos);
                 if (!level.hasChunk(cp.x, cp.z)) {
                     continue; // unloaded before we got to it
@@ -121,6 +170,43 @@ public final class SludgeConversionManager {
                 CURRENT.remove(dim);
             }
         }
+    }
+
+    /** Enqueues every loaded chunk in the dimension that hasn't reached the current band depth. */
+    private static void sweepLoadedChunks(ServerLevel level, ResourceKey<Level> dim, int depthNow) {
+        Set<Long> loaded = LOADED.get(dim);
+        if (loaded == null) {
+            return;
+        }
+        for (long pos : loaded) {
+            ChunkPos cp = new ChunkPos(pos);
+            if (!level.hasChunk(cp.x, cp.z)) {
+                continue;
+            }
+            int applied = level.getChunk(cp.x, cp.z).getData(ModAttachments.APPLIED_SLUDGE_DEPTH.get());
+            if (depthNow > applied) {
+                enqueue(dim, pos);
+            }
+        }
+    }
+
+    private static void enqueue(ResourceKey<Level> dim, long chunkPos) {
+        if (QUEUED.computeIfAbsent(dim, k -> new HashSet<>()).add(chunkPos)) {
+            QUEUES.computeIfAbsent(dim, k -> new ArrayDeque<>()).add(chunkPos);
+        }
+    }
+
+    private static Long pollQueue(ResourceKey<Level> dim) {
+        ArrayDeque<Long> queue = QUEUES.get(dim);
+        if (queue == null || queue.isEmpty()) {
+            return null;
+        }
+        long pos = queue.poll();
+        Set<Long> queued = QUEUED.get(dim);
+        if (queued != null) {
+            queued.remove(pos);
+        }
+        return pos;
     }
 
     private static int convertColumns(ServerLevel level, Task task, int ceiling, int budget) {
