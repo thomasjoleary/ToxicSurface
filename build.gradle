@@ -70,6 +70,11 @@ repositories {
         name = "Modmaven (transitive mirror)"
         url = "https://modmaven.dev"
     }
+    // JEI (Phase 8) — the API we compile the @JeiPlugin against.
+    maven {
+        name = "BlameJared (JEI)"
+        url = "https://maven.blamejared.com"
+    }
 }
 
 // Whether to put Create (and the runtime mods it needs to load) on the dev/
@@ -88,6 +93,13 @@ dependencies {
     // supertype); without it javac can't resolve the KineticBlockEntity hierarchy.
     compileOnly("com.simibubi.create:create-1.21.1:${create_version}:slim") { transitive = false }
     compileOnly("net.createmod.ponder:ponder-neoforge:${ponder_version}") { transitive = false }
+
+    // Optional soft-dependency on JEI (DESIGN.md §5 Phase 8). Only the (platform-agnostic)
+    // common API is needed to compile the @JeiPlugin — it carries IModPlugin /
+    // IRecipeRegistration; the neoforge-api artifact only adds NeoForge fluid types we don't
+    // use. JEI loads the plugin solely when JEI is present, so it stays off the standalone
+    // runtime/jar — same contract as Create above.
+    compileOnly("mezz.jei:jei-1.21.1-common-api:${jei_version}") { transitive = false }
 
     // Optional: load Create at runtime for the "Build with Create" GameTest job.
     // The full (non-slim) jar jarJars everything FML needs to load Create —

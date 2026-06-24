@@ -33,3 +33,12 @@ type = "optional"
 versionRange = "[6.0.0,)"
 ordering = "AFTER"
 side = "BOTH"
+
+# JEI (Phase 8): ingredient-info pages for the no-recipe mechanics. Client-only and
+# purely additive — the @JeiPlugin loads only when JEI is present.
+[[dependencies.${mod_id}]]
+modId = "jei"
+type = "optional"
+versionRange = "[19.0.0,)"
+ordering = "AFTER"
+side = "CLIENT"

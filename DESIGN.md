@@ -492,20 +492,25 @@ server-driven and synced. Baked into the architecture, not bolted on.
   `ExhaustScrubber` are all base-mod (only the fan-wash recipe is Create-gated; the predicate is
   unit-tested).
 
-- **JEI/EMI hint tooltips** (towards Phase 8): the generator fuels and the industrial-filter
-  clog/clean cycle have **no recipe view**, so a client `ItemTooltipEvent` handler (`HintTooltips`)
-  attaches gray hint lines — what fuels each generator, that a filter clogs from use and is
-  generators-only, and the wash→dry cleaning path. JEI and EMI both render the item tooltip, so the
-  hints show in their ingredient panel as well as the inventory. A full `@JeiPlugin` with
-  `addIngredientInfo` info-pages remains the Phase 8 follow-up (it needs the JEI API on the
-  classpath, whose maven was blocked in the build environment).
+- **JEI integration + hint tooltips** (Phase 8 start): the generator fuels and the industrial-filter
+  clog/clean cycle have **no recipe view**, so the mechanics are surfaced two ways. (1) A client
+  `ItemTooltipEvent` handler (`HintTooltips`) attaches gray hint lines — what fuels each generator,
+  that a filter clogs from use and is generators-only, and the wash→dry cleaning path; JEI and EMI
+  both render the item tooltip, so these show in their ingredient panel and the inventory. (2) A
+  real `@JeiPlugin` (`compat.jei.ToxicSurfaceJeiPlugin`) registers JEI **ingredient-info pages** (the
+  "i" tab) with fuller descriptions for the same items. JEI is a **soft dependency on the same
+  contract as Create**: only the JEI common **API** is `compileOnly`, the plugin is loaded by JEI
+  only when present (so it never classloads in the standalone jar), it's declared `optional` /
+  `CLIENT` in the mods.toml, and the Create-gated generator items are resolved by registry id so the
+  plugin never pulls in `compat.create`.
 
 **Carried-forward polish / TODO** (tracked in-code):
 custom "toxic" `DamageType`; HUD flash + dedicated cough sound; air-bar HUD bubble
 row; cleanser purge-bubble particles/visual; enclosure-cache wiring + block-change
 invalidation in the live effect; pre-toxicity telegraph + retroactive advancement;
-toxic-rain client overlay; accessibility sliders; full `@JeiPlugin`/EMI recipe
-categories + info-pages (hint tooltips are in); **item/block textures + models**.
+toxic-rain client overlay; accessibility sliders; JEI **recipe categories** for the
+Weaver/Cleanser/generators + an **EMI** plugin (JEI info-pages + hint tooltips are
+in); **item/block textures + models**.
 
 ---
 
