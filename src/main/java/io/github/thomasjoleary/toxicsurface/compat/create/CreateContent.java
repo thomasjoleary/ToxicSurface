@@ -135,6 +135,8 @@ public final class CreateContent {
                 Capabilities.ItemHandler.BLOCK, WASTE_GENERATOR_BE.get(), (gen, side) -> gen.getItemHandler());
         event.registerBlockEntity(
                 Capabilities.FluidHandler.BLOCK, SLUDGE_GENERATOR_BE.get(), (gen, side) -> gen.getFluidHandler());
+        event.registerBlockEntity(
+                Capabilities.ItemHandler.BLOCK, SLUDGE_GENERATOR_BE.get(), (gen, side) -> gen.getItemHandler());
     }
 
     /** Surfaces the Create machines in the mod's creative tab (only when Create is loaded). */

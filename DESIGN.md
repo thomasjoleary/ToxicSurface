@@ -472,8 +472,15 @@ server-driven and synced. Baked into the architecture, not bolted on.
   the per-dimension `ToxicityState` and reads as extra elapsed time, so heavy waste-burning makes
   the toxic ceiling **rise faster and the world turn toxic sooner**. Both drawbacks are
   config-tunable (`generators.generatorSmogRadius`, `generators.generatorPollutionPerTick`; set
-  either to `0` to disable). Loads-standalone contract held: nothing here is classloaded without
-  Create, and the `GasModel`/`ToxicityState` changes are base-mod and unit-tested.
+  either to `0` to disable). A third, **opt-out** drawback ties exhaust into the filter economy: a
+  generator can run **clean** (no smog, no pollution) only while it burns a clean/carbon filter in
+  its **scrubber slot** — the shared, Create-free `ExhaustScrubber` consumes filters at the mask
+  duration (carbon lasts the carbon-multiplier longer) and ejects each spent one as a plain
+  **used filter** for the existing wash loop. No scrubber filter → it vents raw. The Waste
+  Generator gains a second (filter) inventory slot; the Sludge Generator gains a one-slot filter
+  handler alongside its tank; both are hopper/pipe-automatable (item-type routing keeps insertion
+  unambiguous). Loads-standalone contract held: nothing here is classloaded without Create, and the
+  `GasModel`/`ToxicityState`/`ExhaustScrubber` changes are base-mod (the predicate is unit-tested).
 
 **Carried-forward polish / TODO** (tracked in-code):
 custom "toxic" `DamageType`; HUD flash + dedicated cough sound; air-bar HUD bubble

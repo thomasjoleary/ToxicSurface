@@ -4,6 +4,7 @@ package io.github.thomasjoleary.toxicsurface.compat.create;
 
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.content.kinetics.base.GeneratingKineticBlockEntity;
+import io.github.thomasjoleary.toxicsurface.block.ExhaustScrubber;
 import io.github.thomasjoleary.toxicsurface.core.generator.GeneratorFuel;
 import io.github.thomasjoleary.toxicsurface.registry.ModFluids;
 import io.github.thomasjoleary.toxicsurface.world.GeneratorEmissions;
@@ -11,9 +12,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemStackHandler;
 
 /**
  * The Toxic Sludge Generator (DESIGN.md §7) — a rotation <em>source</em> fuelled by burning toxic
@@ -28,6 +32,8 @@ import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
  * API, so it is only ever loaded with Create.
  */
 public class SludgeGeneratorBlockEntity extends GeneratingKineticBlockEntity {
+    public static final int SLOT_FILTER = 0;
+
     /** Tank size: a few buckets of buffer so a pump can keep it topped up. */
     private static final int TANK_CAPACITY = 8_000;
 
@@ -38,12 +44,31 @@ public class SludgeGeneratorBlockEntity extends GeneratingKineticBlockEntity {
         }
     };
 
+    private final ItemStackHandler items = new ItemStackHandler(1) {
+        @Override
+        protected void onContentsChanged(int slot) {
+            setChanged();
+        }
+
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            return ExhaustScrubber.isFilter(stack); // scrubber filter slot only
+        }
+    };
+
+    /** Clean-burn ticks left on the scrubber filter currently loaded (0 = venting raw). */
+    private int scrubTicks;
+
     public SludgeGeneratorBlockEntity(BlockPos pos, BlockState state) {
         super(CreateContent.SLUDGE_GENERATOR_BE.get(), pos, state);
     }
 
     public IFluidHandler getFluidHandler() {
         return tank;
+    }
+
+    public IItemHandler getItemHandler() {
+        return items;
     }
 
     private boolean running() {
@@ -79,7 +104,13 @@ public class SludgeGeneratorBlockEntity extends GeneratingKineticBlockEntity {
         boolean run = running();
         if (run) {
             tank.drain(GeneratorFuel.SLUDGE_MB_PER_TICK, IFluidHandler.FluidAction.EXECUTE);
-            GeneratorEmissions.emit(server, pos); // smog + pollution: the drawback of burning sludge
+            // A loaded scrubber filter captures the exhaust so it runs clean; otherwise it vents.
+            scrubTicks = ExhaustScrubber.advance(server, pos, items, SLOT_FILTER, scrubTicks);
+            if (scrubTicks > 0) {
+                GeneratorEmissions.stop(server, pos); // scrubbed: no smog, no pollution
+            } else {
+                GeneratorEmissions.emit(server, pos); // raw exhaust: smog + pollution (DESIGN.md §7)
+            }
         } else {
             GeneratorEmissions.stop(server, pos);
         }
@@ -103,6 +134,8 @@ public class SludgeGeneratorBlockEntity extends GeneratingKineticBlockEntity {
     protected void write(CompoundTag tag, HolderLookup.Provider registries, boolean clientPacket) {
         super.write(tag, registries, clientPacket);
         tag.put("Tank", tank.writeToNBT(registries, new CompoundTag()));
+        tag.put("Items", items.serializeNBT(registries));
+        tag.putInt("ScrubTicks", scrubTicks);
     }
 
     @Override
@@ -111,5 +144,9 @@ public class SludgeGeneratorBlockEntity extends GeneratingKineticBlockEntity {
         if (tag.contains("Tank")) {
             tank.readFromNBT(registries, tag.getCompound("Tank"));
         }
+        if (tag.contains("Items")) {
+            items.deserializeNBT(registries, tag.getCompound("Items"));
+        }
+        scrubTicks = tag.getInt("ScrubTicks");
     }
 }

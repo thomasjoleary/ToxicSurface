@@ -4,6 +4,7 @@ package io.github.thomasjoleary.toxicsurface.compat.create;
 
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.content.kinetics.base.GeneratingKineticBlockEntity;
+import io.github.thomasjoleary.toxicsurface.block.ExhaustScrubber;
 import io.github.thomasjoleary.toxicsurface.core.generator.GeneratorFuel;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlocks;
 import io.github.thomasjoleary.toxicsurface.registry.ModItems;
@@ -31,8 +32,10 @@ import net.neoforged.neoforge.items.ItemStackHandler;
  */
 public class WasteGeneratorBlockEntity extends GeneratingKineticBlockEntity {
     public static final int SLOT_FUEL = 0;
+    public static final int SLOT_FILTER = 1;
+    public static final int SLOT_COUNT = 2;
 
-    private final ItemStackHandler items = new ItemStackHandler(1) {
+    private final ItemStackHandler items = new ItemStackHandler(SLOT_COUNT) {
         @Override
         protected void onContentsChanged(int slot) {
             setChanged();
@@ -40,7 +43,12 @@ public class WasteGeneratorBlockEntity extends GeneratingKineticBlockEntity {
 
         @Override
         public boolean isItemValid(int slot, ItemStack stack) {
-            return fuelFor(stack).generates();
+            // Item-type routing keeps hopper/funnel insertion unambiguous (fuel vs scrubber filter).
+            return switch (slot) {
+                case SLOT_FUEL -> fuelFor(stack).generates();
+                case SLOT_FILTER -> ExhaustScrubber.isFilter(stack);
+                default -> false;
+            };
         }
     };
 
@@ -50,6 +58,8 @@ public class WasteGeneratorBlockEntity extends GeneratingKineticBlockEntity {
     private int litRpm;
     /** Stress capacity added by the unit currently combusting. */
     private float litCapacity;
+    /** Clean-burn ticks left on the scrubber filter currently loaded (0 = venting raw). */
+    private int scrubTicks;
 
     public WasteGeneratorBlockEntity(BlockPos pos, BlockState state) {
         super(CreateContent.WASTE_GENERATOR_BE.get(), pos, state);
@@ -102,7 +112,13 @@ public class WasteGeneratorBlockEntity extends GeneratingKineticBlockEntity {
         }
 
         if (running()) {
-            GeneratorEmissions.emit(server, pos); // smog + pollution: the drawback of burning waste
+            // A loaded scrubber filter captures the exhaust so it runs clean; otherwise it vents.
+            scrubTicks = ExhaustScrubber.advance(server, pos, items, SLOT_FILTER, scrubTicks);
+            if (scrubTicks > 0) {
+                GeneratorEmissions.stop(server, pos); // scrubbed: no smog, no pollution
+            } else {
+                GeneratorEmissions.emit(server, pos); // raw exhaust: smog + pollution (DESIGN.md §7)
+            }
         } else {
             GeneratorEmissions.stop(server, pos);
         }
@@ -155,6 +171,7 @@ public class WasteGeneratorBlockEntity extends GeneratingKineticBlockEntity {
         tag.putInt("BurnTicks", burnTicks);
         tag.putInt("LitRpm", litRpm);
         tag.putFloat("LitCapacity", litCapacity);
+        tag.putInt("ScrubTicks", scrubTicks);
     }
 
     @Override
@@ -166,5 +183,6 @@ public class WasteGeneratorBlockEntity extends GeneratingKineticBlockEntity {
         burnTicks = tag.getInt("BurnTicks");
         litRpm = tag.getInt("LitRpm");
         litCapacity = tag.getFloat("LitCapacity");
+        scrubTicks = tag.getInt("ScrubTicks");
     }
 }
