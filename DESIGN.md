@@ -114,7 +114,12 @@ surface** and **deepens over time** — it never sweeps up from the world floor:
 
 ### Toxic gas (virtual region + client fog)
 - An air block is toxic if `time ≥ start` AND `y ≤ currentToxicY` AND not in a
-  sealed pocket AND not inside a cleanser bubble.
+  sealed pocket AND not inside a cleanser bubble **AND the cell holds no liquid**.
+  Gas is airborne, so a cell filled by water or sludge is never toxic gas: swimmers
+  and aquatic plants in **clean water are safe**, and a **sludge** cell is the sludge
+  hazard's domain (contact damage / drowning), not the gas's. Passive-mob death and
+  foliage decay share this rule — foliage in clean water (waterlogged or sitting on
+  water, e.g. lily pads) is spared, while air- or sludge-bound foliage still withers.
 
 #### Toxic air bar (drowning-style mechanic)
 Players exposed to toxic gas use a **toxic air bar** modeled on vanilla

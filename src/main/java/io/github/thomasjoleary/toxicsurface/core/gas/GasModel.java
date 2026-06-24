@@ -17,6 +17,9 @@ public final class GasModel {
      * @param sealed            inside a sealed enclosure (DESIGN.md §2a)
      * @param inCleanserBubble  inside a cleanser's purge radius (DESIGN.md §3 Cleanser)
      * @param inSmog            inside a running toxic generator's smog cloud (DESIGN.md §7)
+     * @param submerged         the cell is filled by a liquid (water or sludge); airborne gas can't
+     *     occupy it, so a swimmer/aquatic plant in clean water is safe and a sludge cell is the
+     *     sludge hazard's domain, not the gas's
      */
     public static boolean isToxicGas(
             boolean toxicityActive,
@@ -24,9 +27,10 @@ public final class GasModel {
             int currentToxicY,
             boolean sealed,
             boolean inCleanserBubble,
-            boolean inSmog) {
-        // Sealing yourself off or running a cleanser still wins, even against generator smog.
-        if (sealed || inCleanserBubble) {
+            boolean inSmog,
+            boolean submerged) {
+        // Sealing yourself off, a cleanser, or simply being underwater all keep gas out of the cell.
+        if (sealed || inCleanserBubble || submerged) {
             return false;
         }
         // Either the ambient apocalypse reaches this cell, or a generator is venting smog into it.

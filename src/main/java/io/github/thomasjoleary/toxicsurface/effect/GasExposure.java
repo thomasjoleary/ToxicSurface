@@ -8,6 +8,7 @@ import io.github.thomasjoleary.toxicsurface.core.enclosure.LevelPassabilityProbe
 import io.github.thomasjoleary.toxicsurface.core.gas.GasModel;
 import io.github.thomasjoleary.toxicsurface.world.SmogClouds;
 import io.github.thomasjoleary.toxicsurface.world.ToxicityTicker;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 
@@ -34,13 +35,17 @@ public final class GasExposure {
             return false; // nothing toxic at this cell — skip the flood-fill entirely
         }
 
-        boolean sealed = EnclosureScanner.scan(
-                        bx,
-                        by,
-                        bz,
-                        new LevelPassabilityProbe(level),
-                        ToxicSurfaceConfig.ENCLOSURE_FLOOD_FILL_BUDGET.get())
-                .isSealed();
-        return GasModel.isToxicGas(active, by, ceiling, sealed, false, inSmog);
+        // Airborne gas can't fill a liquid cell: a swimmer in clean water is safe, and a sludge cell
+        // is the sludge hazard's job. Skips the flood-fill too (DESIGN.md §3 Toxic gas vs sludge).
+        boolean submerged = !level.getFluidState(new BlockPos(bx, by, bz)).isEmpty();
+        boolean sealed = !submerged
+                && EnclosureScanner.scan(
+                                bx,
+                                by,
+                                bz,
+                                new LevelPassabilityProbe(level),
+                                ToxicSurfaceConfig.ENCLOSURE_FLOOD_FILL_BUDGET.get())
+                        .isSealed();
+        return GasModel.isToxicGas(active, by, ceiling, sealed, false, inSmog, submerged);
     }
 }

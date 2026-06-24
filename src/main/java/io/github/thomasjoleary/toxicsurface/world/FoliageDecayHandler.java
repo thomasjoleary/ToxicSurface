@@ -9,6 +9,7 @@ import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -63,9 +64,20 @@ public final class FoliageDecayHandler {
             }
             pos.set(x, y, z);
             BlockState state = level.getBlockState(pos);
-            if (state.is(ModTags.Blocks.FOLIAGE) && level.canSeeSky(pos)) {
+            if (state.is(ModTags.Blocks.FOLIAGE) && level.canSeeSky(pos) && !inCleanWater(level, pos, state)) {
                 level.destroyBlock(pos, false); // withers, no drops
             }
         }
+    }
+
+    /**
+     * Aquatic plants in clean water are spared — the gas is airborne, so only air-exposed (or
+     * sludge-bound) foliage withers. A plant counts as in clean water if it is itself water-filled
+     * (waterlogged/aquatic) or sits directly on a water block (e.g. a lily pad). Sludge is not water,
+     * so foliage in toxic sludge still dies.
+     */
+    private static boolean inCleanWater(ServerLevel level, BlockPos pos, BlockState state) {
+        return state.getFluidState().is(FluidTags.WATER)
+                || level.getFluidState(pos.below()).is(FluidTags.WATER);
     }
 }

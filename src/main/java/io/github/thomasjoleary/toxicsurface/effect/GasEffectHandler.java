@@ -20,6 +20,7 @@ import io.github.thomasjoleary.toxicsurface.world.ToxicityTicker;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
@@ -100,15 +101,18 @@ public final class GasEffectHandler {
         boolean active = ToxicityTicker.isAffected(level) && ceiling != ToxicityTicker.NOT_TOXIC;
         boolean ambient = active && y <= ceiling;
 
+        // Head underwater (clean water or sludge) isn't breathing gas — sludge has its own hazard,
+        // and vanilla drowning covers water (DESIGN.md §3). Skips the flood-fill in that case too.
+        boolean submerged = !level.getFluidState(new BlockPos(x, y, z)).isEmpty();
         // Only pay for the flood-fill when there's actually something toxic to be sealed from;
         // the per-dimension cache reuses a pocket's result across players/ticks (DESIGN.md §2a, §8).
         boolean sealed = false;
-        if (ambient || inSmog) {
+        if (!submerged && (ambient || inSmog)) {
             sealed = EnclosureCacheHandler.isSealed(
                     level, x, y, z, ToxicSurfaceConfig.ENCLOSURE_FLOOD_FILL_BUDGET.get());
         }
         boolean inCleanser = CleanserBubbles.isInside(level, x, y, z);
-        return GasModel.isToxicGas(active, y, ceiling, sealed, inCleanser, inSmog);
+        return GasModel.isToxicGas(active, y, ceiling, sealed, inCleanser, inSmog, submerged);
     }
 
     /**
