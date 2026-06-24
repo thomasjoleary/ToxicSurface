@@ -2,6 +2,7 @@
 
 package io.github.thomasjoleary.toxicsurface.client;
 
+import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceClientConfig;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -29,21 +30,24 @@ public final class ScreenEffectsOverlay {
         int width = mc.getWindow().getGuiScaledWidth();
         int height = mc.getWindow().getGuiScaledHeight();
 
-        if (ToxicSurfaceConfig.TOXIC_RAIN_ENABLED.get()
+        float rainOpacity = (float) (double) ToxicSurfaceClientConfig.TOXIC_RAIN_OPACITY.get();
+        if (rainOpacity > 0f
+                && ToxicSurfaceConfig.TOXIC_RAIN_ENABLED.get()
                 && mc.level != null
                 && mc.level.isRaining()
                 && ClientGasState.isInToxicArea()) {
-            drawToxicRain(graphics, width, height);
+            drawToxicRain(graphics, width, height, rainOpacity);
         }
 
-        float flash = ClientHudEffects.flashAlpha();
+        float flash =
+                ClientHudEffects.flashAlpha() * (float) (double) ToxicSurfaceClientConfig.FILTER_FLASH_INTENSITY.get();
         if (flash > 0f) {
             drawExpiryFlash(graphics, width, height, flash);
         }
     }
 
-    private static void drawToxicRain(GuiGraphics graphics, int width, int height) {
-        graphics.fill(0, 0, width, height, RAIN_WASH);
+    private static void drawToxicRain(GuiGraphics graphics, int width, int height, float opacity) {
+        graphics.fill(0, 0, width, height, scaleAlpha(RAIN_WASH, opacity));
         long now = System.currentTimeMillis();
         int streaks = 48;
         for (int i = 0; i < streaks; i++) {
@@ -52,8 +56,14 @@ public final class ScreenEffectsOverlay {
             int length = 16 + (i * 11) % 18;
             int span = height + length;
             int y = (int) (((now % period) / (float) period) * span + (i * 40L)) % span - length;
-            graphics.fill(x, y, x + 1, y + length, RAIN_STREAK);
+            graphics.fill(x, y, x + 1, y + length, scaleAlpha(RAIN_STREAK, opacity));
         }
+    }
+
+    /** Multiplies an ARGB colour's alpha channel by {@code factor} (clamped). */
+    private static int scaleAlpha(int argb, float factor) {
+        int alpha = (int) (((argb >>> 24) & 0xFF) * Math.max(0f, Math.min(1f, factor))) & 0xFF;
+        return (alpha << 24) | (argb & 0x00FFFFFF);
     }
 
     private static void drawExpiryFlash(GuiGraphics graphics, int width, int height, float alpha) {

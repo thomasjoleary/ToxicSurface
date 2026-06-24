@@ -5,6 +5,7 @@ package io.github.thomasjoleary.toxicsurface;
 import com.mojang.logging.LogUtils;
 import io.github.thomasjoleary.toxicsurface.compat.CreateCompat;
 import io.github.thomasjoleary.toxicsurface.compat.create.CreateContent;
+import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceClientConfig;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
 import io.github.thomasjoleary.toxicsurface.registry.ModArmorMaterials;
 import io.github.thomasjoleary.toxicsurface.registry.ModAttachments;
@@ -56,6 +57,8 @@ public final class ToxicSurface {
 
         // Server config — server-authoritative and synced in multiplayer (DESIGN.md §3, §4).
         modContainer.registerConfig(ModConfig.Type.SERVER, ToxicSurfaceConfig.SPEC);
+        // Client config — per-player accessibility/visual options, never synced (DESIGN.md §3).
+        modContainer.registerConfig(ModConfig.Type.CLIENT, ToxicSurfaceClientConfig.SPEC);
 
         LOGGER.info("ToxicSurface initializing — see DESIGN.md for the full spec");
     }

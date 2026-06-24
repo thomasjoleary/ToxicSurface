@@ -3,6 +3,8 @@
 package io.github.thomasjoleary.toxicsurface.client;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
+import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceClientConfig;
+import net.minecraft.util.Mth;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -14,8 +16,8 @@ import net.neoforged.neoforge.client.event.ViewportEvent;
  * entirely off {@link ClientGasState}, so it matches the server's sealing/exposure
  * decision without a client-side flood-fill.
  *
- * <p>TODO Phase 2 polish: accessibility sliders for haze density / tint (DESIGN.md §3
- * Accessibility).
+ * <p>The {@code fogIntensity} accessibility slider (DESIGN.md §3) scales how far the fog is pulled
+ * in — at {@code 0} the distance narrowing is dropped entirely and only a thin green tint remains.
  */
 @EventBusSubscriber(modid = ToxicSurface.MODID, value = Dist.CLIENT)
 public final class ToxicFogHandler {
@@ -29,8 +31,15 @@ public final class ToxicFogHandler {
         if (!ClientGasState.isInGas()) {
             return;
         }
-        event.setNearPlaneDistance(Math.min(event.getNearPlaneDistance(), FOG_NEAR));
-        event.setFarPlaneDistance(Math.min(event.getFarPlaneDistance(), FOG_FAR));
+        float intensity = (float) (double) ToxicSurfaceClientConfig.FOG_INTENSITY.get();
+        if (intensity <= 0f) {
+            return; // thin-tint-only mode: keep the green color, drop the distance narrowing
+        }
+        // Lerp the pulled-in planes toward the vanilla ones as intensity drops.
+        float near = Mth.lerp(intensity, event.getNearPlaneDistance(), FOG_NEAR);
+        float far = Mth.lerp(intensity, event.getFarPlaneDistance(), FOG_FAR);
+        event.setNearPlaneDistance(Math.min(event.getNearPlaneDistance(), near));
+        event.setFarPlaneDistance(Math.min(event.getFarPlaneDistance(), far));
         event.setCanceled(true); // apply our distances
     }
 
@@ -39,8 +48,10 @@ public final class ToxicFogHandler {
         if (!ClientGasState.isInGas()) {
             return;
         }
-        event.setRed(0.32F);
-        event.setGreen(0.45F);
-        event.setBlue(0.16F);
+        // Always keep at least a thin tint; the slider blends from a hint toward the full toxic color.
+        float t = 0.35f + 0.65f * (float) (double) ToxicSurfaceClientConfig.FOG_INTENSITY.get();
+        event.setRed(Mth.lerp(t, event.getRed(), 0.32F));
+        event.setGreen(Mth.lerp(t, event.getGreen(), 0.45F));
+        event.setBlue(Mth.lerp(t, event.getBlue(), 0.16F));
     }
 }

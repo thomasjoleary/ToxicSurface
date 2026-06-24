@@ -2,6 +2,7 @@
 
 package io.github.thomasjoleary.toxicsurface.client;
 
+import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceClientConfig;
 import io.github.thomasjoleary.toxicsurface.item.FaceMaskItem;
 import io.github.thomasjoleary.toxicsurface.item.HazmatSuit;
 import io.github.thomasjoleary.toxicsurface.registry.ModItems;
@@ -33,7 +34,7 @@ public final class EquipmentHudOverlay {
         ItemStack head = player.getItemBySlot(EquipmentSlot.HEAD);
         ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
 
-        if (head.is(ModItems.HAZMAT_HELMET.get())) {
+        if (head.is(ModItems.HAZMAT_HELMET.get()) && ToxicSurfaceClientConfig.VISOR_OVERLAY_ENABLED.get()) {
             drawVisor(graphics);
         }
         drawFilterGauge(graphics, mc, head, chest);

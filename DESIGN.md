@@ -535,12 +535,20 @@ server-driven and synced. Baked into the architecture, not bolted on.
   `ScreenEffectsOverlay`). (3) **Toxic-rain overlay** — green wash + falling streaks while it rains
   and the player is in toxic open air; `GasStatePayload` gained an `inToxicArea` flag (protection-
   independent) so a masked player still sees it. Gated by `toxicRainEnabled`.
+- **Cleanser purge-bubble visual** (Phase 6 polish, now done): a running Cleanser (both fuel and
+  Mechanical) emits a green clean-air dome — an aura over the machine plus a throttled sampling of
+  its purge-sphere boundary — via `CleanserVisual`, spawned server-side so it broadcasts with no
+  extra networking.
+- **Accessibility sliders** (Phase 8, now done): a per-player **CLIENT** config
+  (`ToxicSurfaceClientConfig`, never synced) — `fogIntensity` (full fog → thin tint), `visorOverlay`
+  toggle, `filterFlashIntensity`, `toxicRainOpacity` — wired into the fog handler, visor overlay, and
+  screen-effects overlay. Editable in-game via a NeoForge `ConfigurationScreen` registered from the
+  Mods list.
 
 **Carried-forward polish / TODO** (tracked in-code):
-cleanser purge-bubble particles/visual; pre-toxicity telegraph + retroactive
-advancement; accessibility sliders; JEI/EMI **recipe categories** for the
-Weaver/Cleanser/generators (pending textures); **item/block textures + models**;
-a real **cough.ogg** to replace the placeholder sound.
+pre-toxicity telegraph + retroactive advancement; JEI/EMI **recipe categories**
+for the Weaver/Cleanser/generators (pending textures); **item/block textures +
+models**; a real **cough.ogg** to replace the placeholder sound.
 
 ---
 

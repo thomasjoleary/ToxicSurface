@@ -7,9 +7,13 @@ import io.github.thomasjoleary.toxicsurface.registry.ModMenus;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.client.gui.ConfigurationScreen;
+import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 
 /** Client mod-bus setup (DESIGN.md §3, §4). */
 @EventBusSubscriber(modid = ToxicSurface.MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
@@ -26,6 +30,16 @@ public final class ClientModBusEvents {
         event.registerAboveAll(
                 ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "screen_effects"),
                 ScreenEffectsOverlay::render);
+    }
+
+    @SubscribeEvent
+    public static void onClientSetup(FMLClientSetupEvent event) {
+        // Make the client accessibility options editable from the Mods list (DESIGN.md §3).
+        ModList.get()
+                .getModContainerById(ToxicSurface.MODID)
+                .ifPresent(container -> container.registerExtensionPoint(
+                        IConfigScreenFactory.class,
+                        (modContainer, parent) -> new ConfigurationScreen(modContainer, parent)));
     }
 
     @SubscribeEvent
