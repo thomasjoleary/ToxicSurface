@@ -1,6 +1,9 @@
 {
     "itemGroup.toxicsurface": "ToxicSurface",
     "death.attack.toxicsurface.toxic": "%1$s succumbed to the toxic air",
+    "telegraph.toxicsurface.title": "The Air Grows Heavy",
+    "telegraph.toxicsurface.subtitle": "Surface toxic in %s",
+    "telegraph.toxicsurface.chat": "⚠ The surface will turn toxic in %s — seal up while you can.",
     "subtitles.toxicsurface.cough": "Coughing",
     "item.toxicsurface.clean_air_filter": "Clean Air Filter",
     "item.toxicsurface.carbon_air_filter": "Carbon Air Filter",

@@ -18,6 +18,8 @@ public final class ToxicSurfaceConfig {
     public static final ModConfigSpec.IntValue TOXIC_START_Y;
     public static final ModConfigSpec.IntValue ESCALATION_SPEED_PER_DAY;
     public static final ModConfigSpec.IntValue ESCALATION_MAX_Y;
+    public static final ModConfigSpec.BooleanValue TELEGRAPH_ENABLED;
+    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> TELEGRAPH_WARNING_TICKS;
 
     // --- Toxic air bar ---
     public static final ModConfigSpec.IntValue AIR_BAR_DRAIN_TICKS;
@@ -84,6 +86,16 @@ public final class ToxicSurfaceConfig {
                 .defineInRange("escalationSpeedPerDay", 4, 0, 320);
         ESCALATION_MAX_Y = b.comment("Maximum Y the toxic ceiling can rise to (may be set to world height).")
                 .defineInRange("escalationMaxY", 200, -64, 320);
+        TELEGRAPH_ENABLED = b.comment("Broadcast escalating warnings before the surface turns toxic.")
+                .define("telegraphEnabled", true);
+        TELEGRAPH_WARNING_TICKS = b.comment(
+                        "Ticks-before-activation at which to fire a warning, each once as the clock crosses it"
+                                + " (72000=3 days, 24000=1 day, 1000=1 hour, 167~=10 minutes).")
+                .defineList(
+                        "telegraphWarningTicks",
+                        List.of(72_000, 24_000, 1_000, 167),
+                        () -> 1_000,
+                        o -> o instanceof Integer i && i > 0);
         b.pop();
 
         b.push("air_bar");

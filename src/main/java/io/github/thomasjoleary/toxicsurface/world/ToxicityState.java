@@ -18,11 +18,15 @@ public final class ToxicityState extends SavedData {
     private static final String NAME = "toxicsurface_toxicity";
     private static final String KEY_START_TICK = "startTick";
     private static final String KEY_POLLUTION = "pollutionTicks";
+    private static final String KEY_TELEGRAPH_STAGE = "telegraphStage";
 
     private long startTick = NOT_STARTED;
 
     /** Accumulated generator pollution; added to elapsed time so escalation runs faster (§7). */
     private long pollutionTicks = 0L;
+
+    /** How many pre-toxicity telegraph thresholds have already fired (DESIGN.md §3). */
+    private int telegraphStage = 0;
 
     public static ToxicityState get(ServerLevel level) {
         return level.getDataStorage()
@@ -33,6 +37,7 @@ public final class ToxicityState extends SavedData {
         ToxicityState state = new ToxicityState();
         state.startTick = tag.contains(KEY_START_TICK) ? tag.getLong(KEY_START_TICK) : NOT_STARTED;
         state.pollutionTicks = tag.getLong(KEY_POLLUTION); // absent → 0
+        state.telegraphStage = tag.getInt(KEY_TELEGRAPH_STAGE); // absent → 0
         return state;
     }
 
@@ -40,7 +45,20 @@ public final class ToxicityState extends SavedData {
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         tag.putLong(KEY_START_TICK, startTick);
         tag.putLong(KEY_POLLUTION, pollutionTicks);
+        tag.putInt(KEY_TELEGRAPH_STAGE, telegraphStage);
         return tag;
+    }
+
+    public int telegraphStage() {
+        return telegraphStage;
+    }
+
+    /** Records that telegraph warnings up to {@code stage} have fired. */
+    public void setTelegraphStage(int stage) {
+        if (stage != telegraphStage) {
+            this.telegraphStage = stage;
+            setDirty();
+        }
     }
 
     public boolean hasStarted() {

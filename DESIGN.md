@@ -544,11 +544,19 @@ server-driven and synced. Baked into the architecture, not bolted on.
   toggle, `filterFlashIntensity`, `toxicRainOpacity` — wired into the fog handler, visor overlay, and
   screen-effects overlay. Editable in-game via a NeoForge `ConfigurationScreen` registered from the
   Mods list.
+- **Pre-toxicity telegraph + retroactive advancement** (Phase 3 carry-over, now done): before
+  activation, `ToxicityTicker` fires an escalating title + subtitle + chat warning
+  (`ToxicityTelegraph`) the first tick the countdown crosses each configured threshold
+  (`telegraphWarningTicks`, default 3 days / 1 day / 1 hour / 10 min; `telegraphEnabled` toggle).
+  The crossed-stage count is persisted on `ToxicityState`, so it survives restarts and collapses any
+  multi-threshold jump (e.g. a pollution spike) into one announcement with the true remaining time.
+  The "The Air Has Turned" advancement is now also granted **retroactively** — players who log in or
+  change into an already-toxic affected dimension receive it (the award is idempotent).
 
 **Carried-forward polish / TODO** (tracked in-code):
-pre-toxicity telegraph + retroactive advancement; JEI/EMI **recipe categories**
-for the Weaver/Cleanser/generators (pending textures); **item/block textures +
-models**; a real **cough.ogg** to replace the placeholder sound.
+JEI/EMI **recipe categories** for the Weaver/Cleanser/generators (pending
+textures); **item/block textures + models**; a real **cough.ogg** to replace the
+placeholder sound.
 
 ---
 

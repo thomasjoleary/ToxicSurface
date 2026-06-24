@@ -5,12 +5,15 @@ package io.github.thomasjoleary.toxicsurface.world;
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
 import io.github.thomasjoleary.toxicsurface.core.toxicity.ToxicityModel;
+import java.util.Comparator;
+import java.util.List;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
 /**
@@ -34,26 +37,81 @@ public final class ToxicityTicker {
             return;
         }
         ToxicityState state = ToxicityState.get(level);
+        if (state.hasStarted()) {
+            return;
+        }
         // Generator pollution counts toward the clock, so heavy waste-burning can bring the
         // world's first turn toxic forward (DESIGN.md §7 "worsens the apocalypse").
-        if (!state.hasStarted()
-                && level.getGameTime() + state.pollutionTicks() >= ToxicSurfaceConfig.TIME_TO_TOXIC_TICKS.get()) {
+        long remaining = ToxicSurfaceConfig.TIME_TO_TOXIC_TICKS.get() - (level.getGameTime() + state.pollutionTicks());
+        if (remaining <= 0) {
             state.startNow(level.getGameTime());
             ToxicSurface.LOGGER.info(
                     "The air has turned toxic in {}", level.dimension().location());
             awardActivationAdvancement(level);
-            // TODO Phase 3 polish: pre-toxicity telegraph (countdown titles) and grant the
-            // advancement to players who join after activation.
+        } else {
+            maybeTelegraph(level, state, remaining);
+        }
+    }
+
+    /** Fires a telegraph warning the first tick the countdown crosses each configured threshold. */
+    private static void maybeTelegraph(ServerLevel level, ToxicityState state, long remaining) {
+        if (!ToxicSurfaceConfig.TELEGRAPH_ENABLED.get()) {
+            return;
+        }
+        List<Integer> thresholds = ToxicSurfaceConfig.TELEGRAPH_WARNING_TICKS.get().stream()
+                .map(Integer::intValue)
+                .sorted(Comparator.reverseOrder())
+                .toList();
+        int crossed = 0;
+        for (int threshold : thresholds) {
+            if (remaining <= threshold) {
+                crossed++;
+            }
+        }
+        if (crossed > state.telegraphStage()) {
+            // Announce once with the true remaining time (collapses any multi-threshold jump).
+            ToxicityTelegraph.warn(level, (int) Math.min(Integer.MAX_VALUE, remaining));
+            state.setTelegraphStage(crossed);
         }
     }
 
     private static void awardActivationAdvancement(ServerLevel level) {
-        AdvancementHolder advancement = level.getServer().getAdvancements().get(AIR_HAS_TURNED);
-        if (advancement == null) {
+        for (ServerPlayer player : level.players()) {
+            awardTo(player);
+        }
+    }
+
+    /** Grants the activation advancement to a single player; a no-op if already earned. */
+    private static void awardTo(ServerPlayer player) {
+        if (player.getServer() == null) {
             return;
         }
-        for (ServerPlayer player : level.players()) {
+        AdvancementHolder advancement = player.getServer().getAdvancements().get(AIR_HAS_TURNED);
+        if (advancement != null) {
             player.getAdvancements().award(advancement, "activated");
+        }
+    }
+
+    /** Retroactively grants the advancement to a player who joins/enters an already-toxic dimension. */
+    private static void grantIfToxic(ServerPlayer player) {
+        if (player.level() instanceof ServerLevel level
+                && isAffected(level)
+                && ToxicityState.get(level).hasStarted()) {
+            awardTo(player);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            grantIfToxic(player);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            grantIfToxic(player);
         }
     }
 
