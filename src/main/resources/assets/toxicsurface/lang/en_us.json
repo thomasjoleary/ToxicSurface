@@ -17,6 +17,8 @@
     "block.toxicsurface.cleanser": "Cleanser",
     "block.toxicsurface.mechanical_weaver": "Mechanical Weaver",
     "block.toxicsurface.mechanical_cleanser": "Mechanical Cleanser",
+    "block.toxicsurface.waste_generator": "Toxic Waste Generator",
+    "block.toxicsurface.sludge_generator": "Toxic Sludge Generator",
     "block.toxicsurface.toxic_waste_block": "Toxic Waste Block",
     "fluid_type.toxicsurface.sludge": "Toxic Sludge",
     "advancement.toxicsurface.the_air_has_turned.title": "The Air Has Turned",

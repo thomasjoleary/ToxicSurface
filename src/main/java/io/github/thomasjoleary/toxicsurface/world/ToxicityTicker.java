@@ -34,7 +34,10 @@ public final class ToxicityTicker {
             return;
         }
         ToxicityState state = ToxicityState.get(level);
-        if (!state.hasStarted() && level.getGameTime() >= ToxicSurfaceConfig.TIME_TO_TOXIC_TICKS.get()) {
+        // Generator pollution counts toward the clock, so heavy waste-burning can bring the
+        // world's first turn toxic forward (DESIGN.md §7 "worsens the apocalypse").
+        if (!state.hasStarted()
+                && level.getGameTime() + state.pollutionTicks() >= ToxicSurfaceConfig.TIME_TO_TOXIC_TICKS.get()) {
             state.startNow(level.getGameTime());
             ToxicSurface.LOGGER.info(
                     "The air has turned toxic in {}", level.dimension().location());
@@ -66,7 +69,8 @@ public final class ToxicityTicker {
         if (!state.hasStarted()) {
             return NOT_TOXIC;
         }
-        long elapsed = level.getGameTime() - state.startTick();
+        // Pollution accelerates the rising ceiling: it reads as extra elapsed time (DESIGN.md §7).
+        long elapsed = level.getGameTime() - state.startTick() + state.pollutionTicks();
         return ToxicityModel.currentToxicY(
                 elapsed,
                 ToxicSurfaceConfig.TOXIC_START_Y.get(),

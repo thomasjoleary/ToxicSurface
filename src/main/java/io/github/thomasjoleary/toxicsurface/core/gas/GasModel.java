@@ -16,9 +16,21 @@ public final class GasModel {
      * @param currentToxicY     current toxic ceiling (DESIGN.md §3 Escalation)
      * @param sealed            inside a sealed enclosure (DESIGN.md §2a)
      * @param inCleanserBubble  inside a cleanser's purge radius (DESIGN.md §3 Cleanser)
+     * @param inSmog            inside a running toxic generator's smog cloud (DESIGN.md §7)
      */
     public static boolean isToxicGas(
-            boolean toxicityActive, int y, int currentToxicY, boolean sealed, boolean inCleanserBubble) {
-        return toxicityActive && y <= currentToxicY && !sealed && !inCleanserBubble;
+            boolean toxicityActive,
+            int y,
+            int currentToxicY,
+            boolean sealed,
+            boolean inCleanserBubble,
+            boolean inSmog) {
+        // Sealing yourself off or running a cleanser still wins, even against generator smog.
+        if (sealed || inCleanserBubble) {
+            return false;
+        }
+        // Either the ambient apocalypse reaches this cell, or a generator is venting smog into it.
+        boolean ambientToxic = toxicityActive && y <= currentToxicY;
+        return ambientToxic || inSmog;
     }
 }

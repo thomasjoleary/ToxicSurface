@@ -3,6 +3,7 @@
 package io.github.thomasjoleary.toxicsurface.effect;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
+import io.github.thomasjoleary.toxicsurface.world.SmogClouds;
 import io.github.thomasjoleary.toxicsurface.world.ToxicityTicker;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Mob;
@@ -30,7 +31,8 @@ public final class PassiveMobDeathHandler {
         if (!(mob.level() instanceof ServerLevel level) || mob.tickCount % THROTTLE_TICKS != 0) {
             return;
         }
-        if (!ToxicityTicker.isAffected(level)) {
+        // Affected dimensions can have ambient gas; any dimension can have generator smog.
+        if (!ToxicityTicker.isAffected(level) && !SmogClouds.hasAny(level)) {
             return;
         }
         if (GasExposure.isInToxicGas(level, mob.getX(), mob.getEyeY(), mob.getZ())) {

@@ -67,6 +67,38 @@ public final class CreateContent {
     public static final DeferredItem<BlockItem> MECHANICAL_WEAVER_ITEM =
             ITEMS.register("mechanical_weaver", () -> new BlockItem(MECHANICAL_WEAVER.get(), new Item.Properties()));
 
+    // --- Toxic generators (DESIGN.md §7): Create kinetic sources that burn toxic waste/sludge. ---
+
+    public static final DeferredBlock<WasteGeneratorBlock> WASTE_GENERATOR = BLOCKS.register(
+            "waste_generator",
+            () -> new WasteGeneratorBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_GREEN)
+                    .strength(3.5F)
+                    .sound(SoundType.METAL)));
+
+    public static final Supplier<BlockEntityType<WasteGeneratorBlockEntity>> WASTE_GENERATOR_BE =
+            BLOCK_ENTITIES.register("waste_generator", () -> BlockEntityType.Builder.of(
+                            WasteGeneratorBlockEntity::new, WASTE_GENERATOR.get())
+                    .build(null));
+
+    public static final DeferredItem<BlockItem> WASTE_GENERATOR_ITEM =
+            ITEMS.register("waste_generator", () -> new BlockItem(WASTE_GENERATOR.get(), new Item.Properties()));
+
+    public static final DeferredBlock<SludgeGeneratorBlock> SLUDGE_GENERATOR = BLOCKS.register(
+            "sludge_generator",
+            () -> new SludgeGeneratorBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_GREEN)
+                    .strength(3.5F)
+                    .sound(SoundType.METAL)));
+
+    public static final Supplier<BlockEntityType<SludgeGeneratorBlockEntity>> SLUDGE_GENERATOR_BE =
+            BLOCK_ENTITIES.register("sludge_generator", () -> BlockEntityType.Builder.of(
+                            SludgeGeneratorBlockEntity::new, SLUDGE_GENERATOR.get())
+                    .build(null));
+
+    public static final DeferredItem<BlockItem> SLUDGE_GENERATOR_ITEM =
+            ITEMS.register("sludge_generator", () -> new BlockItem(SLUDGE_GENERATOR.get(), new Item.Properties()));
+
     private CreateContent() {}
 
     /** Attaches the Create-only registries to the mod bus. Call only when Create is loaded. */
@@ -91,10 +123,18 @@ public final class CreateContent {
                 SludgeFanProcessingType::new);
     }
 
-    /** Exposes the Mechanical Weaver's inventory so hoppers/Create pipes can automate it. */
+    /**
+     * Exposes machine I/O so hoppers/Create pipes can automate them: the Mechanical Weaver's and
+     * Waste Generator's item inventories, and the Sludge Generator's fluid tank (so Create pumps
+     * fill it directly).
+     */
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {
         event.registerBlockEntity(
                 Capabilities.ItemHandler.BLOCK, MECHANICAL_WEAVER_BE.get(), (weaver, side) -> weaver.getItemHandler());
+        event.registerBlockEntity(
+                Capabilities.ItemHandler.BLOCK, WASTE_GENERATOR_BE.get(), (gen, side) -> gen.getItemHandler());
+        event.registerBlockEntity(
+                Capabilities.FluidHandler.BLOCK, SLUDGE_GENERATOR_BE.get(), (gen, side) -> gen.getFluidHandler());
     }
 
     /** Surfaces the Create machines in the mod's creative tab (only when Create is loaded). */
@@ -102,6 +142,8 @@ public final class CreateContent {
         if (event.getTabKey() == ModCreativeTabs.MAIN.getKey()) {
             event.accept(MECHANICAL_WEAVER_ITEM.get());
             event.accept(MECHANICAL_CLEANSER_ITEM.get());
+            event.accept(WASTE_GENERATOR_ITEM.get());
+            event.accept(SLUDGE_GENERATOR_ITEM.get());
         }
     }
 }

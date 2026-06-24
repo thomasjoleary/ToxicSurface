@@ -456,6 +456,24 @@ server-driven and synced. Baked into the architecture, not bolted on.
   (loads standalone) supplies the transforms, so packs can add more as JSON; the airflow also
   **affects entities like the gas** (nausea + toxic damage, respecting mask/suit). Phase 4's
   vanilla bucket wash is untouched, so the wash paths stay distinct (bucket vs solid residue).
+- **Toxic generators** (Create kinetic *sources*; both `compat.create`, gated like the other
+  Mechanical machines): a **Waste Generator** that incinerates the §7 contamination items — loose
+  `toxic_residue` (basic fuel) and a compacted `toxic_waste_block` (premium: longer burn, double
+  RPM + capacity, so **waste blocks produce more power**) — and a **Sludge Generator** that burns
+  toxic sludge from an internal tank (Create pumps fill it; it's a real fluid). Both extend Create's
+  `GeneratingKineticBlockEntity`, spin a shaft on `FACING`, add stress capacity while burning, and
+  halt on a redstone signal; the power tiers are a pure, unit-tested `GeneratorFuel` table. The
+  Waste Generator's fuel slot and the Sludge Generator's tank are hopper/pipe-automatable.
+  **Burning waste is never free** — while running each generator carries two drawbacks, factored
+  into the Create-free `GeneratorEmissions`: (1) a **toxic smog cloud** (`SmogClouds`, the exact
+  inverse of a cleanser bubble) poisons the air in a radius — folded into the `GasModel` predicate
+  so it drains the air bar and kills passive mobs **even in a dimension/altitude the apocalypse
+  hasn't reached**, while sealing or a cleanser still wins; and (2) **pollution** that accumulates on
+  the per-dimension `ToxicityState` and reads as extra elapsed time, so heavy waste-burning makes
+  the toxic ceiling **rise faster and the world turn toxic sooner**. Both drawbacks are
+  config-tunable (`generators.generatorSmogRadius`, `generators.generatorPollutionPerTick`; set
+  either to `0` to disable). Loads-standalone contract held: nothing here is classloaded without
+  Create, and the `GasModel`/`ToxicityState` changes are base-mod and unit-tested.
 
 **Carried-forward polish / TODO** (tracked in-code):
 custom "toxic" `DamageType`; HUD flash + dedicated cough sound; air-bar HUD bubble

@@ -14,6 +14,7 @@ import io.github.thomasjoleary.toxicsurface.item.FaceMaskItem;
 import io.github.thomasjoleary.toxicsurface.item.HazmatSuit;
 import io.github.thomasjoleary.toxicsurface.network.GasStatePayload;
 import io.github.thomasjoleary.toxicsurface.world.CleanserBubbles;
+import io.github.thomasjoleary.toxicsurface.world.SmogClouds;
 import io.github.thomasjoleary.toxicsurface.world.ToxicityTicker;
 import java.util.HashMap;
 import java.util.Map;
@@ -62,7 +63,7 @@ public final class GasEffectHandler {
             return;
         }
 
-        boolean inGas = ToxicityTicker.isAffected(level) && isInToxicGasAtHead(level, player);
+        boolean inGas = isInToxicGasAtHead(level, player);
         boolean isProtected = updateProtection(level, player, inGas);
         boolean exposed = inGas && !isProtected;
 
@@ -87,16 +88,20 @@ public final class GasEffectHandler {
         if (player.isCreative() || player.isSpectator()) {
             return false;
         }
-        int ceiling = ToxicityTicker.currentToxicY(level);
-        boolean active = ceiling != ToxicityTicker.NOT_TOXIC;
-
         int x = Mth.floor(player.getX());
         int y = Mth.floor(player.getEyeY());
         int z = Mth.floor(player.getZ());
 
-        // Only pay for the flood-fill when the head is actually under the ceiling.
+        // A running toxic generator's smog poisons the air independent of the world toxicity,
+        // so it counts here even in an unaffected dimension or above the ceiling (DESIGN.md §7).
+        boolean inSmog = SmogClouds.isInside(level, x, y, z);
+        int ceiling = ToxicityTicker.currentToxicY(level);
+        boolean active = ToxicityTicker.isAffected(level) && ceiling != ToxicityTicker.NOT_TOXIC;
+        boolean ambient = active && y <= ceiling;
+
+        // Only pay for the flood-fill when there's actually something toxic to be sealed from.
         boolean sealed = false;
-        if (active && y <= ceiling) {
+        if (ambient || inSmog) {
             sealed = EnclosureScanner.scan(
                             x,
                             y,
@@ -106,7 +111,7 @@ public final class GasEffectHandler {
                     .isSealed();
         }
         boolean inCleanser = CleanserBubbles.isInside(level, x, y, z);
-        return GasModel.isToxicGas(active, y, ceiling, sealed, inCleanser);
+        return GasModel.isToxicGas(active, y, ceiling, sealed, inCleanser, inSmog);
     }
 
     /**

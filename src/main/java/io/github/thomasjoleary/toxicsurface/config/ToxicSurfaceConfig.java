@@ -44,6 +44,10 @@ public final class ToxicSurfaceConfig {
     public static final ModConfigSpec.ConfigValue<List<? extends Integer>> CLEANSER_TIERS;
     public static final ModConfigSpec.DoubleValue CLEANSER_FUEL_EXPONENT;
 
+    // --- Toxic generators (DESIGN.md §7) ---
+    public static final ModConfigSpec.IntValue GENERATOR_SMOG_RADIUS;
+    public static final ModConfigSpec.IntValue GENERATOR_POLLUTION_PER_TICK;
+
     // --- World ---
     public static final ModConfigSpec.ConfigValue<List<? extends String>> AFFECTED_DIMENSIONS;
     public static final ModConfigSpec.IntValue FOLIAGE_DECAY_BLOCKS_PER_TICK;
@@ -128,6 +132,16 @@ public final class ToxicSurfaceConfig {
                         "cleanserTiers", List.of(8, 16, 32, 64, 128), () -> 8, o -> o instanceof Integer i && i > 0);
         CLEANSER_FUEL_EXPONENT = b.comment("Fuel cost scales as (range/8)^k; this is k.")
                 .defineInRange("cleanserFuelExponent", 2.0, 1.0, 8.0);
+        b.pop();
+
+        b.push("generators");
+        GENERATOR_SMOG_RADIUS = b.comment(
+                        "Radius of the toxic smog sphere a running toxic generator vents (0 = no smog drawback).")
+                .defineInRange("generatorSmogRadius", 6, 0, 64);
+        GENERATOR_POLLUTION_PER_TICK = b.comment(
+                        "Escalation ticks each running generator adds to its dimension per tick, speeding up the"
+                                + " toxic ceiling's rise (0 = no apocalypse-acceleration drawback).")
+                .defineInRange("generatorPollutionPerTick", 4, 0, 100_000);
         b.pop();
 
         b.push("world");

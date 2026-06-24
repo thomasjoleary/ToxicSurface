@@ -17,8 +17,12 @@ public final class ToxicityState extends SavedData {
 
     private static final String NAME = "toxicsurface_toxicity";
     private static final String KEY_START_TICK = "startTick";
+    private static final String KEY_POLLUTION = "pollutionTicks";
 
     private long startTick = NOT_STARTED;
+
+    /** Accumulated generator pollution; added to elapsed time so escalation runs faster (§7). */
+    private long pollutionTicks = 0L;
 
     public static ToxicityState get(ServerLevel level) {
         return level.getDataStorage()
@@ -28,12 +32,14 @@ public final class ToxicityState extends SavedData {
     private static ToxicityState load(CompoundTag tag, HolderLookup.Provider registries) {
         ToxicityState state = new ToxicityState();
         state.startTick = tag.contains(KEY_START_TICK) ? tag.getLong(KEY_START_TICK) : NOT_STARTED;
+        state.pollutionTicks = tag.getLong(KEY_POLLUTION); // absent → 0
         return state;
     }
 
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         tag.putLong(KEY_START_TICK, startTick);
+        tag.putLong(KEY_POLLUTION, pollutionTicks);
         return tag;
     }
 
@@ -51,5 +57,19 @@ public final class ToxicityState extends SavedData {
             this.startTick = worldTick;
             setDirty();
         }
+    }
+
+    /** Accumulated generator pollution, in escalation ticks (DESIGN.md §7). */
+    public long pollutionTicks() {
+        return pollutionTicks;
+    }
+
+    /** Adds generator pollution; the escalation model treats it as extra elapsed time. */
+    public void addPollution(long ticks) {
+        if (ticks <= 0) {
+            return;
+        }
+        pollutionTicks += ticks;
+        setDirty();
     }
 }

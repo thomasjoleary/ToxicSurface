@@ -1,0 +1,31 @@
+{
+    "neoforge:conditions": [
+        {
+            "type": "neoforge:mod_loaded",
+            "modid": "create"
+        }
+    ],
+    "type": "minecraft:crafting_shaped",
+    "pattern": [
+        "IBI",
+        "ICI",
+        "ISI"
+    ],
+    "key": {
+        "I": {
+            "item": "minecraft:iron_ingot"
+        },
+        "B": {
+            "item": "minecraft:bucket"
+        },
+        "C": {
+            "item": "create:andesite_casing"
+        },
+        "S": {
+            "item": "create:shaft"
+        }
+    },
+    "result": {
+        "id": "toxicsurface:sludge_generator"
+    }
+}
