@@ -1,0 +1,6 @@
+{
+    "parent": "minecraft:item/generated",
+    "textures": {
+        "layer0": "toxicsurface:item/toxic_residue"
+    }
+}

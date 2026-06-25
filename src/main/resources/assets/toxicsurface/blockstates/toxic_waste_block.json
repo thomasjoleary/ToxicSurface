@@ -1,0 +1,7 @@
+{
+    "variants": {
+        "": {
+            "model": "toxicsurface:block/toxic_waste_block"
+        }
+    }
+}

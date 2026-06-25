@@ -1,0 +1,6 @@
+{
+    "parent": "minecraft:item/generated",
+    "textures": {
+        "layer0": "toxicsurface:item/dirty_industrial_filter"
+    }
+}
