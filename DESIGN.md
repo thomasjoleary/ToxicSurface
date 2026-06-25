@@ -603,13 +603,22 @@ server-driven and synced. Baked into the architecture, not bolted on.
   worn armour-layer sheets (`hazmat_layer_1`/`_2`) flood-filled with a hi-vis weave + reflective tape
   so the suit never shows the missing-texture checkerboard. The sludge **LiquidBlock** also got a
   blockstate + particle model (vanilla-water style). **All registered blocks/items now have
-  models + textures — no missing-texture cases remain.** Still procedural first-pass art an
-  artist can refine; not yet seen rendered in-game.
+  models + textures — no missing-texture cases remain.**
+- **Second-pass (HQ) art** (Phase 8): PyPI became reachable (route pip *through* the agent proxy —
+  it's in the proxy `noProxy` list, so clear `no_proxy` and set `PIP_CERT=/root/.ccr/ca-bundle.crt`;
+  a direct connection 403s at the egress firewall), so **numpy + Pillow** are now available. A single
+  `tools/textures/gen_hq.py` regenerates every texture with tileable fractal value noise (2D + 3D for
+  seamless animation loops), multi-step shaded colour ramps with **Bayer ordered dithering** (smooth
+  gradients that stay crunchy at 16px), bevels with corner ambient occlusion, dark readability
+  outlines, and soft emissive glows (generator fireboxes, cleanser gauge). All native-resolution
+  pixel art — no supersampling blur. **The first-pass generators (`gen_items.py`/`gen_machines.py`/
+  `gen_armor.py`/`gen_sludge.py`) are kept for reference and the original PNGs archived under
+  `tools/textures/archive_v1/`.** Still procedural; not yet seen rendered in-game.
 
 **Carried-forward polish / TODO** (tracked in-code):
 JEI/EMI **recipe categories** for the Weaver/Cleanser/generators (now unblocked — all
-textures landed); an in-game render/quality pass on the procedural first-pass art; a
-real **cough.ogg**.
+textures landed); an **in-game** render pass to confirm the HQ art reads on real models /
+on a worn suit; a real **cough.ogg**.
 
 ---
 
