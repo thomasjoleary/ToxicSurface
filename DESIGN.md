@@ -590,14 +590,26 @@ server-driven and synced. Baked into the architecture, not bolted on.
   **consumable items + waste block** via `tools/textures/gen_items.py`: the three air filters
   (clean/used/carbon), three industrial filters (clean/dirty/wet), toxic residue, hazmat material,
   face mask, and the `toxic_waste_block` (texture + cube_all model + blockstate). All
-  `item/generated` icons, procedural and first-pass. Still missing-texture: the **machines**
-  (Weaver/Cleanser blocks), the **hazmat armour set** (icons + worn armour layers), and the
-  Create **generators**.
+  `item/generated` icons, procedural and first-pass. The **sludge bucket** is composited from the
+  *vanilla* bucket + water-bucket textures by `tools/textures/gen_bucket.py` so it matches
+  Minecraft's bucket exactly, just with olive sludge in the cavity. Then, in vanilla's
+  **outline-and-shade** style (a noisy metal panel + 1px bevel + central motif), the **machines**
+  via `tools/textures/gen_machines.py`: the **Weaver/Cleanser** blocks (`cube_bottom_top`, distinct
+  top) plus the four Create kinetic machines (**mechanical weaver/cleanser**, **waste/sludge
+  generators**) as `cube_column` bodies — a brass **shaft-socket** on the FACING-axis ends, uniform
+  body on the sides, blockstates mapping all six FACING values to the pillar-axis rotation; the
+  generators get furnace-like firebox sides. The **hazmat suit** via `tools/textures/gen_armor.py`:
+  four inventory icons (helmet w/ cyan visor, chestplate, leggings, rubber-soled boots) and the two
+  worn armour-layer sheets (`hazmat_layer_1`/`_2`) flood-filled with a hi-vis weave + reflective tape
+  so the suit never shows the missing-texture checkerboard. The sludge **LiquidBlock** also got a
+  blockstate + particle model (vanilla-water style). **All registered blocks/items now have
+  models + textures — no missing-texture cases remain.** Still procedural first-pass art an
+  artist can refine; not yet seen rendered in-game.
 
 **Carried-forward polish / TODO** (tracked in-code):
-JEI/EMI **recipe categories** for the Weaver/Cleanser/generators (now unblocked as
-textures land); **remaining item/block textures + models** (filters, masks, hazmat
-set, machines, generators, residue/waste block); a real **cough.ogg**.
+JEI/EMI **recipe categories** for the Weaver/Cleanser/generators (now unblocked — all
+textures landed); an in-game render/quality pass on the procedural first-pass art; a
+real **cough.ogg**.
 
 ---
 
