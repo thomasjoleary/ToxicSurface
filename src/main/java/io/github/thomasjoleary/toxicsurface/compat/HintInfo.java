@@ -29,6 +29,7 @@ public final class HintInfo {
 
     public static List<Entry> entries() {
         List<Entry> list = new ArrayList<>();
+        add(list, ModItems.CLEANSER.get(), "cleanser");
         add(list, ModItems.INDUSTRIAL_FILTER.get(), "industrial_filter");
         add(list, ModItems.DIRTY_INDUSTRIAL_FILTER.get(), "dirty_industrial_filter");
         add(list, ModItems.WET_INDUSTRIAL_FILTER.get(), "wet_industrial_filter");

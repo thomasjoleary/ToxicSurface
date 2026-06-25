@@ -531,10 +531,22 @@ server-driven and synced. Baked into the architecture, not bolted on.
   only when present (so it never classloads in the standalone jar), it's declared `optional` /
   `CLIENT` in the mods.toml, and the Create-gated generator items are resolved by registry id so the
   plugin never pulls in `compat.create`.
+- **JEI/EMI recipe categories** (Phase 8): beyond the info pages, two real categories surface the
+  machines' actual processing. (1) **Weaving** — the Weaver's two-input weave table (from
+  `WeaverLogic.recipes()`, shared with the Mechanical Weaver) shown as inputs → output with the
+  weave time; the Weaver (and Mechanical Weaver, by id) are catalysts/workstations. (2) **Toxic
+  Generator Fuel** — each fuel (residue, waste block, sludge bucket) → its generator, with the RPM,
+  stress capacity (su) and burn/drain it drives; rows come from the shared JEI/EMI-free
+  `compat.MachineFuel`, which resolves the Create-gated generators by **id** (no rows standalone, so
+  the category self-hides). The **Cleanser** transforms no items (it's an area scrubber), so it stays
+  an info page rather than a forced slot category. JEI uses `IRecipeCategory` + `RecipeType`; EMI
+  uses `BasicEmiRecipe` + `EmiRecipeCategory`; both read the same data so they match the machines and
+  each other.
 - **EMI plugin** (Phase 8): EMI has its own API and ignores JEI plugins, so a native `@EmiEntrypoint`
-  plugin (`compat.emi`) registers the same info pages as EMI "info recipes". The (item, lang-key)
-  list is factored into a JEI/EMI-free `compat.HintInfo` so the two viewers stay in lock-step. Same
-  soft-dep contract: EMI `:api` is `compileOnly`, declared `optional`/`CLIENT`.
+  plugin (`compat.emi`) registers the same info pages as EMI "info recipes", plus the EMI Weaving and
+  Generator-Fuel categories above. The (item, lang-key) list is factored into a JEI/EMI-free
+  `compat.HintInfo` so the two viewers stay in lock-step. Same soft-dep contract: EMI `:api` is
+  `compileOnly`, declared `optional`/`CLIENT`.
 - **Jade tooltips** (Phase 8): in-world machine readouts via a `@WailaPlugin` (`compat.jade`). A
   single `MachineReadoutProvider` serves both Jade halves — server-side it harvests live state from
   any block entity implementing the **Jade-free `JadeReadout`** interface (Cleanser range/active,
@@ -542,8 +554,7 @@ server-driven and synced. Baked into the architecture, not bolted on.
   client-side it renders the synced primitives as lines. Reading the synced NBT (not casting to a
   BE type) means it shows the Create-gated generators without ever referencing `compat.create`;
   `shouldRequestData` limits server round-trips to our machines. Jade is `compileOnly` via the
-  Modrinth maven, declared `optional`/`CLIENT`. Deferred: JEI/EMI **recipe categories** (pending
-  textures).
+  Modrinth maven, declared `optional`/`CLIENT`.
 - **Toxic air bar HUD** (Phase 2 carry-over, now done): the drowning-style green bubble row above
   the hotbar. `GasStatePayload` now also syncs the air bar as a 0..1 fraction; `AirBarOverlay`
   renders it from `ClientGasState` using the vanilla air sprites with a green tint, hidden when full
@@ -616,9 +627,9 @@ server-driven and synced. Baked into the architecture, not bolted on.
   `tools/textures/archive_v1/`.** Still procedural; not yet seen rendered in-game.
 
 **Carried-forward polish / TODO** (tracked in-code):
-JEI/EMI **recipe categories** for the Weaver/Cleanser/generators (now unblocked — all
-textures landed); an **in-game** render pass to confirm the HQ art reads on real models /
-on a worn suit; a real **cough.ogg**.
+An **in-game** render pass to confirm the HQ art reads on real models / on a worn suit
+and that the new JEI/EMI categories lay out correctly; a balance pass; real-pack compat
+testing; a real **cough.ogg**.
 
 ---
 

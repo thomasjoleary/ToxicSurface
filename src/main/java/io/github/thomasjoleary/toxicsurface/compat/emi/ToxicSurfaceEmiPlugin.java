@@ -9,7 +9,10 @@ import dev.emi.emi.api.recipe.EmiInfoRecipe;
 import dev.emi.emi.api.stack.EmiIngredient;
 import dev.emi.emi.api.stack.EmiStack;
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
+import io.github.thomasjoleary.toxicsurface.block.WeaverLogic;
 import io.github.thomasjoleary.toxicsurface.compat.HintInfo;
+import io.github.thomasjoleary.toxicsurface.compat.MachineFuel;
+import io.github.thomasjoleary.toxicsurface.registry.ModItems;
 import java.util.List;
 import net.minecraft.resources.ResourceLocation;
 
@@ -33,5 +36,33 @@ public class ToxicSurfaceEmiPlugin implements EmiPlugin {
             registry.addRecipe(new EmiInfoRecipe(
                     List.<EmiIngredient>of(EmiStack.of(entry.item())), List.of(HintInfo.text(entry.key())), id));
         }
+
+        // Weaving category: the Weaver (and the Mechanical Weaver when Create is present) as workstations.
+        registry.addCategory(ToxicSurfaceEmiCategories.WEAVING);
+        registry.addWorkstation(ToxicSurfaceEmiCategories.WEAVING, EmiStack.of(ModItems.WEAVER.get()));
+        workstationById(registry, ToxicSurfaceEmiCategories.WEAVING, "mechanical_weaver");
+        int wi = 0;
+        for (WeaverLogic.WeaveRecipe recipe : WeaverLogic.recipes()) {
+            registry.addRecipe(new WeavingEmiRecipe(recipe, wi++));
+        }
+
+        // Generator-fuel category: only when the generators exist (Create present → non-empty rows).
+        List<MachineFuel.Row> fuels = MachineFuel.rows();
+        if (!fuels.isEmpty()) {
+            registry.addCategory(ToxicSurfaceEmiCategories.GENERATOR_FUEL);
+            int fi = 0;
+            for (MachineFuel.Row row : fuels) {
+                registry.addWorkstation(ToxicSurfaceEmiCategories.GENERATOR_FUEL, EmiStack.of(row.machine()));
+                registry.addRecipe(new GeneratorFuelEmiRecipe(row, fi++));
+            }
+        }
+    }
+
+    /** Add a workstation by registry id, skipped when the (Create-gated) machine isn't present. */
+    private static void workstationById(
+            EmiRegistry registry, dev.emi.emi.api.recipe.EmiRecipeCategory category, String path) {
+        net.minecraft.core.registries.BuiltInRegistries.ITEM
+                .getOptional(ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, path))
+                .ifPresent(item -> registry.addWorkstation(category, EmiStack.of(item)));
     }
 }

@@ -3,10 +3,16 @@
 package io.github.thomasjoleary.toxicsurface.compat.jei;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
+import io.github.thomasjoleary.toxicsurface.block.WeaverLogic;
 import io.github.thomasjoleary.toxicsurface.compat.HintInfo;
+import io.github.thomasjoleary.toxicsurface.compat.MachineFuel;
+import io.github.thomasjoleary.toxicsurface.registry.ModItems;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
+import mezz.jei.api.registration.IRecipeCatalystRegistration;
+import mezz.jei.api.registration.IRecipeCategoryRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 
 /**
@@ -33,9 +39,35 @@ public class ToxicSurfaceJeiPlugin implements IModPlugin {
     }
 
     @Override
+    public void registerCategories(IRecipeCategoryRegistration registration) {
+        var gui = registration.getJeiHelpers().getGuiHelper();
+        registration.addRecipeCategories(new WeavingCategory(gui), new GeneratorFuelCategory(gui));
+    }
+
+    @Override
     public void registerRecipes(IRecipeRegistration registration) {
         for (HintInfo.Entry entry : HintInfo.entries()) {
             registration.addIngredientInfo(entry.item(), HintInfo.text(entry.key()));
         }
+        registration.addRecipes(WeavingCategory.TYPE, WeaverLogic.recipes());
+        registration.addRecipes(GeneratorFuelCategory.TYPE, MachineFuel.rows());
+    }
+
+    @Override
+    public void registerRecipeCatalysts(IRecipeCatalystRegistration registration) {
+        // The Weaver and (when Create is present) the Mechanical Weaver both run weave recipes.
+        registration.addRecipeCatalyst(ModItems.WEAVER.get(), WeavingCategory.TYPE);
+        catalystById(registration, "mechanical_weaver", WeavingCategory.TYPE);
+        // Generators are listed as a catalyst per fuel row's machine; also link both at category level.
+        for (MachineFuel.Row row : MachineFuel.rows()) {
+            registration.addRecipeCatalysts(GeneratorFuelCategory.TYPE, row.machine());
+        }
+    }
+
+    private static void catalystById(
+            IRecipeCatalystRegistration registration, String path, mezz.jei.api.recipe.RecipeType<?> type) {
+        BuiltInRegistries.ITEM
+                .getOptional(ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, path))
+                .ifPresent(item -> registration.addRecipeCatalyst(new net.minecraft.world.item.ItemStack(item), type));
     }
 }

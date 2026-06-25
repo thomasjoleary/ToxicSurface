@@ -21,6 +21,11 @@ public final class WeaverLogic {
 
     private static final List<WeaveRecipe> RECIPES = buildRecipes();
 
+    /** The full weave recipe table (read-only) — used by the recipe-viewer categories. */
+    public static List<WeaveRecipe> recipes() {
+        return RECIPES;
+    }
+
     /** Returns the first recipe matching the two input slots, or {@code null} if none. */
     public static WeaveRecipe find(ItemStack slotA, ItemStack slotB) {
         for (WeaveRecipe recipe : RECIPES) {
