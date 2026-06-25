@@ -702,7 +702,7 @@ def toxic_waste_block():
 
 
 # ----------------------------------------------------------------------------- armor worn layers
-def armor_layer(name, bands):
+def armor_layer(name, bands, visor=False):
     h, w = 32, 64
     n = fractal2(h, w, (8, 16, 32), seed=seed_of(name))
     bd = bayer(h, w)
@@ -720,7 +720,27 @@ def armor_layer(name, bands):
             for x in range(w):
                 if not (x % 8 == 0 or y % 8 == 0):
                     rgb[y, x] = pick([(196, 206, 150), (224, 232, 190)], 0.4 + (n[y, x] - 0.5) * 0.4, bd[y, x])
+    if visor:
+        _draw_helmet_visor(rgb, bd, n)
     save(os.path.join(ARMOR, name + ".png"), rgb, np.ones((h, w)))
+
+
+def _draw_helmet_visor(rgb, bd, n):
+    """Paint a gas-mask faceplate onto the head's FRONT face (armor-layer UV x:8-15, y:8-15): a dark
+    rubber mask with a glowing cyan visor band across the eyes and a small filter canister at the chin,
+    so the hazmat helmet reads as a respirator hood instead of a plain bucket helmet."""
+    rubber = [(28, 32, 30), (44, 50, 46), (62, 70, 64)]
+    glass = [(26, 60, 70), (60, 130, 150), (120, 200, 218), (190, 244, 252)]
+    canister = [(46, 60, 28), (78, 98, 44), (120, 150, 64)]
+    for y in range(8, 16):
+        for x in range(8, 16):
+            if 10 <= y <= 12:  # visor band across the eyes
+                d = abs(x - 11.5) / 4.0
+                rgb[y, x] = pick(glass, 1.0 - d * 0.7 + (n[y, x] - 0.5) * 0.2, bd[y, x])
+            elif y >= 14 and 10 <= x <= 13:  # filter canister at the chin
+                rgb[y, x] = pick(canister, 0.5 + (n[y, x] - 0.5) * 0.3, bd[y, x])
+            else:  # rubber mask body
+                rgb[y, x] = pick(rubber, 0.5 + (n[y, x] - 0.5) * 0.3, bd[y, x])
 
 
 # ----------------------------------------------------------------------------- bucket (re-tint existing vanilla composite)
@@ -793,7 +813,7 @@ if __name__ == "__main__":
     generator_side("sludge_generator_side", ember=(206, 150, 60), grime=(110, 96, 44))
     toxic_waste_block()
     # armor worn layers
-    armor_layer("hazmat_layer_1", bands=[(20, 22), (26, 28)])
+    armor_layer("hazmat_layer_1", bands=[(20, 22), (26, 28)], visor=True)
     armor_layer("hazmat_layer_2", bands=[(28, 30)])
     # bucket re-shade
     sludge_bucket()

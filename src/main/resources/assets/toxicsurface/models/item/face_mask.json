@@ -2,5 +2,10 @@
     "parent": "minecraft:item/generated",
     "textures": {
         "layer0": "toxicsurface:item/face_mask"
+    },
+    "display": {
+        "head": {
+            "scale": [0, 0, 0]
+        }
     }
 }
