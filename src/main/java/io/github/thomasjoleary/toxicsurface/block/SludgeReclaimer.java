@@ -17,6 +17,11 @@ import net.minecraft.world.level.block.Blocks;
  * lives here once. Kept free of any Create types so it compiles and runs in the standalone jar.
  */
 public final class SludgeReclaimer {
+    /** Aim to sweep the whole sphere within this many ticks regardless of radius. */
+    private static final int TARGET_SWEEP_TICKS = 40;
+    /** Per-tick cell-visit cap so a huge radius can't stall the server thread. */
+    private static final int MAX_SCAN_BUDGET = 65_536;
+
     private SludgeReclaimer() {}
 
     /** True when there is anything to reclaim: a server level in an affected, already-toxic dimension. */
@@ -29,7 +34,14 @@ public final class SludgeReclaimer {
     /**
      * Sweeps a budgeted window of the sphere around {@code pos}, turning sludge into water, and
      * returns the cursor to resume from next tick. The scan wraps around so the whole sphere is
-     * covered over successive ticks while each tick's work stays bounded by {@code scanBudget}.
+     * covered over successive ticks while each tick's work stays bounded.
+     *
+     * <p>Two fixes vs. a naive fixed-budget scan (DESIGN.md §3): (1) the per-tick budget scales with
+     * the sphere volume (clamped to {@link #MAX_SCAN_BUDGET}) so a large radius is still swept in
+     * roughly {@link #TARGET_SWEEP_TICKS} instead of minutes; (2) <b>unloaded chunks are skipped</b>
+     * (via {@code hasChunk}, cached per chunk column) instead of force-loaded — {@code getBlockState}
+     * would otherwise synchronously generate every distant chunk every tick and edit untracked chunks
+     * the client never sees, which made far sludge only clean up once you walked over to it.
      */
     public static int revertSludge(Level level, BlockPos pos, int range, int scanBudget, int scanCursor) {
         int side = 2 * range + 1;
@@ -37,9 +49,13 @@ public final class SludgeReclaimer {
         if (scanCursor >= total) {
             scanCursor = 0;
         }
+        int budget = (int) Math.max(scanBudget, Math.min(MAX_SCAN_BUDGET, total / TARGET_SWEEP_TICKS));
         int rangeSq = range * range;
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-        for (int n = 0; n < scanBudget; n++) {
+        int lastChunkX = Integer.MIN_VALUE;
+        int lastChunkZ = Integer.MIN_VALUE;
+        boolean chunkLoaded = false;
+        for (int n = 0; n < budget; n++) {
             if (scanCursor >= total) {
                 scanCursor = 0;
             }
@@ -50,7 +66,19 @@ public final class SludgeReclaimer {
             if (dx * dx + dy * dy + dz * dz > rangeSq) {
                 continue;
             }
-            cursor.set(pos.getX() + dx, pos.getY() + dy, pos.getZ() + dz);
+            int worldX = pos.getX() + dx;
+            int worldZ = pos.getZ() + dz;
+            int chunkX = worldX >> 4;
+            int chunkZ = worldZ >> 4;
+            if (chunkX != lastChunkX || chunkZ != lastChunkZ) {
+                lastChunkX = chunkX;
+                lastChunkZ = chunkZ;
+                chunkLoaded = level.getChunkSource().hasChunk(chunkX, chunkZ); // no force-load
+            }
+            if (!chunkLoaded) {
+                continue; // leave far/unloaded sludge until its chunk is actually loaded
+            }
+            cursor.set(worldX, pos.getY() + dy, worldZ);
             if (level.getBlockState(cursor).is(ModBlocks.SLUDGE_BLOCK.get())) {
                 level.setBlock(cursor, Blocks.WATER.defaultBlockState(), Block.UPDATE_ALL);
             }
