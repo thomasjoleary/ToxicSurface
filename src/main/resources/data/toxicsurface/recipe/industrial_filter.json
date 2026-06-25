@@ -1,13 +1,27 @@
 {
     "type": "minecraft:crafting_shapeless",
     "ingredients": [
-        "minecraft:iron_ingot",
-        "minecraft:iron_ingot",
-        "minecraft:iron_ingot",
-        "minecraft:iron_ingot",
-        "toxicsurface:clean_air_filter",
-        "toxicsurface:clean_air_filter",
-        "toxicsurface:clean_air_filter"
+        {
+            "item": "minecraft:iron_ingot"
+        },
+        {
+            "item": "minecraft:iron_ingot"
+        },
+        {
+            "item": "minecraft:iron_ingot"
+        },
+        {
+            "item": "minecraft:iron_ingot"
+        },
+        {
+            "item": "toxicsurface:clean_air_filter"
+        },
+        {
+            "item": "toxicsurface:clean_air_filter"
+        },
+        {
+            "item": "toxicsurface:clean_air_filter"
+        }
     ],
     "result": {
         "id": "toxicsurface:industrial_filter",

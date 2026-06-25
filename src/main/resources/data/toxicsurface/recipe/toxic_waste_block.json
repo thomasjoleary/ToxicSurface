@@ -5,7 +5,9 @@
         "RR"
     ],
     "key": {
-        "R": "toxicsurface:toxic_residue"
+        "R": {
+            "item": "toxicsurface:toxic_residue"
+        }
     },
     "result": {
         "id": "toxicsurface:toxic_waste_block",

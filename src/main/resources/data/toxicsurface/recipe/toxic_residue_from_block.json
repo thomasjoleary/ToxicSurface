@@ -1,7 +1,9 @@
 {
     "type": "minecraft:crafting_shapeless",
     "ingredients": [
-        "toxicsurface:toxic_waste_block"
+        {
+            "item": "toxicsurface:toxic_waste_block"
+        }
     ],
     "result": {
         "id": "toxicsurface:toxic_residue",

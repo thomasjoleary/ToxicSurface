@@ -6,9 +6,15 @@
         "IGI"
     ],
     "key": {
-        "I": "minecraft:iron_ingot",
-        "G": "minecraft:gold_ingot",
-        "D": "minecraft:diamond"
+        "I": {
+            "item": "minecraft:iron_ingot"
+        },
+        "G": {
+            "item": "minecraft:gold_ingot"
+        },
+        "D": {
+            "item": "minecraft:diamond"
+        }
     },
     "result": {
         "id": "toxicsurface:cleanser",

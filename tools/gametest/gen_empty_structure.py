@@ -14,7 +14,7 @@ import gzip
 import os
 import struct
 
-OUT = "src/main/resources/data/toxicsurface/structures/empty.nbt"
+OUT = "src/main/resources/data/toxicsurface/structure/empty.nbt"
 SIZE = (16, 8, 16)
 FLOOR = "minecraft:polished_andesite"
 DATA_VERSION = 3955  # Minecraft 1.21.1

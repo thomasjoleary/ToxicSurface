@@ -1,9 +1,15 @@
 {
     "type": "minecraft:crafting_shapeless",
     "ingredients": [
-        "toxicsurface:clean_air_filter",
-        "minecraft:string",
-        "minecraft:string"
+        {
+            "item": "toxicsurface:clean_air_filter"
+        },
+        {
+            "item": "minecraft:string"
+        },
+        {
+            "item": "minecraft:string"
+        }
     ],
     "result": {
         "id": "toxicsurface:face_mask",

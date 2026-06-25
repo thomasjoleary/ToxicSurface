@@ -5,8 +5,12 @@
         "I I"
     ],
     "key": {
-        "H": "toxicsurface:hazmat_material",
-        "I": "minecraft:iron_ingot"
+        "H": {
+            "item": "toxicsurface:hazmat_material"
+        },
+        "I": {
+            "item": "minecraft:iron_ingot"
+        }
     },
     "result": {
         "id": "toxicsurface:hazmat_boots",
