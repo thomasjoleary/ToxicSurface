@@ -1,0 +1,8 @@
+{
+    "parent": "minecraft:block/cube_bottom_top",
+    "textures": {
+        "top": "toxicsurface:block/cleanser_top",
+        "bottom": "toxicsurface:block/cleanser_side",
+        "side": "toxicsurface:block/cleanser_side"
+    }
+}
