@@ -211,6 +211,7 @@ if __name__ == "__main__":
     gen_still()
     gen_flow()
     gen_overlay()
-    gen_bucket()
     gen_underwater()
+    # NB: the sludge bucket icon is composited from the *vanilla* bucket textures by
+    # tools/textures/gen_bucket.py (not the old crude drawing here), so it is not generated here.
     print("generated sludge textures")
