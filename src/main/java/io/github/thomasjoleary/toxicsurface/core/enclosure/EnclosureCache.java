@@ -20,6 +20,13 @@ import java.util.Map;
  * {@code capacity} pockets and evicts the least-recently-used pocket past that (a hit
  * via {@link #get} marks a pocket most-recently used), per the §8 budget.
  *
+ * <p>As a safety net for block changes that fire <b>no event</b> (e.g. {@code /setblock},
+ * {@code /fill}, {@code /clone}, worldgen, or another mod calling {@code setBlock} directly), a
+ * cached pocket also expires once it is older than {@code maxAgeTicks}: a {@link #get} past that age
+ * misses and re-scans, so an untracked breach self-heals within the TTL rather than persisting. A
+ * {@code maxAgeTicks} of {@link Long#MAX_VALUE} (the default) disables expiry. The caller supplies
+ * the clock (a tick count) so this class stays Minecraft-free and unit-testable.
+ *
  * <p>Not thread-safe; intended to be used from the server thread.
  */
 public final class EnclosureCache {
@@ -27,31 +34,57 @@ public final class EnclosureCache {
     public static final int DEFAULT_CAPACITY = 256;
 
     private final int capacity;
+    private final long maxAgeTicks;
     private final Map<Long, ScanResult> byCell = new HashMap<>();
     /** Sealed pockets ordered least- to most-recently used (front = next to evict). */
     private final List<ScanResult> sealedPockets = new ArrayList<>();
+    /** Clock tick each pocket was stored at, for TTL expiry. */
+    private final Map<ScanResult, Long> storedAtTick = new HashMap<>();
 
     public EnclosureCache() {
         this(DEFAULT_CAPACITY);
     }
 
     public EnclosureCache(int capacity) {
+        this(capacity, Long.MAX_VALUE);
+    }
+
+    public EnclosureCache(int capacity, long maxAgeTicks) {
         this.capacity = Math.max(1, capacity);
+        this.maxAgeTicks = maxAgeTicks;
     }
 
     /** Cached result for the pocket containing this cell, or {@code null} on a miss. */
     public ScanResult get(int x, int y, int z) {
+        return get(x, y, z, 0L);
+    }
+
+    /**
+     * As {@link #get(int, int, int)} but with the current clock tick: a pocket older than
+     * {@code maxAgeTicks} is treated as a miss and dropped (TTL safety net for untracked changes).
+     */
+    public ScanResult get(int x, int y, int z, long now) {
         ScanResult result = byCell.get(CellKey.pack(x, y, z));
-        if (result != null) {
-            // LRU: a hit makes this pocket the most-recently used (move to the back).
-            sealedPockets.remove(result);
-            sealedPockets.add(result);
+        if (result == null) {
+            return null;
         }
+        if (now - storedAtTick.getOrDefault(result, now) > maxAgeTicks) {
+            drop(result); // expired: force a re-scan
+            return null;
+        }
+        // LRU: a hit makes this pocket the most-recently used (move to the back).
+        sealedPockets.remove(result);
+        sealedPockets.add(result);
         return result;
     }
 
     /** Stores a sealed result, indexing every cell of its pocket. No-op for exposed results. */
     public void putSealed(ScanResult result) {
+        putSealed(result, 0L);
+    }
+
+    /** As {@link #putSealed(ScanResult)} but stamping the store tick for TTL expiry. */
+    public void putSealed(ScanResult result, long now) {
         if (!result.isSealed() || result.size() == 0) {
             return;
         }
@@ -59,6 +92,7 @@ public final class EnclosureCache {
             byCell.put(cell, result);
         }
         sealedPockets.add(result);
+        storedAtTick.put(result, now);
         while (sealedPockets.size() > capacity) {
             evict(sealedPockets.remove(0)); // drop the least-recently used
         }
@@ -71,6 +105,16 @@ public final class EnclosureCache {
                 byCell.remove(cell);
             }
         }
+        storedAtTick.remove(pocket);
+    }
+
+    /** Fully removes a pocket (its cell mappings, LRU entry and store tick). */
+    private void drop(ScanResult pocket) {
+        for (long cell : pocket.cells()) {
+            byCell.remove(cell);
+        }
+        sealedPockets.remove(pocket);
+        storedAtTick.remove(pocket);
     }
 
     /** Drops every cached pocket whose bounding box (grown by one) contains the changed block. */
@@ -82,6 +126,7 @@ public final class EnclosureCache {
                 for (long cell : pocket.cells()) {
                     byCell.remove(cell);
                 }
+                storedAtTick.remove(pocket);
                 it.remove();
             }
         }
@@ -90,6 +135,7 @@ public final class EnclosureCache {
     public void clear() {
         byCell.clear();
         sealedPockets.clear();
+        storedAtTick.clear();
     }
 
     /** Number of distinct sealed pockets currently cached. */

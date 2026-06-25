@@ -169,4 +169,15 @@ class EnclosureTest {
         assertNotNull(cache.get(2, 2, 2));
         assertEquals(1, cache.pocketCount());
     }
+
+    @Test
+    void cache_expiresPocketPastMaxAge() {
+        ScanResult sealed = singleCellPocket(0, 0, 0);
+        EnclosureCache cache = new EnclosureCache(EnclosureCache.DEFAULT_CAPACITY, 100); // TTL 100 ticks
+        cache.putSealed(sealed, 1_000L);
+
+        assertSame(sealed, cache.get(0, 0, 0, 1_050L)); // within TTL -> hit
+        assertNull(cache.get(0, 0, 0, 1_200L)); // past TTL -> miss (self-heal for untracked changes)
+        assertEquals(0, cache.pocketCount()); // and the stale pocket is dropped
+    }
 }

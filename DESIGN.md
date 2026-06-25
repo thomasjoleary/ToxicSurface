@@ -564,8 +564,12 @@ server-driven and synced. Baked into the architecture, not bolted on.
   per air pocket instead of once per exposed player every cycle; `GasEffectHandler` queries it
   instead of scanning directly. The cache is LRU-bounded to 256 pockets/dimension (§8) and
   invalidated on the block-change events that make or break a seal (break, place, multi-place,
-  fluid-formed blocks, explosions); caches clear on level unload. Block changes from pistons or
-  `/setblock`-style commands aren't event-covered — a known, rare staleness gap.
+  fluid-formed blocks, explosions, and **piston** pushes/pulls — the moved column is invalidated
+  along the piston's facing); caches clear on level unload. Changes that fire **no event**
+  (`/setblock`, `/fill`, `/clone`, worldgen, other mods' direct `setBlock`) are caught by a **TTL**:
+  a cached pocket older than 200 ticks (10 s) is re-scanned on next query, so any untracked breach
+  self-heals within that window rather than persisting. The TTL lives in the pure `EnclosureCache`
+  (the caller passes the tick, keeping it unit-testable).
 - **Polish cluster** (carry-overs, now done): (1) a data-driven `toxicsurface:toxic` **DamageType**
   now sources all toxin damage (gas, sludge, mob death, sludge-fan), so deaths read "succumbed to
   the toxic air". (2) **Filter-expire warning** — `ModSounds.COUGH` (a `sounds.json` placeholder
