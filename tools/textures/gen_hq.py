@@ -14,9 +14,16 @@ Writes to the live asset paths, overwriting the first-pass PNGs (originals prese
 """
 
 import os
+import zlib
 
 import numpy as np
 from PIL import Image
+
+
+def seed_of(name):
+    """Stable per-name seed. (Python's built-in hash() is salted by PYTHONHASHSEED and would make
+    generation non-deterministic across runs.)"""
+    return zlib.crc32(name.encode()) % 9999
 
 ASSETS = "src/main/resources/assets/toxicsurface/textures"
 ITEM = ASSETS + "/item"
@@ -286,7 +293,7 @@ def outline(rgb, a, color=(28, 30, 26)):
 # ----------------------------------------------------------------------------- items: filters
 def filter_pad(name, media, rim, stains=None):
     rgb, a = blank()
-    noise = fractal2(16, 16, (4, 8), seed=abs(hash(name)) % 9999)
+    noise = fractal2(16, 16, (4, 8), seed=seed_of(name))
     bd = bayer(16, 16)
     rim_hi = tuple(min(255, c + 40) for c in rim)
     # mesh media inside a dark frame
@@ -321,7 +328,7 @@ def filter_pad(name, media, rim, stains=None):
 
 def industrial_pad(name, media, sheen=False):
     rgb, a = blank()
-    noise = fractal2(16, 16, (4, 8, 16), seed=abs(hash(name)) % 9999)
+    noise = fractal2(16, 16, (4, 8, 16), seed=seed_of(name))
     bd = bayer(16, 16)
     steel = [(70, 73, 77), (104, 108, 112), (150, 154, 158), (196, 200, 204)]
     # heavy steel frame
@@ -478,13 +485,14 @@ def hazmat_boots():
     rgb, a = blank()
     noise = fractal2(16, 16, (4, 8), seed=94)
     bd = bayer(16, 16)
-    for (x0, x1, y) in [(3, 6, 6), (3, 6, 7), (3, 7, 8), (2, 8, 9), (2, 8, 10)]:
+    # Two boots split by an empty column at x=8 so the outline draws a dark seam between them.
+    left = [(3, 6, 6), (3, 6, 7), (2, 7, 8), (2, 7, 9), (2, 7, 10)]
+    right = [(9, 12, 6), (9, 12, 7), (9, 13, 8), (9, 13, 9), (9, 13, 10)]
+    for (x0, x1, y) in left + right:
         for x in range(x0, x1 + 1):
-            rgb[y, x] = pick(HAZ, 0.7 + (noise[y, x] - 0.5) * 0.25, bd[y, x])
-            a[y, x] = 1.0
-    for (x0, x1, y) in [(9, 12, 6), (9, 12, 7), (9, 13, 8), (9, 13, 9), (9, 13, 10)]:
-        for x in range(x0, x1 + 1):
-            rgb[y, x] = pick(HAZ, 0.7 + (noise[y, x] - 0.5) * 0.25, bd[y, x])
+            # darken the inner edges (toward the seam) for extra separation.
+            inner = (x == x1 and (x0, x1, y) in left) or (x == x0 and (x0, x1, y) in right)
+            rgb[y, x] = pick(HAZ, (0.5 if inner else 0.7) + (noise[y, x] - 0.5) * 0.25, bd[y, x])
             a[y, x] = 1.0
     for x in range(2, 14):  # rubber soles
         if a[10, x] > 0:
@@ -585,7 +593,7 @@ def shaft_socket():
 
 
 def generator_side(name, ember, grime):
-    noise = fractal2(16, 16, (4, 8, 16), seed=abs(hash(name)) % 9999)
+    noise = fractal2(16, 16, (4, 8, 16), seed=seed_of(name))
     bd = bayer(16, 16)
     rgb, a = _casing_face(noise, bd, base=[(58, 54, 52), (88, 84, 80), (124, 118, 112), (158, 150, 142)])
     # firebox: glowing grate with bloom + dark bars
@@ -615,15 +623,20 @@ def toxic_waste_block():
     n2 = fractal2(h, w, (8, 16), seed=112)
     bd = bayer(h, w)
     pal = [(40, 48, 28), (58, 70, 40), (80, 94, 52), (104, 120, 64)]
+    # Scattered single-pixel specks via per-pixel white noise (the smooth fractal alone clusters into
+    # blobs; this brings back the old version's crisp toxic flecks). Tiles per-block like vanilla.
+    spk = np.random.default_rng(113).random((h, w))
+    flecks = [(150, 196, 74), (174, 214, 92), (132, 178, 64)]  # a little tonal variety
     rgb = np.zeros((h, w, 3), float)
     for y in range(h):
         for x in range(w):
             t = 0.2 + n[y, x] * 0.7
-            # AO in the noise valleys (cracks)
             if n2[y, x] < 0.18:
-                rgb[y, x] = (28, 34, 20)
-            elif n[y, x] > 0.86:
-                rgb[y, x] = (158, 204, 78)  # toxic fleck
+                rgb[y, x] = (28, 34, 20)  # dark crack in the noise valleys
+            elif spk[y, x] > 0.90:
+                rgb[y, x] = flecks[int(spk[y, x] * 1000) % 3]  # bright toxic fleck
+            elif spk[y, x] < 0.05:
+                rgb[y, x] = (34, 42, 26)  # dark speck
             else:
                 rgb[y, x] = pick(pal, t, bd[y, x])
     save(os.path.join(BLOCK, "toxic_waste_block.png"), rgb, np.ones((h, w)))
@@ -632,7 +645,7 @@ def toxic_waste_block():
 # ----------------------------------------------------------------------------- armor worn layers
 def armor_layer(name, bands):
     h, w = 32, 64
-    n = fractal2(h, w, (8, 16, 32), seed=abs(hash(name)) % 9999)
+    n = fractal2(h, w, (8, 16, 32), seed=seed_of(name))
     bd = bayer(h, w)
     pal = [(60, 66, 26), (100, 110, 38), (146, 158, 54), (186, 198, 88)]
     rgb = np.zeros((h, w, 3), float)
@@ -653,8 +666,9 @@ def armor_layer(name, bands):
 
 # ----------------------------------------------------------------------------- bucket (re-tint existing vanilla composite)
 def sludge_bucket():
-    """The bucket shape is a vanilla composite (gen_bucket.py); here we re-shade only its sludge fill
-    with a richer vertical gradient + meniscus highlight, leaving the steel untouched."""
+    """The bucket shape is a vanilla composite (gen_bucket.py); here we re-shade only its sludge fill,
+    leaving the steel untouched. The fill is a uniform light-green sludge speckled with darker green
+    flecks (not a vertical dark gradient, which read as a change to the bucket's shape)."""
     path = os.path.join(ITEM, "sludge_bucket.png")
     if not os.path.exists(path):
         return
@@ -663,20 +677,24 @@ def sludge_bucket():
     # detect the olive sludge pixels (green-dominant, opaque) vs the grey steel.
     r, g, b, al = img[..., 0], img[..., 1], img[..., 2], img[..., 3]
     fluid = (al > 128) & (g > b + 8) & (g > r - 6) & (g > 40)
+    base = [120, 148, 60]
+    specks = [[64, 86, 34], [52, 70, 26], [80, 102, 42]]  # dark-green flecks, slight variety
+    spk = np.random.default_rng(207).random((h, w))
     ys = np.where(fluid.any(axis=1))[0]
-    if len(ys):
-        top, bot = ys.min(), ys.max()
-        deep = [38, 52, 18]
-        shallow = [120, 150, 60]
-        cap = [176, 206, 104]
-        for y in range(h):
-            for x in range(w):
-                if fluid[y, x]:
-                    f = (y - top) / max(1, bot - top)
-                    col = lerp(shallow, deep, f)
-                    if y <= top + 1:
-                        col = lerp(col, cap, 0.7)  # bright meniscus
-                    img[y, x, :3] = col
+    top = ys.min() if len(ys) else 0
+    for y in range(h):
+        for x in range(w):
+            if not fluid[y, x]:
+                continue
+            v = spk[y, x]
+            # Light-green sludge throughout, sparsely flecked with darker green. The top fluid row
+            # gets only a slightly brighter sheen (not a hard band) so it still reads as a surface.
+            if v > 0.80:  # sparse dark speck
+                img[y, x, :3] = specks[int(v * 1000) % 3]
+            elif y == top and v < 0.5:
+                img[y, x, :3] = [142, 170, 78]  # faint surface sheen
+            else:
+                img[y, x, :3] = base
     Image.fromarray(np.clip(img, 0, 255).astype(np.uint8), "RGBA").save(path)
 
 
