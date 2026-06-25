@@ -2,6 +2,8 @@
 
 package io.github.thomasjoleary.toxicsurface.client;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceClientConfig;
 import io.github.thomasjoleary.toxicsurface.item.FaceMaskItem;
 import io.github.thomasjoleary.toxicsurface.item.HazmatSuit;
@@ -10,6 +12,7 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 
@@ -21,7 +24,10 @@ import net.minecraft.world.item.ItemStack;
  */
 public final class EquipmentHudOverlay {
     private static final int BAR_GREEN = 0x55FF55;
-    private static final int VISOR_TINT = 0xAA0A140A; // translucent dark green-black
+
+    /** Full-screen hazmat visor overlay (256x256, transparent viewport + tinted glass + dark frame). */
+    private static final ResourceLocation VISOR =
+            ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "textures/misc/hazmat_visor.png");
 
     private EquipmentHudOverlay() {}
 
@@ -61,11 +67,13 @@ public final class EquipmentHudOverlay {
     private static void drawVisor(GuiGraphics graphics) {
         int width = graphics.guiWidth();
         int height = graphics.guiHeight();
-        int border = Math.max(8, Math.min(width, height) / 8);
-        graphics.fill(0, 0, width, border, VISOR_TINT); // top
-        graphics.fill(0, height - border, width, height, VISOR_TINT); // bottom
-        graphics.fill(0, 0, border, height, VISOR_TINT); // left
-        graphics.fill(width - border, 0, width, height, VISOR_TINT); // right
+        // Stretch the square visor texture to fill the screen (the vanilla pumpkin-overlay approach):
+        // its transparent rounded centre keeps the view clear while the tinted glass and dark rubber
+        // frame ring the edges.
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        graphics.blit(VISOR, 0, 0, width, height, 0.0F, 0.0F, 256, 256, 256, 256);
+        RenderSystem.disableBlend();
     }
 
     private static String formatTime(int ticks) {

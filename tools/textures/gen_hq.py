@@ -231,6 +231,65 @@ def sludge_underwater():
     save(os.path.join(MISC, "sludge_underwater.png"), rgb, np.full((h, w), 235 / 255.0))
 
 
+def hazmat_visor():
+    """Full-screen hazmat-helmet visor overlay, blitted stretched over the screen (like the vanilla
+    pumpkin overlay): a transparent rounded viewport ringed by tinted green glass that thickens to a
+    near-opaque dark rubber frame, with breath condensation pooling at the corners, faint scratches,
+    and a soft reflection streak. Authored on a 256x256 square; the engine stretches it to fit."""
+    S = 256
+    yy, xx = np.mgrid[0:S, 0:S].astype(float)
+    c = (S - 1) / 2.0
+    nx = (xx - c) / (S / 2.0)
+    ny = (yy - c) / (S / 2.0)
+    # Superellipse "distance" → a rounded-rectangle viewport (0 centre, 1 at edge mids, >1 corners).
+    pe = 3.0
+    d = (np.abs(nx) ** pe + np.abs(ny) ** pe) ** (1.0 / pe)
+
+    glass = np.clip((d - 0.34) / (0.82 - 0.34), 0, 1) ** 1.7  # tint builds toward the rim
+    frame = np.clip((d - 0.80) / (0.97 - 0.80), 0, 1)  # opaque dark frame past the rim
+    n = fractal2(S, S, (4, 8, 16, 32), seed=401)
+
+    # Condensation: pale fog gathering near the top/bottom edges and the corners.
+    fog_band = np.clip((np.abs(ny) - 0.42) / 0.55, 0, 1)
+    corner = np.clip((d - 0.5) / 0.45, 0, 1)
+    fog = np.clip(fog_band * 0.55 + corner * 0.5, 0, 1) * np.clip(n * 1.35, 0, 1)
+
+    glass_a = 0.05 + glass * 0.30
+    fog_a = fog * 0.22
+    alpha = np.maximum(glass_a + fog_a, frame)
+
+    glass_col = np.array([30, 52, 26], float)  # toxic-green glass
+    frame_col = np.array([10, 14, 10], float)  # near-black rubber/metal frame
+    fog_col = np.array([150, 175, 122], float)  # pale condensation
+    col = np.ones((S, S, 1)) * glass_col[None, None, :]
+    fa = fog[..., None] * 0.8
+    col = col * (1 - fa) + fog_col[None, None, :] * fa
+    fr = frame[..., None]
+    col = col * (1 - fr) + frame_col[None, None, :] * fr
+
+    # A few hairline scratches across the glass (bright, low-alpha).
+    rng = np.random.default_rng(402)
+    for _ in range(6):
+        x0, y0 = rng.uniform(0.25, 0.75, 2) * S
+        ang = rng.uniform(0, np.pi)
+        ln = rng.uniform(0.10, 0.30) * S
+        x1, y1 = x0 + np.cos(ang) * ln, y0 + np.sin(ang) * ln
+        dx, dy = x1 - x0, y1 - y0
+        t = np.clip(((xx - x0) * dx + (yy - y0) * dy) / (dx * dx + dy * dy + 1e-6), 0, 1)
+        px, py = x0 + t * dx, y0 + t * dy
+        dist = np.hypot(xx - px, yy - py)
+        s = np.exp(-(dist**2) / 1.4) * (1 - glass * 0.5)  # fade scratches in the clear centre
+        alpha = np.clip(alpha + s * 0.16, 0, 1)
+        col = col + s[..., None] * np.array([70, 90, 70])
+
+    # Soft diagonal reflection streak across the upper-left glass.
+    refl = np.clip(1 - np.abs((nx - ny) + 0.5) / 0.16, 0, 1) * np.clip(0.7 - d, 0, 1)
+    col = col + refl[..., None] * np.array([60, 78, 58])
+    alpha = np.clip(alpha + refl * 0.08, 0, 1)
+
+    save(os.path.join(MISC, "hazmat_visor.png"), col, alpha)
+
+
 # ----------------------------------------------------------------------------- shared paint
 def pick(colors, t, d=0.0):
     """Scalar ramp lookup with optional dither offset → an RGB tuple."""
@@ -704,6 +763,7 @@ if __name__ == "__main__":
     sludge_flow()
     sludge_overlay()
     sludge_underwater()
+    hazmat_visor()
     # filters
     filter_pad("clean_air_filter", [(150, 156, 150), (196, 202, 196), (226, 232, 226), (246, 250, 246)], (66, 70, 66))
     filter_pad(
