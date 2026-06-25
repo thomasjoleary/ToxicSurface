@@ -134,9 +134,53 @@ def cleanser_top():
     write_png(os.path.join(OUT, "cleanser_top.png"), g)
 
 
+def shaft_socket():
+    """Kinetic connection face: a metal end-plate with a recessed round shaft hub in the centre.
+    Used as the `end` (FACING-axis ends) of every Create kinetic machine in this mod."""
+    g = metal_panel(base=(112, 116, 120))
+    # recessed dark ring with a brassy shaft stub poking through.
+    ring = (60, 62, 66, 255)
+    shaft = (150, 130, 70, 255)
+    shaft_hi = (196, 174, 96, 255)
+    hub = [(6, 6), (7, 6), (8, 6), (9, 6), (6, 9), (7, 9), (8, 9), (9, 9), (6, 7), (6, 8), (9, 7), (9, 8)]
+    for x, y in hub:
+        g[y][x] = ring
+    for y in range(7, 9):
+        for x in range(7, 9):
+            g[y][x] = shaft
+    g[7][7] = shaft_hi
+    write_png(os.path.join(OUT, "shaft_socket.png"), g)
+
+
+def _generator_side(name, fire, grime):
+    """Furnace-like firebox: dark body, a glowing grille low on the face, toxic grime streaks."""
+    g = metal_panel(base=(96, 92, 88))
+    # firebox grille (lower third), glowing bars between dark slots.
+    for y in range(9, 13):
+        for x in range(4, 12):
+            g[y][x] = fire if (x % 2 == 0 and y % 2 == 1) else (40, 30, 26, 255)
+    # toxic grime weeping down from the grille.
+    for x, y in [(5, 13), (8, 13), (10, 13), (6, 8), (9, 8)]:
+        g[y][x] = grime
+    write_png(os.path.join(OUT, name + ".png"), g)
+
+
+def waste_generator_side():
+    # toxic-residue burner: sickly green flame.
+    _generator_side("waste_generator_side", fire=(150, 200, 70, 255), grime=(96, 120, 50, 255))
+
+
+def sludge_generator_side():
+    # sludge burner: oily amber flame.
+    _generator_side("sludge_generator_side", fire=(206, 150, 60, 255), grime=(110, 96, 44, 255))
+
+
 if __name__ == "__main__":
     weaver_side()
     weaver_top()
     cleanser_side()
     cleanser_top()
+    shaft_socket()
+    waste_generator_side()
+    sludge_generator_side()
     print("generated machine textures")

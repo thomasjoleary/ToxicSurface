@@ -1,0 +1,7 @@
+{
+    "parent": "minecraft:block/cube_column",
+    "textures": {
+        "end": "toxicsurface:block/shaft_socket",
+        "side": "toxicsurface:block/cleanser_side"
+    }
+}

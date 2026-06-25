@@ -1,0 +1,10 @@
+{
+    "variants": {
+        "facing=down":  { "model": "toxicsurface:block/mechanical_cleanser" },
+        "facing=up":    { "model": "toxicsurface:block/mechanical_cleanser" },
+        "facing=north": { "model": "toxicsurface:block/mechanical_cleanser", "x": 90 },
+        "facing=south": { "model": "toxicsurface:block/mechanical_cleanser", "x": 90 },
+        "facing=east":  { "model": "toxicsurface:block/mechanical_cleanser", "x": 90, "y": 90 },
+        "facing=west":  { "model": "toxicsurface:block/mechanical_cleanser", "x": 90, "y": 90 }
+    }
+}

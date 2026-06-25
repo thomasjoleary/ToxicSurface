@@ -1,0 +1,10 @@
+{
+    "variants": {
+        "facing=down":  { "model": "toxicsurface:block/sludge_generator" },
+        "facing=up":    { "model": "toxicsurface:block/sludge_generator" },
+        "facing=north": { "model": "toxicsurface:block/sludge_generator", "x": 90 },
+        "facing=south": { "model": "toxicsurface:block/sludge_generator", "x": 90 },
+        "facing=east":  { "model": "toxicsurface:block/sludge_generator", "x": 90, "y": 90 },
+        "facing=west":  { "model": "toxicsurface:block/sludge_generator", "x": 90, "y": 90 }
+    }
+}

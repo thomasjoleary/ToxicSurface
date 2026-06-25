@@ -1,0 +1,10 @@
+{
+    "variants": {
+        "facing=down":  { "model": "toxicsurface:block/mechanical_weaver" },
+        "facing=up":    { "model": "toxicsurface:block/mechanical_weaver" },
+        "facing=north": { "model": "toxicsurface:block/mechanical_weaver", "x": 90 },
+        "facing=south": { "model": "toxicsurface:block/mechanical_weaver", "x": 90 },
+        "facing=east":  { "model": "toxicsurface:block/mechanical_weaver", "x": 90, "y": 90 },
+        "facing=west":  { "model": "toxicsurface:block/mechanical_weaver", "x": 90, "y": 90 }
+    }
+}
