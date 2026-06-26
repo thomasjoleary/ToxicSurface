@@ -4,6 +4,7 @@ package io.github.thomasjoleary.toxicsurface.compat.create;
 
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import io.github.thomasjoleary.toxicsurface.block.WeaverLogic;
+import io.github.thomasjoleary.toxicsurface.compat.jade.JadeReadout;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -21,7 +22,7 @@ import net.neoforged.neoforge.items.ItemStackHandler;
  * network halts it; the inventory is hopper/pipe-automatable. Extends Create's kinetic API, so
  * it is only ever loaded when Create is present (registered via {@link CreateContent}).
  */
-public class MechanicalWeaverBlockEntity extends KineticBlockEntity {
+public class MechanicalWeaverBlockEntity extends KineticBlockEntity implements JadeReadout {
     public static final int SLOT_INPUT_A = 0;
     public static final int SLOT_INPUT_B = 1;
     public static final int SLOT_OUTPUT = 2;
@@ -87,6 +88,18 @@ public class MechanicalWeaverBlockEntity extends KineticBlockEntity {
         } else if (progress != 0) {
             progress = 0;
             setChanged();
+        }
+    }
+
+    @Override
+    public void appendJadeData(CompoundTag tag) {
+        int rpm = (int) Math.abs(getSpeed());
+        tag.putBoolean("tsActive", rpm > 0 && progress > 0);
+        if (maxProgress > 0 && progress > 0) {
+            tag.putInt("tsWeave", Math.min(100, progress * 100 / maxProgress));
+        }
+        if (rpm > 0) {
+            tag.putInt("tsRpm", rpm);
         }
     }
 

@@ -31,13 +31,15 @@ public class WeavingEmiRecipe extends BasicEmiRecipe {
     public void addWidgets(WidgetHolder widgets) {
         widgets.addSlot(inputs.get(0), 5, 19);
         if (twoInputs) {
-            widgets.addTexture(EmiTexture.PLUS, 25, 21);
-            widgets.addSlot(inputs.get(1), 31, 19);
+            // Slot B kept clear of the plus sign (see WeavingCategory): a plus tucked against B's
+            // 18px background gets clipped and reads as a stray arrowhead between the two inputs.
+            widgets.addTexture(EmiTexture.PLUS, 23, 21);
+            widgets.addSlot(inputs.get(1), 38, 19);
         }
-        widgets.addTexture(EmiTexture.FULL_ARROW, 58, 20);
+        widgets.addTexture(EmiTexture.FULL_ARROW, 60, 20);
         widgets.addSlot(outputs.get(0), 91, 19).recipeContext(this);
         Component label = Component.translatable(
                 "gui." + ToxicSurface.MODID + ".weaving.time", String.format("%.1fs", time / 20.0f));
-        widgets.addText(label, 58, 40, 0xFF555555, false);
+        widgets.addText(label, 60, 40, 0xFF555555, false);
     }
 }

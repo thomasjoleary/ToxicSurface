@@ -77,7 +77,10 @@ public class WeavingCategory implements IRecipeCategory<WeaveRecipe> {
                 .setStandardSlotBackground()
                 .addItemStacks(stacks(recipe.a(), recipe.aCount()));
         if (twoInputs) {
-            builder.addSlot(RecipeIngredientRole.INPUT, 31, 19)
+            // Slot B sits far enough right of slot A that the plus sign drawn between them in draw()
+            // lands in a clear gap — JEI renders category.draw() *under* the slots, so a plus too
+            // close to B would be half-covered by B's background and read as a stray arrowhead.
+            builder.addSlot(RecipeIngredientRole.INPUT, 38, 19)
                     .setStandardSlotBackground()
                     .addItemStacks(stacks(recipe.b(), recipe.bCount()));
         }
@@ -89,14 +92,14 @@ public class WeavingCategory implements IRecipeCategory<WeaveRecipe> {
     @Override
     public void draw(WeaveRecipe recipe, IRecipeSlotsView slots, GuiGraphics graphics, double mouseX, double mouseY) {
         if (recipe.bCount() > 0) {
-            plus.draw(graphics, 24, 21);
+            plus.draw(graphics, 23, 21); // centred in the clear gap between slot A (5) and slot B (38)
         }
-        arrow.draw(graphics, 58, 19);
+        arrow.draw(graphics, 60, 19);
         // weave time in seconds, centred under the arrow
         String secs = String.format("%.1fs", recipe.time() / 20.0f);
         Component label = Component.translatable("gui." + ToxicSurface.MODID + ".weaving.time", secs);
         var font = Minecraft.getInstance().font;
-        graphics.drawString(font, label, 58 + (22 - font.width(label)) / 2, 38, 0xFF555555, false);
+        graphics.drawString(font, label, 60 + (22 - font.width(label)) / 2, 38, 0xFF555555, false);
     }
 
     /** The ingredient's matching stacks at the recipe's required count (so JEI shows the number). */

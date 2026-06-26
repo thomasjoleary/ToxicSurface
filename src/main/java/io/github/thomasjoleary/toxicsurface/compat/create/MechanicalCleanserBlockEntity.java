@@ -4,11 +4,13 @@ package io.github.thomasjoleary.toxicsurface.compat.create;
 
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import io.github.thomasjoleary.toxicsurface.block.SludgeReclaimer;
+import io.github.thomasjoleary.toxicsurface.compat.jade.JadeReadout;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
 import io.github.thomasjoleary.toxicsurface.core.machine.CleanserRange;
 import io.github.thomasjoleary.toxicsurface.world.CleanserBubbles;
 import io.github.thomasjoleary.toxicsurface.world.CleanserVisual;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -22,7 +24,7 @@ import net.minecraft.world.level.block.state.BlockState;
  * except for what powers them. This class extends Create's kinetic API and is therefore only
  * ever loaded when Create is present (registered via {@link CreateContent}).
  */
-public class MechanicalCleanserBlockEntity extends KineticBlockEntity {
+public class MechanicalCleanserBlockEntity extends KineticBlockEntity implements JadeReadout {
     /** Stress units consumed per RPM (Create's stress model); makes the machine a real load. */
     private static final float STRESS_IMPACT = 8f;
 
@@ -30,6 +32,8 @@ public class MechanicalCleanserBlockEntity extends KineticBlockEntity {
     private static final int SCAN_BUDGET = 4096;
 
     private int scanCursor;
+    /** Last reclamation range driven this tick, surfaced to Jade (parity with the fuel Cleanser). */
+    private int effectiveRange;
 
     public MechanicalCleanserBlockEntity(BlockPos pos, BlockState state) {
         super(CreateContent.MECHANICAL_CLEANSER_BE.get(), pos, state);
@@ -57,6 +61,7 @@ public class MechanicalCleanserBlockEntity extends KineticBlockEntity {
                 : CleanserRange.rangeFromRpm(
                         getSpeed(), ToxicSurfaceConfig.CLEANSER_TIERS.get(), CleanserRange.MIN_RPM);
         range = Math.min(range, ToxicSurfaceConfig.CLEANSER_MAX_RANGE.get());
+        effectiveRange = range; // surfaced to Jade
 
         if (range > 0 && SludgeReclaimer.canReclaim(level)) {
             scanCursor = SludgeReclaimer.revertSludge(level, pos, range, SCAN_BUDGET, scanCursor);
@@ -64,6 +69,16 @@ public class MechanicalCleanserBlockEntity extends KineticBlockEntity {
             CleanserVisual.tick((ServerLevel) level, pos, range); // green clean-air dome particles
         } else if (level instanceof ServerLevel sl) {
             CleanserBubbles.remove(sl, pos); // idle / unpowered: the bubble collapses
+        }
+    }
+
+    @Override
+    public void appendJadeData(CompoundTag tag) {
+        tag.putInt("tsRange", effectiveRange);
+        tag.putBoolean("tsActive", effectiveRange > 0);
+        int rpm = (int) Math.abs(getSpeed());
+        if (rpm > 0) {
+            tag.putInt("tsRpm", rpm);
         }
     }
 }

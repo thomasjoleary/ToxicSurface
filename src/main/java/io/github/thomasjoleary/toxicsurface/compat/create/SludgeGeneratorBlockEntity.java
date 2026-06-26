@@ -89,6 +89,9 @@ public class SludgeGeneratorBlockEntity extends GeneratingKineticBlockEntity imp
         return capacity;
     }
 
+    /** Running state Create was last told about, so we notify it on spin-up as well as spin-down. */
+    private boolean lastRunning;
+
     @Override
     public void tick() {
         super.tick(); // Create rotation/stress source bookkeeping (both sides)
@@ -98,7 +101,6 @@ public class SludgeGeneratorBlockEntity extends GeneratingKineticBlockEntity imp
         ServerLevel server = (ServerLevel) level;
         BlockPos pos = getBlockPos();
 
-        float beforeSpeed = getGeneratedSpeed();
         boolean run = running();
         if (run) {
             tank.drain(GeneratorFuel.SLUDGE_MB_PER_TICK, IFluidHandler.FluidAction.EXECUTE);
@@ -112,8 +114,11 @@ public class SludgeGeneratorBlockEntity extends GeneratingKineticBlockEntity imp
             GeneratorEmissions.stop(server, pos);
         }
 
-        // Tell Create only when our generated rotation actually changed (e.g. tank ran dry).
-        if (getGeneratedSpeed() != beforeSpeed) {
+        // Tell Create whenever the running state flips (a pump topping up the tank between ticks is a
+        // spin-up; draining dry is a spin-down). Comparing the freshly-recomputed speed to itself, as
+        // before, never caught a fill, so the generator stayed at the network's cached 0 rpm.
+        if (run != lastRunning) {
+            lastRunning = run;
             updateGeneratedRotation();
             setChanged();
         }
