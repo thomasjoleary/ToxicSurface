@@ -27,12 +27,12 @@ public class SludgeGeneratorBlock extends DirectionalKineticBlock implements IBE
         return state.getValue(FACING).getAxis();
     }
 
-    // Output rotation on the face it points at (Create's CreativeMotor idiom). Without this override
-    // the KineticBlock default returns false for every face, so no shaft ever connects and the
-    // generator drives nothing.
+    // Output rotation on both ends of the facing axis (the model has a shaft stub on the facing face
+    // and its opposite). Without this override the KineticBlock default returns false for every face,
+    // so no shaft ever connects and the generator drives nothing.
     @Override
     public boolean hasShaftTowards(LevelReader world, BlockPos pos, BlockState state, Direction face) {
-        return face == state.getValue(FACING);
+        return face.getAxis() == state.getValue(FACING).getAxis();
     }
 
     @Override
