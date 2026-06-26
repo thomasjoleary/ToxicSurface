@@ -4,6 +4,7 @@ package io.github.thomasjoleary.toxicsurface.compat.create;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -28,10 +29,10 @@ public class MechanicalWeaverRenderer implements BlockEntityRenderer<MechanicalW
     private static final float ITEM_SCALE = 0.5f;
 
     // Weaving sticks: two stand-in sticks crossing at the centre, bobbing out of phase (over-under).
-    private static final float STICK_BASE_Y = 1.28f;
-    private static final float STICK_AMPLITUDE = 0.16f;
-    private static final float STICK_CROSS_DEGREES = 38f;
-    private static final float STICK_SCALE = 0.75f;
+    private static final float STICK_BASE_Y = 1.18f;
+    private static final float STICK_AMPLITUDE = 0.12f;
+    private static final float STICK_CROSS_DEGREES = 35f;
+    private static final float STICK_SCALE = 0.85f;
     private static final float BOB_SPEED = 0.35f; // radians per tick
 
     private final ItemRenderer itemRenderer;
@@ -52,11 +53,14 @@ public class MechanicalWeaverRenderer implements BlockEntityRenderer<MechanicalW
         if (level == null) {
             return;
         }
+        // The BER's packedLight is sampled at the block's own (opaque, dark) position; sample the open
+        // air one block up where the depot items and sticks actually sit, or everything renders black.
+        int light = LevelRenderer.getLightColor(level, be.getBlockPos().above());
 
         ItemStack output = be.getRenderStack(MechanicalWeaverBlockEntity.SLOT_OUTPUT);
         if (!output.isEmpty()) {
             // Finished: show the result centred on the depot.
-            renderFlat(be, output, 0.5f, ITEM_Y, 0.5f, ITEM_SCALE, poseStack, buffer, packedLight, packedOverlay);
+            renderFlat(be, output, 0.5f, ITEM_Y, 0.5f, ITEM_SCALE, poseStack, buffer, light, packedOverlay);
         } else {
             // Working/idle: show the two inputs side by side.
             renderFlat(
@@ -68,7 +72,7 @@ public class MechanicalWeaverRenderer implements BlockEntityRenderer<MechanicalW
                     ITEM_SCALE,
                     poseStack,
                     buffer,
-                    packedLight,
+                    light,
                     packedOverlay);
             renderFlat(
                     be,
@@ -79,21 +83,20 @@ public class MechanicalWeaverRenderer implements BlockEntityRenderer<MechanicalW
                     ITEM_SCALE,
                     poseStack,
                     buffer,
-                    packedLight,
+                    light,
                     packedOverlay);
         }
 
         if (be.isWeaving()) {
             float phase = (level.getGameTime() + partialTick) * BOB_SPEED;
-            renderStick(
-                    be, +STICK_CROSS_DEGREES, (float) Math.sin(phase), poseStack, buffer, packedLight, packedOverlay);
+            renderStick(be, +STICK_CROSS_DEGREES, (float) Math.sin(phase), poseStack, buffer, light, packedOverlay);
             renderStick(
                     be,
                     -STICK_CROSS_DEGREES,
                     (float) Math.sin(phase + Math.PI), // opposite phase: one dips as the other lifts
                     poseStack,
                     buffer,
-                    packedLight,
+                    light,
                     packedOverlay);
         }
     }
@@ -135,9 +138,13 @@ public class MechanicalWeaverRenderer implements BlockEntityRenderer<MechanicalW
         poseStack.translate(0.5f, STICK_BASE_Y + STICK_AMPLITUDE * bob, 0.5f);
         poseStack.mulPose(Axis.ZP.rotationDegrees(crossDegrees)); // tilt to make the two cross
         poseStack.scale(STICK_SCALE, STICK_SCALE, STICK_SCALE);
+        // Render with NONE (no display transform): the stick's handheld item-frame transform is what
+        // threw it off-centre. The raw sprite model spans [0,1]^2 from a corner, so recentre it on the
+        // pivot ourselves before drawing.
+        poseStack.translate(-0.5f, -0.5f, 0.0f);
         itemRenderer.renderStatic(
                 new ItemStack(Items.STICK),
-                ItemDisplayContext.FIXED,
+                ItemDisplayContext.NONE,
                 packedLight,
                 packedOverlay,
                 poseStack,
