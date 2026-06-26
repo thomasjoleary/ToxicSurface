@@ -725,6 +725,30 @@ def armor_layer(name, bands, visor=False):
     save(os.path.join(ARMOR, name + ".png"), rgb, np.ones((h, w)))
 
 
+def face_mask_worn_tex():
+    """Texture for the 3D respirator worn-model (item/face_mask_worn): a rubber mask body with a cyan
+    visor band along the top (mapped onto the front face's eye line) and a filter-canister patch
+    (bottom-right). Authored so the model's UVs hit forgiving uniform regions."""
+    S = 16
+    n = fractal2(S, S, (4, 8), seed=131)
+    bd = bayer(S, S)
+    body = [(50, 60, 48), (78, 90, 70), (104, 118, 96)]
+    visor = [(40, 90, 104), (90, 175, 192), (170, 226, 238)]
+    canister = [(44, 58, 28), (78, 98, 44), (118, 146, 66)]
+    rgb = np.zeros((S, S, 3), float)
+    for y in range(S):
+        for x in range(S):
+            rgb[y, x] = pick(body, 0.5 + (n[y, x] - 0.5) * 0.4, bd[y, x])
+    for y in range(1, 4):  # cyan visor band (top of the front face)
+        for x in range(1, 15):
+            rgb[y, x] = pick(visor, 0.45 + (n[y, x] - 0.5) * 0.35, bd[y, x])
+    for y in range(9, 15):  # canister patch (bottom-right)
+        for x in range(9, 15):
+            d = ((x - 11.5) ** 2 + (y - 11.5) ** 2) ** 0.5 / 3.0
+            rgb[y, x] = pick(canister, 0.9 - d * 0.6 + (n[y, x] - 0.5) * 0.2, bd[y, x])
+    save(os.path.join(ITEM, "face_mask_worn.png"), rgb, np.ones((S, S)))
+
+
 def _draw_helmet_visor(rgb, bd, n):
     """Paint a gas-mask faceplate onto the head's FRONT face (armor-layer UV x:8-15, y:8-15): a dark
     rubber mask with a glowing cyan visor band across the eyes and a small filter canister at the chin,
@@ -797,6 +821,7 @@ if __name__ == "__main__":
     industrial_pad("dirty_industrial_filter", [(58, 70, 34), (88, 106, 50), (118, 138, 66), (150, 170, 84)])
     industrial_pad("wet_industrial_filter", [(80, 110, 128), (120, 152, 170), (160, 190, 206), (200, 224, 236)], sheen=True)
     face_mask()
+    face_mask_worn_tex()
     toxic_residue()
     hazmat_material()
     hazmat_helmet()

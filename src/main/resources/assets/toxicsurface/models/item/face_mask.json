@@ -1,11 +1,15 @@
 {
-    "parent": "minecraft:item/generated",
-    "textures": {
-        "layer0": "toxicsurface:item/face_mask"
+    "__comment": "Flat inventory icon (base), but a 3D respirator on the player's face (head perspective). The HEAD context swaps to face_mask_worn via NeoForge's separate_transforms loader.",
+    "loader": "neoforge:separate_transforms",
+    "base": {
+        "parent": "minecraft:item/generated",
+        "textures": {
+            "layer0": "toxicsurface:item/face_mask"
+        }
     },
-    "display": {
+    "perspectives": {
         "head": {
-            "scale": [0, 0, 0]
+            "parent": "toxicsurface:item/face_mask_worn"
         }
     }
 }
