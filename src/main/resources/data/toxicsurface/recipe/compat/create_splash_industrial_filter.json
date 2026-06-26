@@ -18,6 +18,10 @@
         {
             "chance": 0.5,
             "id": "toxicsurface:toxic_residue"
+        },
+        {
+            "chance": 0.5,
+            "id": "toxicsurface:toxic_residue"
         }
     ]
 }

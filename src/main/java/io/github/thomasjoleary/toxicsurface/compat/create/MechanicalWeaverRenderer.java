@@ -141,8 +141,9 @@ public class MechanicalWeaverRenderer implements BlockEntityRenderer<MechanicalW
         poseStack.translate(tipX, tipY, 0.5f);
         poseStack.mulPose(Axis.ZP.rotationDegrees(side * lean)); // tilt the top toward the centre
         poseStack.scale(ROD_LENGTH, ROD_LENGTH, ROD_LENGTH);
-        // End rod is a clean vertical rod (no diagonal sprite to fight); put its bottom-centre on the tip.
-        poseStack.translate(-0.5f, 0f, -0.5f);
+        // renderStatic centres the model on the origin (it translates by -0.5 internally), so lift by
+        // half a block to put the rod's *bottom* on the tip rather than its centre.
+        poseStack.translate(0f, 0.5f, 0f);
         itemRenderer.renderStatic(
                 new ItemStack(Items.END_ROD),
                 ItemDisplayContext.NONE,
