@@ -28,11 +28,13 @@ public class MechanicalWeaverRenderer implements BlockEntityRenderer<MechanicalW
     private static final float ITEM_Y = 1.02f; // just above the block's top face
     private static final float ITEM_SCALE = 0.5f;
 
-    // Weaving sticks: two stand-in sticks crossing at the centre, bobbing out of phase (over-under).
-    private static final float STICK_BASE_Y = 1.18f;
-    private static final float STICK_AMPLITUDE = 0.12f;
-    private static final float STICK_CROSS_DEGREES = 35f;
-    private static final float STICK_SCALE = 0.85f;
+    // Weaving sticks (stand-in: end rods). Two rods stand on the two inputs and lean together at the
+    // top into a tent — they "come out of the machine" and reach down into each item — dipping their
+    // tips in and out of phase (over-under) to sell the stitching.
+    private static final float TIP_SPREAD = 0.16f; // tips land over the two inputs (0.5 ± spread)
+    private static final float TIP_BASE_Y = 1.05f; // resting tip height, just above the depot
+    private static final float ROD_LENGTH = 0.62f; // scaled length of each rod
+    private static final float TIP_DIP = 0.10f; // how far a rod pushes into the item on its stroke
     private static final float BOB_SPEED = 0.35f; // radians per tick
 
     private final ItemRenderer itemRenderer;
@@ -89,15 +91,8 @@ public class MechanicalWeaverRenderer implements BlockEntityRenderer<MechanicalW
 
         if (be.isWeaving()) {
             float phase = (level.getGameTime() + partialTick) * BOB_SPEED;
-            renderStick(be, +STICK_CROSS_DEGREES, (float) Math.sin(phase), poseStack, buffer, light, packedOverlay);
-            renderStick(
-                    be,
-                    -STICK_CROSS_DEGREES,
-                    (float) Math.sin(phase + Math.PI), // opposite phase: one dips as the other lifts
-                    poseStack,
-                    buffer,
-                    light,
-                    packedOverlay);
+            renderRod(be, -1f, phase, poseStack, buffer, light, packedOverlay);
+            renderRod(be, +1f, phase + (float) Math.PI, poseStack, buffer, light, packedOverlay); // over-under
         }
     }
 
@@ -125,25 +120,31 @@ public class MechanicalWeaverRenderer implements BlockEntityRenderer<MechanicalW
         poseStack.popPose();
     }
 
-    /** One crossing "weaving stick", angled by {@code crossDegrees} and bobbed by {@code bob} in [-1,1]. */
-    private void renderStick(
+    /**
+     * One weaving rod standing on an input ({@code side} = -1 left / +1 right), leaning toward the
+     * centre so the pair forms a tent, with its tip dipping into the item driven by {@code phase}.
+     */
+    private void renderRod(
             MechanicalWeaverBlockEntity be,
-            float crossDegrees,
-            float bob,
+            float side,
+            float phase,
             PoseStack poseStack,
             MultiBufferSource buffer,
             int packedLight,
             int packedOverlay) {
+        // Lean so the rod's top reaches the centre (tip is TIP_SPREAD out, rod is ROD_LENGTH long).
+        float lean = (float) Math.toDegrees(Math.asin(Math.min(1f, TIP_SPREAD / ROD_LENGTH)));
+        float tipX = 0.5f + side * TIP_SPREAD;
+        float tipY = TIP_BASE_Y - TIP_DIP * Math.max(0f, (float) Math.sin(phase)); // dip into the item
+
         poseStack.pushPose();
-        poseStack.translate(0.5f, STICK_BASE_Y + STICK_AMPLITUDE * bob, 0.5f);
-        poseStack.mulPose(Axis.ZP.rotationDegrees(crossDegrees)); // tilt to make the two cross
-        poseStack.scale(STICK_SCALE, STICK_SCALE, STICK_SCALE);
-        // Render with NONE (no display transform): the stick's handheld item-frame transform is what
-        // threw it off-centre. The raw sprite model spans [0,1]^2 from a corner, so recentre it on the
-        // pivot ourselves before drawing.
-        poseStack.translate(-0.5f, -0.5f, 0.0f);
+        poseStack.translate(tipX, tipY, 0.5f);
+        poseStack.mulPose(Axis.ZP.rotationDegrees(side * lean)); // tilt the top toward the centre
+        poseStack.scale(ROD_LENGTH, ROD_LENGTH, ROD_LENGTH);
+        // End rod is a clean vertical rod (no diagonal sprite to fight); put its bottom-centre on the tip.
+        poseStack.translate(-0.5f, 0f, -0.5f);
         itemRenderer.renderStatic(
-                new ItemStack(Items.STICK),
+                new ItemStack(Items.END_ROD),
                 ItemDisplayContext.NONE,
                 packedLight,
                 packedOverlay,

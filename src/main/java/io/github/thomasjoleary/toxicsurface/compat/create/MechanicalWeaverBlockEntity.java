@@ -7,7 +7,9 @@ import io.github.thomasjoleary.toxicsurface.block.WeaverLogic;
 import io.github.thomasjoleary.toxicsurface.compat.jade.JadeReadout;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.items.IItemHandler;
@@ -143,6 +145,20 @@ public class MechanicalWeaverBlockEntity extends KineticBlockEntity implements J
             items.setStackInSlot(SLOT_OUTPUT, recipe.result().copy());
         } else {
             out.grow(recipe.result().getCount());
+        }
+        // A small white puff to punctuate the transformation.
+        if (level instanceof ServerLevel server) {
+            BlockPos pos = getBlockPos();
+            server.sendParticles(
+                    ParticleTypes.POOF,
+                    pos.getX() + 0.5,
+                    pos.getY() + 1.1,
+                    pos.getZ() + 0.5,
+                    6,
+                    0.15,
+                    0.08,
+                    0.15,
+                    0.01);
         }
     }
 
