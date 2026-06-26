@@ -465,16 +465,21 @@ def toxic_residue():
 
 def hazmat_material():
     rgb, a = blank()
-    bd = bayer(16, 16)
-    pal = [(150, 108, 18), (205, 158, 28), (240, 196, 46), (252, 222, 92)]
+    body = (240, 196, 46)
+    hi = (252, 222, 92)
+    lo = (205, 158, 28)
     for y in range(2, 14):
         for x in range(2, 14):
-            twill = ((x + y) % 4) / 3.0  # gentle diagonal twill weave (no per-pixel noise)
-            t = 0.45 + twill * 0.45
-            if x in (2, 13) or y in (2, 13):
-                t -= 0.4
-            rgb[y, x] = pick(pal, t, bd[y, x])
+            if y == 2 or x == 2:  # top/left highlight
+                rgb[y, x] = hi
+            elif y == 13 or x == 13:  # bottom/right shadow
+                rgb[y, x] = lo
+            else:
+                rgb[y, x] = body  # flat yellow
             a[y, x] = 1.0
+    # a single blue reflective stripe so it reads as suit fabric
+    for x in range(3, 13):
+        rgb[8][x] = REFLECT[1]
     rounded(a)
     outline(rgb, a, HAZ_OUTLINE)
     save(os.path.join(ITEM, "hazmat_material.png"), rgb, a)
@@ -489,11 +494,11 @@ HAZ_RUBBER = (54, 48, 40)  # dark rubber trim (boot soles)
 
 
 def _haz_form(rgb, a, rows, bd, cx, cy, rx, ry):
-    """Smooth rounded yellow form (radial shading only — no per-pixel noise, so no mottled dots)."""
+    """Rounded yellow form — clean radial cel shading, no dithering (so no mottled dots)."""
     for y, (x0, x1) in rows.items():
         for x in range(x0, x1 + 1):
             r = (((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2) ** 0.5
-            rgb[y, x] = pick(HAZ, 0.92 - r * 0.62, bd[y, x])
+            rgb[y, x] = pick(HAZ, 0.92 - r * 0.62)
             a[y, x] = 1.0
 
 
@@ -506,7 +511,7 @@ def hazmat_helmet():
     for x in range(5, 11):
         for y in (6, 7):
             d = abs(x - 7.5) / 3.5
-            rgb[y, x] = pick(visor, 0.95 - d * 0.6, bd[y, x])
+            rgb[y, x] = pick(visor, 0.95 - d * 0.6)
             a[y, x] = 1.0
     outline(rgb, a, HAZ_OUTLINE)
     save(os.path.join(ITEM, "hazmat_helmet.png"), rgb, a)
@@ -519,7 +524,7 @@ def hazmat_chestplate():
     _haz_form(rgb, a, rows, bd, 7.5, 6, 6, 5)
     for x in range(3, 13):  # blue reflective chest band
         if a[7, x] > 0:
-            rgb[7, x] = pick(REFLECT, 0.5 + ((x % 2) * 0.5), bd[7, x])
+            rgb[7, x] = REFLECT[1]
     outline(rgb, a, HAZ_OUTLINE)
     save(os.path.join(ITEM, "hazmat_chestplate.png"), rgb, a)
 
@@ -532,11 +537,11 @@ def hazmat_leggings():
     for y in range(7, 12):
         for x in list(range(4, 7 - (y > 9))) + list(range(9, 12 - (y > 9))):
             r = abs(x - (5 if x < 7 else 10)) / 2
-            rgb[y, x] = pick(HAZ, 0.82 - r * 0.22, bd[y, x])
+            rgb[y, x] = pick(HAZ, 0.82 - r * 0.22)
             a[y, x] = 1.0
     for x in range(4, 12):  # blue belt
         if a[3, x] > 0:
-            rgb[3, x] = pick(REFLECT, 0.5 + ((x % 2) * 0.5), bd[3, x])
+            rgb[3, x] = REFLECT[1]
     outline(rgb, a, HAZ_OUTLINE)
     save(os.path.join(ITEM, "hazmat_leggings.png"), rgb, a)
 
@@ -551,7 +556,7 @@ def hazmat_boots():
         for x in range(x0, x1 + 1):
             # darken the inner edges (toward the seam) for extra separation.
             inner = (x == x1 and (x0, x1, y) in left) or (x == x0 and (x0, x1, y) in right)
-            rgb[y, x] = pick(HAZ, 0.5 if inner else 0.78, bd[y, x])
+            rgb[y, x] = pick(HAZ, 0.5 if inner else 0.78)
             a[y, x] = 1.0
     for x in range(2, 14):  # rubber soles
         if a[10, x] > 0:
@@ -700,25 +705,17 @@ def toxic_waste_block():
 
 # ----------------------------------------------------------------------------- armor worn layers
 def armor_layer(name, bands, visor=False):
-    """Streamlined rubber-duck-yellow worn suit: flat yellow with faint panel seams (no per-pixel
-    noise/dots) and blue hi-vis reflective tape bands."""
+    """Streamlined worn suit: solid rubber-duck yellow with solid blue reflective stripes and a visor.
+    No dithering, no panel seams — just flat yellow + stripes + visor, as requested."""
     h, w = 32, 64
-    bd = bayer(h, w)
-    pal = [(150, 108, 18), (205, 158, 28), (240, 196, 46), (252, 222, 92)]
+    yellow = (240, 196, 46)
+    blue = (120, 175, 215)
     rgb = np.zeros((h, w, 3), float)
-    for y in range(h):
-        for x in range(w):
-            t = 0.62  # flat yellow body
-            if x % 8 == 0 or y % 8 == 0:
-                t -= 0.4  # subtle panel seam
-            rgb[y, x] = pick(pal, t, bd[y, x])
-    for (y0, y1) in bands:  # blue reflective tape
-        for y in range(y0, y1):
-            for x in range(w):
-                if not (x % 8 == 0 or y % 8 == 0):
-                    rgb[y, x] = pick(REFLECT, 0.45 + ((x % 2) * 0.4), bd[y, x])
+    rgb[:, :] = yellow
+    for (y0, y1) in bands:  # solid blue reflective stripes
+        rgb[y0:y1, :] = blue
     if visor:
-        _draw_helmet_visor(rgb, bd)
+        _draw_helmet_visor(rgb)
     save(os.path.join(ARMOR, name + ".png"), rgb, np.ones((h, w)))
 
 
@@ -759,24 +756,21 @@ def face_mask_worn_tex():
     save(os.path.join(ITEM, "face_mask_worn.png"), rgb, np.ones((S, S)))
 
 
-def _draw_helmet_visor(rgb, bd):
-    """Paint a gas-mask faceplate onto the helmet's front. The worn helmet shows the armour model's
-    HAT layer (texOffs 32,0 → front UV x:40-47) *over* the base head (texOffs 0,0 → front x:8-15), so
-    paint BOTH front faces or the hat's plain yellow hides the visor. Dark rubber mask + a glowing
-    cyan visor band across the eyes + a chin filter canister."""
-    rubber = [(28, 32, 30), (46, 52, 48), (66, 74, 68)]
-    glass = [(26, 60, 70), (60, 130, 150), (120, 200, 218), (190, 244, 252)]
-    canister = [(46, 60, 28), (88, 110, 50), (130, 160, 70)]
+def _draw_helmet_visor(rgb):
+    """Draw a cyan visor onto the helmet's front, leaving the rest of the face the suit yellow. The
+    worn helmet shows the armour model's HAT layer (texOffs 32,0 → front UV x:40-47) *over* the base
+    head (texOffs 0,0 → front x:8-15), so paint BOTH front faces or the hat hides it. A thin dark
+    frame rings a cyan goggle band; everything else stays yellow to match the suit."""
+    glass = [(60, 130, 150), (120, 200, 218), (185, 238, 250)]
+    frame = (64, 46, 12)
     for x0 in (8, 40):  # base-head front and hat front
-        for y in range(8, 16):
+        for y in range(9, 14):  # dark frame band
             for x in range(x0, x0 + 8):
-                if 10 <= y <= 12:  # visor band across the eyes
-                    d = abs(x - (x0 + 3.5)) / 4.0
-                    rgb[y, x] = pick(glass, 1.0 - d * 0.7, bd[y, x])
-                elif y >= 14 and x0 + 2 <= x <= x0 + 5:  # filter canister at the chin
-                    rgb[y, x] = pick(canister, 0.6, bd[y, x])
-                else:  # dark rubber mask body framing the face
-                    rgb[y, x] = pick(rubber, 0.55, bd[y, x])
+                rgb[y, x] = frame
+        for y in range(10, 13):  # cyan visor inside the frame
+            for x in range(x0 + 1, x0 + 7):
+                d = abs(x - (x0 + 3.5)) / 3.5
+                rgb[y, x] = pick(glass, 1.0 - d * 0.5)
 
 
 # ----------------------------------------------------------------------------- bucket (re-tint existing vanilla composite)

@@ -30,15 +30,21 @@ public class CleanserScreen extends AbstractContainerScreen<CleanserMenu> {
         this.inventoryLabelY = this.imageHeight - 94;
     }
 
+    // Vertical layout (relative to topPos): title 6, Range label 18, button/slot row 34, Active 56.
+    private static final int ROW_BUTTONS = 34;
+    private static final int LABEL_RANGE_Y = 18;
+    private static final int LABEL_ACTIVE_Y = 56;
+    private static final int SLOT_X = 80;
+
     @Override
     protected void init() {
         super.init();
         int x = this.leftPos;
         int y = this.topPos;
-        addRenderableWidget(rangeButton(x + 8, y + 30, 20, "-8", CleanserMenu.BUTTON_RANGE_DOWN_8));
-        addRenderableWidget(rangeButton(x + 30, y + 30, 18, "-1", CleanserMenu.BUTTON_RANGE_DOWN_1));
-        addRenderableWidget(rangeButton(x + 130, y + 30, 18, "+1", CleanserMenu.BUTTON_RANGE_UP_1));
-        addRenderableWidget(rangeButton(x + 150, y + 30, 20, "+8", CleanserMenu.BUTTON_RANGE_UP_8));
+        addRenderableWidget(rangeButton(x + 8, y + ROW_BUTTONS, 20, "-8", CleanserMenu.BUTTON_RANGE_DOWN_8));
+        addRenderableWidget(rangeButton(x + 30, y + ROW_BUTTONS, 18, "-1", CleanserMenu.BUTTON_RANGE_DOWN_1));
+        addRenderableWidget(rangeButton(x + 128, y + ROW_BUTTONS, 18, "+1", CleanserMenu.BUTTON_RANGE_UP_1));
+        addRenderableWidget(rangeButton(x + 148, y + ROW_BUTTONS, 20, "+8", CleanserMenu.BUTTON_RANGE_UP_8));
     }
 
     private Button rangeButton(int x, int y, int w, String label, int buttonId) {
@@ -58,11 +64,12 @@ public class CleanserScreen extends AbstractContainerScreen<CleanserMenu> {
         int y = this.topPos;
         graphics.fill(x, y, x + this.imageWidth, y + this.imageHeight, PANEL);
 
-        drawSlot(graphics, x + 80, y + 53);
+        // fuel slot in the centre of the button row
+        drawSlot(graphics, x + SLOT_X, y + ROW_BUTTONS);
 
-        // fuel flame above the fuel slot
-        int flameX = x + 80 + 3;
-        int flameY = y + 53 - 13;
+        // fuel flame just left of the fuel slot (between it and the -1 button)
+        int flameX = x + SLOT_X - 14;
+        int flameY = y + ROW_BUTTONS + 4;
         graphics.fill(flameX, flameY, flameX + 10, flameY + 11, FLAME_TRACK);
         if (this.menu.isLit()) {
             graphics.fill(flameX, flameY, flameX + 10, flameY + 11, FLAME_FILL);
@@ -91,8 +98,16 @@ public class CleanserScreen extends AbstractContainerScreen<CleanserMenu> {
         int y = this.topPos;
         String range = "Range: " + this.menu.getMenuRange();
         String effective = "Active: " + this.menu.getEffectiveRange();
-        graphics.drawString(this.font, range, x + 56, y + 16, TEXT, false);
-        graphics.drawString(this.font, effective, x + 56, y + 52, TEXT, false);
+        // Centre both labels in the panel so they don't collide with the buttons or the fuel slot.
+        graphics.drawString(
+                this.font, range, x + (this.imageWidth - this.font.width(range)) / 2, y + LABEL_RANGE_Y, TEXT, false);
+        graphics.drawString(
+                this.font,
+                effective,
+                x + (this.imageWidth - this.font.width(effective)) / 2,
+                y + LABEL_ACTIVE_Y,
+                TEXT,
+                false);
         renderTooltip(graphics, mouseX, mouseY);
     }
 }

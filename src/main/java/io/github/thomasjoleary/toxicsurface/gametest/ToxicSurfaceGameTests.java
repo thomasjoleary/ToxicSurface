@@ -10,6 +10,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -50,6 +51,53 @@ public final class ToxicSurfaceGameTests {
         helper.setBlock(3, 5, 3, Blocks.AIR); // punch a hole in the ceiling
         if (scanSealed(helper, 3, 3, 3)) {
             helper.fail("a box with a hole in it should read as exposed");
+        } else {
+            helper.succeed();
+        }
+    }
+
+    // ------------------------------------------------------------------ doors & pistons seal rules
+    /** A closed door in a wall keeps the pocket sealed; an open one breaches it. */
+    @GameTest(template = "empty")
+    public static void closedDoorSeals(GameTestHelper helper) {
+        buildHollowBox(helper, 1, 1, 1, 5, 5, 5);
+        helper.setBlock(3, 3, 1, Blocks.OAK_DOOR.defaultBlockState().setValue(BlockStateProperties.OPEN, false));
+        if (scanSealed(helper, 3, 3, 3)) {
+            helper.succeed();
+        } else {
+            helper.fail("a closed door should seal");
+        }
+    }
+
+    @GameTest(template = "empty")
+    public static void openDoorDoesNotSeal(GameTestHelper helper) {
+        buildHollowBox(helper, 1, 1, 1, 5, 5, 5);
+        helper.setBlock(3, 3, 1, Blocks.OAK_DOOR.defaultBlockState().setValue(BlockStateProperties.OPEN, true));
+        if (scanSealed(helper, 3, 3, 3)) {
+            helper.fail("an open door should not seal");
+        } else {
+            helper.succeed();
+        }
+    }
+
+    /** A retracted piston is a full block and seals; an extended one leaves a gap and doesn't. */
+    @GameTest(template = "empty")
+    public static void retractedPistonSeals(GameTestHelper helper) {
+        buildHollowBox(helper, 1, 1, 1, 5, 5, 5);
+        helper.setBlock(3, 3, 1, Blocks.PISTON);
+        if (scanSealed(helper, 3, 3, 3)) {
+            helper.succeed();
+        } else {
+            helper.fail("a retracted piston should seal");
+        }
+    }
+
+    @GameTest(template = "empty")
+    public static void extendedPistonDoesNotSeal(GameTestHelper helper) {
+        buildHollowBox(helper, 1, 1, 1, 5, 5, 5);
+        helper.setBlock(3, 3, 1, Blocks.PISTON.defaultBlockState().setValue(BlockStateProperties.EXTENDED, true));
+        if (scanSealed(helper, 3, 3, 3)) {
+            helper.fail("an extended piston should not seal");
         } else {
             helper.succeed();
         }
