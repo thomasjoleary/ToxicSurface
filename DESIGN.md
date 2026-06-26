@@ -768,16 +768,21 @@ Build/run requires **JDK 21** (NeoForge 1.21.1). A newer JDK breaks Gradle itsel
 - **Headless GameTest** (what CI runs): `./gradlew runGameTestServer`
   (`-PcreateRuntime=true` for the with-Create job).
 - **Play it:** `./gradlew runClient`. Standalone loads the base mod only.
-  - **Create features** (generators, industrial filter, mechanical machines, sludge fan):
-    `./gradlew runClient -PcreateRuntime=true`.
-  - **JEI / EMI / Jade** are `compileOnly`, so they are **not** on the run classpath by default. Flip
-    `-PviewerRuntime=true` to put the full mod jars (JEI `mezz.jei:jei-1.21.1-neoforge:${jei_version}`
-    + Jade `maven.modrinth:jade:${jade_version}`) on `additionalRuntimeClasspath` — no manual download
-    or `run/mods/` drop needed; Gradle fetches them from the mavens below. JEI and EMI conflict, so the
-    flag loads **JEI** by default; add `-PuseEmi=true` to load `dev.emi:emi-neoforge:${emi_version}`
-    instead. Jade always comes along (it coexists with either). Combine with `-PcreateRuntime=true` so
-    the Generator-Fuel recipe category populates:
-    `./gradlew runClient -PcreateRuntime=true -PviewerRuntime=true`.
+  - **Create / JEI / EMI / Jade** are `compileOnly`, so they are **not** loaded by default. The opt-in
+    flags below resolve the full mod jars from the mavens (below) and stage them into `run/mods/` via
+    the `syncRunMods` task (wired into `runClient`/`runServer`), where FML's `ModsFolderLocator` loads
+    them as **real mods**. Putting them on `additionalRuntimeClasspath` does *not* work — that only adds
+    their classes as libraries and FML never registers them, so the integrations stay disabled. Staged
+    jars are named `tsmanaged-*.jar` and wiped/re-synced each run, so toggling a flag off or swapping
+    JEI↔EMI never leaves a stray; mods you drop into `run/mods/` by hand are left alone.
+    - **Create** (generators, industrial filter, mechanical machines, sludge fan):
+      `-PcreateRuntime=true` (brings Flywheel + Ponder + Registrate via its jar-in-jar).
+    - **Recipe viewer + Jade:** `-PviewerRuntime=true` loads **JEI** + Jade by default; add
+      `-PuseEmi=true` to load EMI instead (JEI and EMI conflict — one at a time; Jade coexists with
+      either). Combine with `-PcreateRuntime=true` so the Generator-Fuel recipe category populates:
+      `./gradlew runClient -PcreateRuntime=true -PviewerRuntime=true`.
+    - The headless `runGameTestServer` (CI) deliberately stays standalone — the GameTests don't need
+      Create loaded — so `syncRunMods` is not wired to it.
 - **Fast-forward toxicity:** edit `run/config/toxicsurface-server.toml` →
   `timeToToxicTicks = 2000` (watch the telegraph countdown, then activation) and reload the world.
 - **Soft-dep mavens** (now allowlisted): blamejared (JEI), terraformersmc (EMI), Modrinth (Jade,

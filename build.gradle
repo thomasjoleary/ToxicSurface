@@ -109,6 +109,16 @@ def useEmi = providers.gradleProperty("useEmi")
         .map { it.toBoolean() }
         .getOrElse(false)
 
+// Resolvable bucket for the opt-in runtime mods (Create / JEI|EMI / Jade). Not a
+// boot/compile classpath — `syncRunMods` just resolves it to jar files and drops
+// them into run/mods/ so FML loads them as mods.
+configurations {
+    extraRunMods {
+        canBeConsumed = false
+        canBeResolved = true
+    }
+}
+
 dependencies {
     // Optional soft-dependency on Create (DESIGN.md §9). `compileOnly` keeps it
     // off the standalone runtime/jar entirely — the Create-touching code compiles
@@ -134,30 +144,24 @@ dependencies {
     // standalone runtime/jar, and the plugin only activates when Jade is installed.
     compileOnly("maven.modrinth:jade:${jade_version}") { transitive = false }
 
-    // Optional: load Create at runtime for the "Build with Create" GameTest job.
-    // The full (non-slim) jar jarJars everything FML needs to load Create —
-    // Flywheel + Ponder (its required mods) and the Registrate library — so a
-    // single entry brings the whole mandatory graph. transitive=false keeps
-    // Create's heavy *optional* POM deps (JEI, FTB, Farmer's Delight, …) off the
-    // classpath; FML only needs the jarJar'd mandatory mods, not those.
+    // Opt-in *runtime mods* for interactive dev runs (`runClient`/`runServer`).
+    // These go into the `extraRunMods` configuration, which `syncRunMods` copies
+    // into `run/mods/` so FML's ModsFolderLocator loads them as real mods — putting
+    // them on `additionalRuntimeClasspath` only adds their classes as libraries and
+    // FML never registers them as mods, so the integrations stay disabled. All are
+    // the full (non-slim) mod jars; transitive=false keeps their optional POM deps
+    // off — each jarJars the mods it actually needs (Create brings Flywheel +
+    // Ponder + Registrate that way).
     if (createRuntime) {
-        additionalRuntimeClasspath("com.simibubi.create:create-1.21.1:${create_version}") {
-            transitive = false
-        }
+        extraRunMods("com.simibubi.create:create-1.21.1:${create_version}") { transitive = false }
     }
-
-    // Optional: load the recipe viewer + Jade at runtime for in-dev UI testing
-    // (`-PviewerRuntime=true`). These are the full mod jars (not the compile-only
-    // API artifacts above), pulled from the same maven repos. JEI by default; flip
-    // to EMI with `-PuseEmi=true` (they can't co-exist). transitive=false keeps
-    // their optional POM deps off the classpath — each jarJars what it needs.
     if (viewerRuntime) {
         if (useEmi) {
-            additionalRuntimeClasspath("dev.emi:emi-neoforge:${emi_version}") { transitive = false }
+            extraRunMods("dev.emi:emi-neoforge:${emi_version}") { transitive = false }
         } else {
-            additionalRuntimeClasspath("mezz.jei:jei-1.21.1-neoforge:${jei_version}") { transitive = false }
+            extraRunMods("mezz.jei:jei-1.21.1-neoforge:${jei_version}") { transitive = false }
         }
-        additionalRuntimeClasspath("maven.modrinth:jade:${jade_version}") { transitive = false }
+        extraRunMods("maven.modrinth:jade:${jade_version}") { transitive = false }
     }
 
     // JUnit 5 for pure-logic unit tests (e.g. the enclosure flood-fill, DESIGN.md §10).
@@ -165,6 +169,35 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
+
+// Copies the opt-in runtime mods (gated by -PcreateRuntime / -PviewerRuntime) into
+// run/mods/ so the interactive runs load them as real mods. Named with a "tsmanaged-"
+// prefix and wiped first each run, so toggling a flag off or swapping JEI<->EMI never
+// leaves a stray jar behind — and any mods you drop in run/mods/ by hand are untouched.
+def runModsDir = layout.projectDirectory.dir("run/mods")
+def syncRunMods = tasks.register("syncRunMods") {
+    description = "Stages opt-in Create / recipe-viewer mods into run/mods for dev runs."
+    def staged = configurations.extraRunMods
+    def dir = runModsDir.asFile
+    inputs.files(staged)
+    // Plain task (not a Copy): a Copy with an empty source is treated as NO-SOURCE and skips its
+    // actions, which would leave stale jars behind when a flag is toggled off. This always runs.
+    doLast {
+        dir.mkdirs()
+        def stale = dir.listFiles({ d, n -> n.startsWith("tsmanaged-") && n.endsWith(".jar") } as FilenameFilter)
+        stale?.each { it.delete() }
+        staged.each { jar ->
+            java.nio.file.Files.copy(
+                    jar.toPath(),
+                    new File(dir, "tsmanaged-${jar.name}").toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        }
+    }
+}
+// Only the interactive runs get the staged mods; the headless gameTestServer (CI) stays
+// standalone — our GameTests don't depend on Create being loaded.
+tasks.named("runClient") { dependsOn syncRunMods }
+tasks.named("runServer") { dependsOn syncRunMods }
 
 // Expand gradle.properties tokens into the mods.toml template at build time.
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
