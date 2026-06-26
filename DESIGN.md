@@ -463,6 +463,16 @@ server-driven and synced. Baked into the architecture, not bolted on.
   behave identically; the RPM→range curve is a pure, unit-tested function. All Create
   classes live in `compat.create` and register **only** via `CreateContent` behind the
   `isLoaded()` gate — never classloaded in the standalone jar.
+  - **Kinetic shaft connections:** each block overrides `hasShaftTowards` (the `KineticBlock`
+    default is `false` for every face, so without it nothing connects). Generators *and*
+    machines connect on **both ends of the facing axis** (`face.getAxis() == FACING axis`).
+  - **Deployer-style Mechanical Weaver (pass 1):** no GUI — a depot-style top face holds the two
+    inputs / output, rendered in-world by a Create-gated, client-only `MechanicalWeaverRenderer`
+    (registered from `CreateClientContent` behind a `Dist.CLIENT` check). While weaving, two
+    crossing "weaving sticks" bob over-under (vanilla sticks as stand-in geometry). Right-click
+    inserts/extracts by hand; automation still flows through the item-handler capability. The BE
+    syncs a `weaving` flag + inventory to clients via Create's `sendData()`. **Pass 2 pending:**
+    real weaving-head model + textures, motion polish.
 - **Filter fan-washing:** `create:splashing` `used → clean` filter, **condition-gated** on
   `create`; schema verified against the real Create jar. Sludge pumps/stores through Create
   pipes & tanks automatically (it's a real NeoForge fluid exposing the standard

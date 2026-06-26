@@ -14,7 +14,9 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
+import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
@@ -109,6 +111,11 @@ public final class CreateContent {
         modBus.addListener(CreateContent::addToCreativeTab);
         modBus.addListener(CreateContent::registerCapabilities);
         modBus.addListener(CreateContent::registerFanProcessing);
+        // Client-only rendering (the Mechanical Weaver's in-world depot/sticks). Gated on dist so the
+        // renderer classes never load on a dedicated server.
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            CreateClientContent.registerClient(modBus);
+        }
     }
 
     /**

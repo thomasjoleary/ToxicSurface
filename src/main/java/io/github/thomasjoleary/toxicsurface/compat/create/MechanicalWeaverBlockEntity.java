@@ -38,6 +38,10 @@ public class MechanicalWeaverBlockEntity extends KineticBlockEntity implements J
         @Override
         protected void onContentsChanged(int slot) {
             setChanged();
+            // Push the new contents to clients so the depot-style renderer shows them in-world.
+            if (level != null && !level.isClientSide) {
+                sendData();
+            }
         }
 
         @Override
@@ -48,6 +52,8 @@ public class MechanicalWeaverBlockEntity extends KineticBlockEntity implements J
 
     private int progress;
     private int maxProgress;
+    /** Synced to the client purely to drive the weaving-stick animation (no GUI to read from). */
+    private boolean weaving;
 
     public MechanicalWeaverBlockEntity(BlockPos pos, BlockState state) {
         super(CreateContent.MECHANICAL_WEAVER_BE.get(), pos, state);
@@ -55,6 +61,16 @@ public class MechanicalWeaverBlockEntity extends KineticBlockEntity implements J
 
     public IItemHandler getItemHandler() {
         return items;
+    }
+
+    /** The stack in a slot, for the in-world renderer (client reads the synced inventory). */
+    public ItemStack getRenderStack(int slot) {
+        return items.getStackInSlot(slot);
+    }
+
+    /** Whether the machine is actively weaving — drives the animated weaving sticks on the client. */
+    public boolean isWeaving() {
+        return weaving;
     }
 
     @Override
@@ -76,7 +92,8 @@ public class MechanicalWeaverBlockEntity extends KineticBlockEntity implements J
                 ? null
                 : WeaverLogic.find(items.getStackInSlot(SLOT_INPUT_A), items.getStackInSlot(SLOT_INPUT_B));
 
-        if (recipe != null && canOutput(recipe.result())) {
+        boolean nowWeaving = recipe != null && canOutput(recipe.result());
+        if (nowWeaving) {
             maxProgress = recipe.time();
             // Faster rotation weaves faster: one fuel-tick of progress per MIN_RPM of speed.
             progress += Math.max(1, (int) (rpm / MIN_RPM));
@@ -88,6 +105,13 @@ public class MechanicalWeaverBlockEntity extends KineticBlockEntity implements J
         } else if (progress != 0) {
             progress = 0;
             setChanged();
+        }
+
+        // Tell clients only when the weaving state flips, so the stick animation starts/stops in sync
+        // without a packet every tick (the client runs its own animation clock while weaving is true).
+        if (nowWeaving != weaving) {
+            weaving = nowWeaving;
+            sendData();
         }
     }
 
@@ -128,6 +152,7 @@ public class MechanicalWeaverBlockEntity extends KineticBlockEntity implements J
         tag.put("Items", items.serializeNBT(registries));
         tag.putInt("Progress", progress);
         tag.putInt("MaxProgress", maxProgress);
+        tag.putBoolean("Weaving", weaving);
     }
 
     @Override
@@ -138,5 +163,6 @@ public class MechanicalWeaverBlockEntity extends KineticBlockEntity implements J
         }
         progress = tag.getInt("Progress");
         maxProgress = tag.getInt("MaxProgress");
+        weaving = tag.getBoolean("Weaving");
     }
 }

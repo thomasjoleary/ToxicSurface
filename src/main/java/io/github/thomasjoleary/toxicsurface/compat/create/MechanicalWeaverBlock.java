@@ -6,9 +6,18 @@ import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.foundation.block.IBE;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.neoforged.neoforge.items.IItemHandler;
 
 /**
  * The Mechanical Weaver block (DESIGN.md §3). A {@link DirectionalKineticBlock} driven by a
@@ -41,5 +50,78 @@ public class MechanicalWeaverBlock extends DirectionalKineticBlock implements IB
     @Override
     public BlockEntityType<? extends MechanicalWeaverBlockEntity> getBlockEntityType() {
         return CreateContent.MECHANICAL_WEAVER_BE.get();
+    }
+
+    // The machine has no GUI — items live on the depot-style top face. Right-click with an item to
+    // drop it onto the inputs, empty-handed to take the result (or an input) back. Automation still
+    // goes through the exposed item handler capability.
+    @Override
+    protected ItemInteractionResult useItemOn(
+            ItemStack stack,
+            BlockState state,
+            Level level,
+            BlockPos pos,
+            Player player,
+            InteractionHand hand,
+            BlockHitResult hitResult) {
+        if (stack.isEmpty() || !(level.getBlockEntity(pos) instanceof MechanicalWeaverBlockEntity be)) {
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        }
+        IItemHandler items = be.getItemHandler();
+        // Does any of the held stack fit in an input slot? (Simulate across both inputs first.)
+        ItemStack leftover = stack;
+        for (int slot = MechanicalWeaverBlockEntity.SLOT_INPUT_A;
+                slot <= MechanicalWeaverBlockEntity.SLOT_INPUT_B;
+                slot++) {
+            leftover = items.insertItem(slot, leftover, true);
+        }
+        if (leftover.getCount() == stack.getCount()) {
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION; // nothing fits
+        }
+        if (!level.isClientSide) {
+            ItemStack working = stack;
+            for (int slot = MechanicalWeaverBlockEntity.SLOT_INPUT_A;
+                    slot <= MechanicalWeaverBlockEntity.SLOT_INPUT_B;
+                    slot++) {
+                working = items.insertItem(slot, working, false);
+            }
+            player.setItemInHand(hand, working);
+        }
+        return ItemInteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    @Override
+    protected InteractionResult useWithoutItem(
+            BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
+        if (!(level.getBlockEntity(pos) instanceof MechanicalWeaverBlockEntity be)) {
+            return InteractionResult.PASS;
+        }
+        IItemHandler items = be.getItemHandler();
+        // Take the finished output first, then an input if there's no output yet.
+        for (int slot : new int[] {
+            MechanicalWeaverBlockEntity.SLOT_OUTPUT,
+            MechanicalWeaverBlockEntity.SLOT_INPUT_B,
+            MechanicalWeaverBlockEntity.SLOT_INPUT_A
+        }) {
+            ItemStack taken = items.extractItem(slot, items.getStackInSlot(slot).getMaxStackSize(), level.isClientSide);
+            if (!taken.isEmpty()) {
+                if (!level.isClientSide && !player.getInventory().add(taken)) {
+                    player.drop(taken, false);
+                }
+                return InteractionResult.sidedSuccess(level.isClientSide);
+            }
+        }
+        return InteractionResult.PASS;
+    }
+
+    @Override
+    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        if (!state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof MechanicalWeaverBlockEntity be) {
+            IItemHandler items = be.getItemHandler();
+            for (int i = 0; i < items.getSlots(); i++) {
+                Block.popResource(level, pos, items.getStackInSlot(i));
+            }
+        }
+        super.onRemove(state, level, pos, newState, movedByPiston); // Create's kinetic-network cleanup
     }
 }
