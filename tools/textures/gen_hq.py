@@ -465,84 +465,84 @@ def toxic_residue():
 
 def hazmat_material():
     rgb, a = blank()
-    noise = fractal2(16, 16, (8, 16), seed=81)
     bd = bayer(16, 16)
-    pal = [(70, 78, 28), (120, 132, 42), (168, 180, 60), (200, 210, 96)]
+    pal = [(150, 108, 18), (205, 158, 28), (240, 196, 46), (252, 222, 92)]
     for y in range(2, 14):
         for x in range(2, 14):
-            twill = ((x + y) % 4) / 3.0  # diagonal twill weave
-            t = 0.3 + twill * 0.55 + (noise[y, x] - 0.5) * 0.2
+            twill = ((x + y) % 4) / 3.0  # gentle diagonal twill weave (no per-pixel noise)
+            t = 0.45 + twill * 0.45
             if x in (2, 13) or y in (2, 13):
-                t -= 0.45
+                t -= 0.4
             rgb[y, x] = pick(pal, t, bd[y, x])
             a[y, x] = 1.0
     rounded(a)
-    outline(rgb, a, (40, 46, 18))
+    outline(rgb, a, HAZ_OUTLINE)
     save(os.path.join(ITEM, "hazmat_material.png"), rgb, a)
 
 
 # ----------------------------------------------------------------------------- items: armor icons
-HAZ = [(54, 60, 24), (96, 104, 38), (140, 150, 52), (186, 196, 96), (212, 222, 150)]
+# Rubber-duck-yellow ramp (dark -> light) for the streamlined hazmat suit, with blue reflective tape.
+HAZ = [(150, 108, 18), (205, 158, 28), (240, 196, 46), (252, 222, 92), (255, 240, 150)]
+REFLECT = [(96, 150, 205), (152, 202, 238)]  # blue hi-vis reflective tape
+HAZ_OUTLINE = (74, 52, 12)  # dark amber rim
+HAZ_RUBBER = (54, 48, 40)  # dark rubber trim (boot soles)
 
 
-def _haz_form(rgb, a, rows, noise, bd, cx, cy, rx, ry):
+def _haz_form(rgb, a, rows, bd, cx, cy, rx, ry):
+    """Smooth rounded yellow form (radial shading only — no per-pixel noise, so no mottled dots)."""
     for y, (x0, x1) in rows.items():
         for x in range(x0, x1 + 1):
             r = (((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2) ** 0.5
-            t = 0.9 - r * 0.7 + (noise[y, x] - 0.5) * 0.18
-            rgb[y, x] = pick(HAZ, t, bd[y, x])
+            rgb[y, x] = pick(HAZ, 0.92 - r * 0.62, bd[y, x])
             a[y, x] = 1.0
 
 
 def hazmat_helmet():
     rgb, a = blank()
-    noise = fractal2(16, 16, (4, 8), seed=91)
     bd = bayer(16, 16)
     rows = {2: (5, 10), 3: (4, 11), 4: (3, 12), 5: (3, 12), 6: (3, 12), 7: (3, 12), 8: (4, 11), 9: (5, 10)}
-    _haz_form(rgb, a, rows, noise, bd, 7.5, 5, 5, 4)
-    visor = [(36, 90, 100), (90, 175, 190), (180, 230, 240)]
+    _haz_form(rgb, a, rows, bd, 7.5, 5, 5, 4)
+    visor = [(28, 64, 78), (60, 130, 152), (130, 205, 226), (190, 240, 250)]
     for x in range(5, 11):
         for y in (6, 7):
-            rgb[y, x] = pick(visor, 0.35 + 0.5 * ((x + y) % 2), bd[y, x])
+            d = abs(x - 7.5) / 3.5
+            rgb[y, x] = pick(visor, 0.95 - d * 0.6, bd[y, x])
             a[y, x] = 1.0
-    outline(rgb, a, (40, 46, 18))
+    outline(rgb, a, HAZ_OUTLINE)
     save(os.path.join(ITEM, "hazmat_helmet.png"), rgb, a)
 
 
 def hazmat_chestplate():
     rgb, a = blank()
-    noise = fractal2(16, 16, (4, 8), seed=92)
     bd = bayer(16, 16)
     rows = {2: (4, 11), 3: (3, 12), 4: (2, 13), 5: (2, 13), 6: (3, 12), 7: (3, 12), 8: (3, 12), 9: (3, 12), 10: (3, 12), 11: (4, 11)}
-    _haz_form(rgb, a, rows, noise, bd, 7.5, 6, 6, 5)
-    for x in range(3, 13):  # reflective chest band
+    _haz_form(rgb, a, rows, bd, 7.5, 6, 6, 5)
+    for x in range(3, 13):  # blue reflective chest band
         if a[7, x] > 0:
-            rgb[7, x] = (212, 222, 150)
-    outline(rgb, a, (40, 46, 18))
+            rgb[7, x] = pick(REFLECT, 0.5 + ((x % 2) * 0.5), bd[7, x])
+    outline(rgb, a, HAZ_OUTLINE)
     save(os.path.join(ITEM, "hazmat_chestplate.png"), rgb, a)
 
 
 def hazmat_leggings():
     rgb, a = blank()
-    noise = fractal2(16, 16, (4, 8), seed=93)
     bd = bayer(16, 16)
     rows = {3: (4, 11), 4: (4, 11), 5: (4, 11), 6: (4, 11)}
-    _haz_form(rgb, a, rows, noise, bd, 7.5, 5, 4.5, 4)
+    _haz_form(rgb, a, rows, bd, 7.5, 5, 4.5, 4)
     for y in range(7, 12):
         for x in list(range(4, 7 - (y > 9))) + list(range(9, 12 - (y > 9))):
             r = abs(x - (5 if x < 7 else 10)) / 2
-            rgb[y, x] = pick(HAZ, 0.7 - r * 0.25 + (noise[y, x] - 0.5) * 0.18, bd[y, x])
+            rgb[y, x] = pick(HAZ, 0.82 - r * 0.22, bd[y, x])
             a[y, x] = 1.0
-    for x in range(4, 12):  # belt
+    for x in range(4, 12):  # blue belt
         if a[3, x] > 0:
-            rgb[3, x] = (212, 222, 150)
-    outline(rgb, a, (40, 46, 18))
+            rgb[3, x] = pick(REFLECT, 0.5 + ((x % 2) * 0.5), bd[3, x])
+    outline(rgb, a, HAZ_OUTLINE)
     save(os.path.join(ITEM, "hazmat_leggings.png"), rgb, a)
 
 
 def hazmat_boots():
     rgb, a = blank()
-    noise = fractal2(16, 16, (4, 8), seed=94)
     bd = bayer(16, 16)
     # Two boots split by an empty column at x=8 so the outline draws a dark seam between them.
     left = [(3, 6, 6), (3, 6, 7), (2, 7, 8), (2, 7, 9), (2, 7, 10)]
@@ -551,13 +551,13 @@ def hazmat_boots():
         for x in range(x0, x1 + 1):
             # darken the inner edges (toward the seam) for extra separation.
             inner = (x == x1 and (x0, x1, y) in left) or (x == x0 and (x0, x1, y) in right)
-            rgb[y, x] = pick(HAZ, (0.5 if inner else 0.7) + (noise[y, x] - 0.5) * 0.25, bd[y, x])
+            rgb[y, x] = pick(HAZ, 0.5 if inner else 0.78, bd[y, x])
             a[y, x] = 1.0
     for x in range(2, 14):  # rubber soles
         if a[10, x] > 0:
-            rgb[11, x] = (44, 47, 38)
+            rgb[11, x] = HAZ_RUBBER
             a[11, x] = 1.0
-    outline(rgb, a, (40, 46, 18))
+    outline(rgb, a, HAZ_OUTLINE)
     save(os.path.join(ITEM, "hazmat_boots.png"), rgb, a)
 
 
@@ -677,25 +677,22 @@ def generator_side(name, ember, grime):
 
 
 def toxic_waste_block():
+    # Tiles seamlessly: the fractal octaves all wrap at periods dividing 16. The old version's visible
+    # border line came from a low-frequency blob octave plus a high-contrast dark-crack network that
+    # repeated across every block; dropped both and tightened the palette so the repeat is far subtler.
     h = w = 16
-    n = fractal2(h, w, (2, 4, 8, 16), seed=111)
-    n2 = fractal2(h, w, (8, 16), seed=112)
+    n = fractal2(h, w, (4, 8, 16), seed=111)
     bd = bayer(h, w)
-    pal = [(40, 48, 28), (58, 70, 40), (80, 94, 52), (104, 120, 64)]
-    # Scattered single-pixel specks via per-pixel white noise (the smooth fractal alone clusters into
-    # blobs; this brings back the old version's crisp toxic flecks). Tiles per-block like vanilla.
+    pal = [(52, 62, 38), (66, 78, 46), (82, 96, 56), (98, 114, 66)]  # tighter range = lower contrast
     spk = np.random.default_rng(113).random((h, w))
-    flecks = [(150, 196, 74), (174, 214, 92), (132, 178, 64)]  # a little tonal variety
     rgb = np.zeros((h, w, 3), float)
     for y in range(h):
         for x in range(w):
-            t = 0.2 + n[y, x] * 0.7
-            if n2[y, x] < 0.18:
-                rgb[y, x] = (28, 34, 20)  # dark crack in the noise valleys
-            elif spk[y, x] > 0.90:
-                rgb[y, x] = flecks[int(spk[y, x] * 1000) % 3]  # bright toxic fleck
-            elif spk[y, x] < 0.05:
-                rgb[y, x] = (34, 42, 26)  # dark speck
+            t = 0.28 + n[y, x] * 0.55
+            if spk[y, x] > 0.94:
+                rgb[y, x] = (140, 182, 80)  # sparse, dimmer toxic fleck
+            elif spk[y, x] < 0.04:
+                rgb[y, x] = (48, 58, 36)  # occasional subtle dark speck (no connected cracks)
             else:
                 rgb[y, x] = pick(pal, t, bd[y, x])
     save(os.path.join(BLOCK, "toxic_waste_block.png"), rgb, np.ones((h, w)))
@@ -703,25 +700,25 @@ def toxic_waste_block():
 
 # ----------------------------------------------------------------------------- armor worn layers
 def armor_layer(name, bands, visor=False):
+    """Streamlined rubber-duck-yellow worn suit: flat yellow with faint panel seams (no per-pixel
+    noise/dots) and blue hi-vis reflective tape bands."""
     h, w = 32, 64
-    n = fractal2(h, w, (8, 16, 32), seed=seed_of(name))
     bd = bayer(h, w)
-    pal = [(60, 66, 26), (100, 110, 38), (146, 158, 54), (186, 198, 88)]
+    pal = [(150, 108, 18), (205, 158, 28), (240, 196, 46), (252, 222, 92)]
     rgb = np.zeros((h, w, 3), float)
     for y in range(h):
         for x in range(w):
-            twill = ((x + y) % 4) / 3.0
-            t = 0.3 + twill * 0.5 + (n[y, x] - 0.5) * 0.25
+            t = 0.62  # flat yellow body
             if x % 8 == 0 or y % 8 == 0:
-                t -= 0.5  # panel seams
+                t -= 0.4  # subtle panel seam
             rgb[y, x] = pick(pal, t, bd[y, x])
-    for (y0, y1) in bands:  # reflective tape
+    for (y0, y1) in bands:  # blue reflective tape
         for y in range(y0, y1):
             for x in range(w):
                 if not (x % 8 == 0 or y % 8 == 0):
-                    rgb[y, x] = pick([(196, 206, 150), (224, 232, 190)], 0.4 + (n[y, x] - 0.5) * 0.4, bd[y, x])
+                    rgb[y, x] = pick(REFLECT, 0.45 + ((x % 2) * 0.4), bd[y, x])
     if visor:
-        _draw_helmet_visor(rgb, bd, n)
+        _draw_helmet_visor(rgb, bd)
     save(os.path.join(ARMOR, name + ".png"), rgb, np.ones((h, w)))
 
 
@@ -730,41 +727,54 @@ def face_mask_worn_tex():
     visor band along the top (mapped onto the front face's eye line) and a filter-canister patch
     (bottom-right). Authored so the model's UVs hit forgiving uniform regions."""
     S = 16
-    n = fractal2(S, S, (4, 8), seed=131)
     bd = bayer(S, S)
-    body = [(50, 60, 48), (78, 90, 70), (104, 118, 96)]
+    body = [(44, 70, 40), (70, 100, 56), (98, 132, 78)]  # mask green
+    border = (36, 56, 32)  # darker green frame
     visor = [(40, 90, 104), (90, 175, 192), (170, 226, 238)]
-    canister = [(44, 58, 28), (78, 98, 44), (118, 146, 66)]
+    canister = [(72, 102, 58), (100, 134, 76)]
+    hole = (32, 44, 28)
     rgb = np.zeros((S, S, 3), float)
     for y in range(S):
         for x in range(S):
-            rgb[y, x] = pick(body, 0.5 + (n[y, x] - 0.5) * 0.4, bd[y, x])
-    for y in range(1, 4):  # cyan visor band (top of the front face)
-        for x in range(1, 15):
-            rgb[y, x] = pick(visor, 0.45 + (n[y, x] - 0.5) * 0.35, bd[y, x])
-    for y in range(9, 15):  # canister patch (bottom-right)
+            rgb[y, x] = pick(body, 0.5, bd[y, x])
+    # FRONT face = texture region (x 0-7, y 0-4): a full green border framing the cyan visor.
+    for y in range(0, 5):
+        for x in range(0, 8):
+            if x in (0, 7) or y in (0, 4):
+                rgb[y, x] = border  # frame all four sides
+            else:
+                d = abs(x - 3.5) / 3.5
+                rgb[y, x] = pick(visor, 1.0 - d * 0.55, bd[y, x])
+    # CANISTER face = texture region (x 9-14, y 9-14): green base with filter holes in a ring.
+    for y in range(9, 15):
         for x in range(9, 15):
-            d = ((x - 11.5) ** 2 + (y - 11.5) ** 2) ** 0.5 / 3.0
-            rgb[y, x] = pick(canister, 0.9 - d * 0.6 + (n[y, x] - 0.5) * 0.2, bd[y, x])
+            rgb[y, x] = pick(canister, 0.55, bd[y, x])
+    cx, cy, ring = 11.5, 11.5, 1.7
+    for k in range(8):  # eight holes evenly around the circle + one in the centre
+        ang = k * np.pi / 4
+        hx, hy = int(round(cx + np.cos(ang) * ring)), int(round(cy + np.sin(ang) * ring))
+        if 9 <= hx <= 14 and 9 <= hy <= 14:
+            rgb[hy, hx] = hole
+    rgb[int(cy), int(cx)] = hole
     save(os.path.join(ITEM, "face_mask_worn.png"), rgb, np.ones((S, S)))
 
 
-def _draw_helmet_visor(rgb, bd, n):
+def _draw_helmet_visor(rgb, bd):
     """Paint a gas-mask faceplate onto the head's FRONT face (armor-layer UV x:8-15, y:8-15): a dark
     rubber mask with a glowing cyan visor band across the eyes and a small filter canister at the chin,
-    so the hazmat helmet reads as a respirator hood instead of a plain bucket helmet."""
-    rubber = [(28, 32, 30), (44, 50, 46), (62, 70, 64)]
+    so the worn hazmat helmet reads as a respirator hood over the yellow suit."""
+    rubber = [(28, 32, 30), (46, 52, 48), (66, 74, 68)]
     glass = [(26, 60, 70), (60, 130, 150), (120, 200, 218), (190, 244, 252)]
-    canister = [(46, 60, 28), (78, 98, 44), (120, 150, 64)]
+    canister = [(46, 60, 28), (88, 110, 50), (130, 160, 70)]
     for y in range(8, 16):
         for x in range(8, 16):
             if 10 <= y <= 12:  # visor band across the eyes
                 d = abs(x - 11.5) / 4.0
-                rgb[y, x] = pick(glass, 1.0 - d * 0.7 + (n[y, x] - 0.5) * 0.2, bd[y, x])
+                rgb[y, x] = pick(glass, 1.0 - d * 0.7, bd[y, x])
             elif y >= 14 and 10 <= x <= 13:  # filter canister at the chin
-                rgb[y, x] = pick(canister, 0.5 + (n[y, x] - 0.5) * 0.3, bd[y, x])
-            else:  # rubber mask body
-                rgb[y, x] = pick(rubber, 0.5 + (n[y, x] - 0.5) * 0.3, bd[y, x])
+                rgb[y, x] = pick(canister, 0.6, bd[y, x])
+            else:  # dark rubber mask body framing the face
+                rgb[y, x] = pick(rubber, 0.55, bd[y, x])
 
 
 # ----------------------------------------------------------------------------- bucket (re-tint existing vanilla composite)
