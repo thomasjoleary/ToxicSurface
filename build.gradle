@@ -96,6 +96,19 @@ def createRuntime = providers.gradleProperty("createRuntime")
         .map { it.toBoolean() }
         .getOrElse(false)
 
+// Whether to put the recipe-viewer / tooltip mods (JEI + Jade) on the dev run
+// classpath so their UIs and our compat plugins can be exercised in-game. Off by
+// default so the standalone run still proves the "loads without the viewers"
+// contract. JEI and EMI can't both be active (they collide), so this loads JEI
+// (the more common pack choice); flip `-PuseEmi=true` alongside it to load EMI
+// instead. Jade always comes along since it doesn't conflict with either.
+def viewerRuntime = providers.gradleProperty("viewerRuntime")
+        .map { it.toBoolean() }
+        .getOrElse(false)
+def useEmi = providers.gradleProperty("useEmi")
+        .map { it.toBoolean() }
+        .getOrElse(false)
+
 dependencies {
     // Optional soft-dependency on Create (DESIGN.md §9). `compileOnly` keeps it
     // off the standalone runtime/jar entirely — the Create-touching code compiles
@@ -131,6 +144,20 @@ dependencies {
         additionalRuntimeClasspath("com.simibubi.create:create-1.21.1:${create_version}") {
             transitive = false
         }
+    }
+
+    // Optional: load the recipe viewer + Jade at runtime for in-dev UI testing
+    // (`-PviewerRuntime=true`). These are the full mod jars (not the compile-only
+    // API artifacts above), pulled from the same maven repos. JEI by default; flip
+    // to EMI with `-PuseEmi=true` (they can't co-exist). transitive=false keeps
+    // their optional POM deps off the classpath — each jarJars what it needs.
+    if (viewerRuntime) {
+        if (useEmi) {
+            additionalRuntimeClasspath("dev.emi:emi-neoforge:${emi_version}") { transitive = false }
+        } else {
+            additionalRuntimeClasspath("mezz.jei:jei-1.21.1-neoforge:${jei_version}") { transitive = false }
+        }
+        additionalRuntimeClasspath("maven.modrinth:jade:${jade_version}") { transitive = false }
     }
 
     // JUnit 5 for pure-logic unit tests (e.g. the enclosure flood-fill, DESIGN.md §10).

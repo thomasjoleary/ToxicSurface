@@ -770,11 +770,14 @@ Build/run requires **JDK 21** (NeoForge 1.21.1). A newer JDK breaks Gradle itsel
 - **Play it:** `./gradlew runClient`. Standalone loads the base mod only.
   - **Create features** (generators, industrial filter, mechanical machines, sludge fan):
     `./gradlew runClient -PcreateRuntime=true`.
-  - **JEI / EMI / Jade** are `compileOnly`, so they are **not** on the run classpath. To see the
-    info-pages / tooltips, add the full mods temporarily as `additionalRuntimeClasspath(...)` in
-    `build.gradle` (JEI `mezz.jei:jei-1.21.1-neoforge:${jei_version}`, EMI
-    `dev.emi:emi-neoforge:${emi_version}`, Jade `maven.modrinth:jade:${jade_version}`). JEI and EMI
-    conflict — run one at a time; Jade coexists with either.
+  - **JEI / EMI / Jade** are `compileOnly`, so they are **not** on the run classpath by default. Flip
+    `-PviewerRuntime=true` to put the full mod jars (JEI `mezz.jei:jei-1.21.1-neoforge:${jei_version}`
+    + Jade `maven.modrinth:jade:${jade_version}`) on `additionalRuntimeClasspath` — no manual download
+    or `run/mods/` drop needed; Gradle fetches them from the mavens below. JEI and EMI conflict, so the
+    flag loads **JEI** by default; add `-PuseEmi=true` to load `dev.emi:emi-neoforge:${emi_version}`
+    instead. Jade always comes along (it coexists with either). Combine with `-PcreateRuntime=true` so
+    the Generator-Fuel recipe category populates:
+    `./gradlew runClient -PcreateRuntime=true -PviewerRuntime=true`.
 - **Fast-forward toxicity:** edit `run/config/toxicsurface-server.toml` →
   `timeToToxicTicks = 2000` (watch the telegraph countdown, then activation) and reload the world.
 - **Soft-dep mavens** (now allowlisted): blamejared (JEI), terraformersmc (EMI), Modrinth (Jade,
