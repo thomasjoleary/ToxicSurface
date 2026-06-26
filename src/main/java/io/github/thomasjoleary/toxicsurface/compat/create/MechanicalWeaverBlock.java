@@ -25,11 +25,12 @@ public class MechanicalWeaverBlock extends DirectionalKineticBlock implements IB
         return state.getValue(FACING).getAxis();
     }
 
-    // Accept drive on the face it points at. Without this override the KineticBlock default returns
-    // false for every face, so no shaft connects and the machine never receives rotation.
+    // Accept drive on both ends of the facing axis (a shaft on either the facing face or its
+    // opposite). Without this override the KineticBlock default returns false for every face, so no
+    // shaft connects and the machine never receives rotation.
     @Override
     public boolean hasShaftTowards(LevelReader world, BlockPos pos, BlockState state, Direction face) {
-        return face == state.getValue(FACING);
+        return face.getAxis() == state.getValue(FACING).getAxis();
     }
 
     @Override
