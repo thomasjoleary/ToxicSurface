@@ -760,21 +760,23 @@ def face_mask_worn_tex():
 
 
 def _draw_helmet_visor(rgb, bd):
-    """Paint a gas-mask faceplate onto the head's FRONT face (armor-layer UV x:8-15, y:8-15): a dark
-    rubber mask with a glowing cyan visor band across the eyes and a small filter canister at the chin,
-    so the worn hazmat helmet reads as a respirator hood over the yellow suit."""
+    """Paint a gas-mask faceplate onto the helmet's front. The worn helmet shows the armour model's
+    HAT layer (texOffs 32,0 → front UV x:40-47) *over* the base head (texOffs 0,0 → front x:8-15), so
+    paint BOTH front faces or the hat's plain yellow hides the visor. Dark rubber mask + a glowing
+    cyan visor band across the eyes + a chin filter canister."""
     rubber = [(28, 32, 30), (46, 52, 48), (66, 74, 68)]
     glass = [(26, 60, 70), (60, 130, 150), (120, 200, 218), (190, 244, 252)]
     canister = [(46, 60, 28), (88, 110, 50), (130, 160, 70)]
-    for y in range(8, 16):
-        for x in range(8, 16):
-            if 10 <= y <= 12:  # visor band across the eyes
-                d = abs(x - 11.5) / 4.0
-                rgb[y, x] = pick(glass, 1.0 - d * 0.7, bd[y, x])
-            elif y >= 14 and 10 <= x <= 13:  # filter canister at the chin
-                rgb[y, x] = pick(canister, 0.6, bd[y, x])
-            else:  # dark rubber mask body framing the face
-                rgb[y, x] = pick(rubber, 0.55, bd[y, x])
+    for x0 in (8, 40):  # base-head front and hat front
+        for y in range(8, 16):
+            for x in range(x0, x0 + 8):
+                if 10 <= y <= 12:  # visor band across the eyes
+                    d = abs(x - (x0 + 3.5)) / 4.0
+                    rgb[y, x] = pick(glass, 1.0 - d * 0.7, bd[y, x])
+                elif y >= 14 and x0 + 2 <= x <= x0 + 5:  # filter canister at the chin
+                    rgb[y, x] = pick(canister, 0.6, bd[y, x])
+                else:  # dark rubber mask body framing the face
+                    rgb[y, x] = pick(rubber, 0.55, bd[y, x])
 
 
 # ----------------------------------------------------------------------------- bucket (re-tint existing vanilla composite)

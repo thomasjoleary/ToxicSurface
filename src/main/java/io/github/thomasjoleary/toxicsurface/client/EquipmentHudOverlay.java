@@ -31,19 +31,31 @@ public final class EquipmentHudOverlay {
 
     private EquipmentHudOverlay() {}
 
-    public static void render(GuiGraphics graphics, DeltaTracker delta) {
+    /**
+     * The full-screen visor overlay. Registered <b>below the hotbar</b> GUI layer so the player's
+     * hotbar and HUD draw on top of it (the visor frames the world view, it shouldn't hide the HUD).
+     */
+    public static void renderVisor(GuiGraphics graphics, DeltaTracker delta) {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         if (player == null || mc.options.hideGui) {
             return;
         }
-        ItemStack head = player.getItemBySlot(EquipmentSlot.HEAD);
-        ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
-
-        if (head.is(ModItems.HAZMAT_HELMET.get()) && ToxicSurfaceClientConfig.VISOR_OVERLAY_ENABLED.get()) {
+        if (player.getItemBySlot(EquipmentSlot.HEAD).is(ModItems.HAZMAT_HELMET.get())
+                && ToxicSurfaceClientConfig.VISOR_OVERLAY_ENABLED.get()) {
             drawVisor(graphics);
         }
-        drawFilterGauge(graphics, mc, head, chest);
+    }
+
+    /** The filter-time gauge text. Registered above the HUD so it's always legible. */
+    public static void renderGauge(GuiGraphics graphics, DeltaTracker delta) {
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = mc.player;
+        if (player == null || mc.options.hideGui) {
+            return;
+        }
+        drawFilterGauge(
+                graphics, mc, player.getItemBySlot(EquipmentSlot.HEAD), player.getItemBySlot(EquipmentSlot.CHEST));
     }
 
     private static void drawFilterGauge(GuiGraphics graphics, Minecraft mc, ItemStack head, ItemStack chest) {

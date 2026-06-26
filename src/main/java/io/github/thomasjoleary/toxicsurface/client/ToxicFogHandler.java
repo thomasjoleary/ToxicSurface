@@ -11,10 +11,11 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 
 /**
- * Renders the toxic-gas haze (DESIGN.md §3 Client rendering). When the server says
- * the local player is in gas, fog is pulled in tight and tinted sickly green. Driven
- * entirely off {@link ClientGasState}, so it matches the server's sealing/exposure
- * decision without a client-side flood-fill.
+ * Renders the toxic-gas haze (DESIGN.md §3 Client rendering). Whenever toxic gas is present at the
+ * local player's head, fog is pulled in tight and tinted sickly green. This is driven off
+ * {@link ClientGasState#isInToxicArea()} — protection-independent — so a player in a mask or hazmat
+ * suit still <em>sees</em> (and is obstructed by) the gas they're shielded from, and can tell where
+ * it is. It still respects the server's sealing/ceiling/cleanser decision (no fog in a sealed base).
  *
  * <p>The {@code fogIntensity} accessibility slider (DESIGN.md §3) scales how far the fog is pulled
  * in — at {@code 0} the distance narrowing is dropped entirely and only a thin green tint remains.
@@ -28,7 +29,7 @@ public final class ToxicFogHandler {
 
     @SubscribeEvent
     public static void onRenderFog(ViewportEvent.RenderFog event) {
-        if (!ClientGasState.isInGas()) {
+        if (!ClientGasState.isInToxicArea()) {
             return;
         }
         float intensity = (float) (double) ToxicSurfaceClientConfig.FOG_INTENSITY.get();
@@ -45,7 +46,7 @@ public final class ToxicFogHandler {
 
     @SubscribeEvent
     public static void onFogColor(ViewportEvent.ComputeFogColor event) {
-        if (!ClientGasState.isInGas()) {
+        if (!ClientGasState.isInToxicArea()) {
             return;
         }
         // Always keep at least a thin tint; the slider blends from a hint toward the full toxic color.

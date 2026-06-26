@@ -14,6 +14,7 @@ import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
+import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 
 /** Client mod-bus setup (DESIGN.md §3, §4). */
 @EventBusSubscriber(modid = ToxicSurface.MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
@@ -22,9 +23,16 @@ public final class ClientModBusEvents {
 
     @SubscribeEvent
     public static void registerGuiLayers(RegisterGuiLayersEvent event) {
+        // Visor sits *below* the hotbar so the player's HUD draws on top of it (it frames the view,
+        // it must not hide the hotbar).
+        event.registerBelow(
+                VanillaGuiLayers.HOTBAR,
+                ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "hazmat_visor"),
+                EquipmentHudOverlay::renderVisor);
+        // Filter gauge text stays above everything so it's always legible.
         event.registerAboveAll(
-                ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "equipment_hud"),
-                EquipmentHudOverlay::render);
+                ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "equipment_gauge"),
+                EquipmentHudOverlay::renderGauge);
         event.registerAboveAll(
                 ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "toxic_air_bar"), AirBarOverlay::render);
         event.registerAboveAll(
