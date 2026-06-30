@@ -111,6 +111,8 @@ public final class CreateContent {
         modBus.addListener(CreateContent::addToCreativeTab);
         modBus.addListener(CreateContent::registerCapabilities);
         modBus.addListener(CreateContent::registerFanProcessing);
+        // Let the gas check seal rooms inside moving contraptions (DESIGN.md §9).
+        io.github.thomasjoleary.toxicsurface.effect.ContraptionSeal.setImpl(ContraptionSealing::isSealedInContraption);
         // Client-only rendering (the Mechanical Weaver's in-world depot/sticks). Gated on dist so the
         // renderer classes never load on a dedicated server.
         if (FMLEnvironment.dist == Dist.CLIENT) {

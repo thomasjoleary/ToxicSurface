@@ -110,8 +110,11 @@ public final class GasEffectHandler {
         // the per-dimension cache reuses a pocket's result across players/ticks (DESIGN.md §2a, §8).
         boolean sealed = false;
         if (!submerged && (ambient || inSmog)) {
-            sealed = EnclosureCacheHandler.isSealed(
-                    level, x, y, z, ToxicSurfaceConfig.ENCLOSURE_FLOOD_FILL_BUDGET.get());
+            int budget = ToxicSurfaceConfig.ENCLOSURE_FLOOD_FILL_BUDGET.get();
+            // World pocket first (cheap, cached); then contraption rooms (Create-gated, no-op without
+            // Create) so a sealed cabin on a moving contraption still protects (DESIGN.md §9).
+            sealed = EnclosureCacheHandler.isSealed(level, x, y, z, budget)
+                    || ContraptionSeal.isSealed(level, player, budget);
         }
         boolean inCleanser = CleanserBubbles.isInside(level, x, y, z);
         return GasModel.isToxicGas(active, y, ceiling, sealed, inCleanser, inSmog, submerged);
