@@ -1,5 +1,8 @@
 {
     "textures": [
-        "toxicsurface:toxic_rain_splash"
+        "toxicsurface:toxic_splash_0",
+        "toxicsurface:toxic_splash_1",
+        "toxicsurface:toxic_splash_2",
+        "toxicsurface:toxic_splash_3"
     ]
 }
