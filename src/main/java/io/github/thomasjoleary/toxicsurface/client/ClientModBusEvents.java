@@ -5,7 +5,6 @@ package io.github.thomasjoleary.toxicsurface.client;
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.registry.ModMenus;
 import io.github.thomasjoleary.toxicsurface.registry.ModParticles;
-import net.minecraft.client.particle.WaterDropParticle;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
 import net.neoforged.api.distmarker.Dist;
@@ -68,9 +67,9 @@ public final class ClientModBusEvents {
         event.register(BuiltinDimensionTypes.OVERWORLD_EFFECTS, new ToxicWeatherEffects());
     }
 
-    /** The green rain-splash particle reuses vanilla's water-drop behaviour with our sprite. */
+    /** The small, dark-green toxic rain-splash fleck. */
     @SubscribeEvent
     public static void registerParticleProviders(RegisterParticleProvidersEvent event) {
-        event.registerSpriteSet(ModParticles.TOXIC_RAIN_SPLASH.get(), WaterDropParticle.Provider::new);
+        event.registerSpriteSet(ModParticles.TOXIC_RAIN_SPLASH.get(), ToxicRainSplashParticle.Provider::new);
     }
 }
