@@ -35,7 +35,6 @@ public class MechanicalWeaverRenderer implements BlockEntityRenderer<MechanicalW
     private static final float TIP_BASE_Y = 0.90f; // resting tip height, just above the depot
     private static final float ROD_LENGTH = 0.55f; // scaled length of each rod (lower tent apex)
     private static final float TIP_DIP = 0.05f; // dip depth; capped so the rod's bottom never sinks below 1.0
-    private static final float BOB_SPEED = 0.35f; // radians per tick
 
     private final ItemRenderer itemRenderer;
 
@@ -90,7 +89,9 @@ public class MechanicalWeaverRenderer implements BlockEntityRenderer<MechanicalW
         }
 
         if (be.isWeaving()) {
-            float phase = (level.getGameTime() + partialTick) * BOB_SPEED;
+            // One full over-under cycle per crafted item: drive the phase off the weave progress
+            // (0..1) so the stitch speeds up with the shaft and resets exactly once per item.
+            float phase = be.progressFraction(partialTick) * (float) (Math.PI * 2.0);
             renderRod(be, -1f, phase, poseStack, buffer, light, packedOverlay);
             renderRod(be, +1f, phase + (float) Math.PI, poseStack, buffer, light, packedOverlay); // over-under
         }

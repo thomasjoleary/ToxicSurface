@@ -57,6 +57,11 @@ public class MechanicalWeaverBlockEntity extends KineticBlockEntity implements J
     /** Synced to the client purely to drive the weaving-stick animation (no GUI to read from). */
     private boolean weaving;
 
+    // Client-only: the last synced progress and the client tick it arrived, so the renderer can
+    // extrapolate a smooth 0..1 weave fraction between syncs (one animation cycle per crafted item).
+    private int clientSyncedProgress;
+    private long clientSyncTick;
+
     public MechanicalWeaverBlockEntity(BlockPos pos, BlockState state) {
         super(CreateContent.MECHANICAL_WEAVER_BE.get(), pos, state);
     }
@@ -73,6 +78,23 @@ public class MechanicalWeaverBlockEntity extends KineticBlockEntity implements J
     /** Whether the machine is actively weaving — drives the animated weaving sticks on the client. */
     public boolean isWeaving() {
         return weaving;
+    }
+
+    /**
+     * Client-side weave progress as a looping 0..1 fraction for the renderer — one full cycle per
+     * crafted item. The server only syncs {@code progress} at craft/insert moments, so between them we
+     * extrapolate at the same rate the server advances (rounded RPM ÷ {@link #MIN_RPM}); the per-craft
+     * resync to 0 keeps it honest, so the animation naturally speeds up with the shaft and resets each
+     * item regardless of the recipe's length.
+     */
+    public float progressFraction(float partialTick) {
+        if (maxProgress <= 0 || level == null) {
+            return 0f;
+        }
+        int rate = Math.max(1, (int) (Math.abs(getSpeed()) / MIN_RPM)); // matches the server's per-tick step
+        float elapsed = (level.getGameTime() - clientSyncTick) + partialTick;
+        float fraction = (clientSyncedProgress + rate * elapsed) / maxProgress;
+        return fraction - (float) Math.floor(fraction); // loop within the item
     }
 
     @Override
@@ -180,5 +202,10 @@ public class MechanicalWeaverBlockEntity extends KineticBlockEntity implements J
         progress = tag.getInt("Progress");
         maxProgress = tag.getInt("MaxProgress");
         weaving = tag.getBoolean("Weaving");
+        if (clientPacket) {
+            // Anchor the client extrapolation to this fresh progress value.
+            clientSyncedProgress = progress;
+            clientSyncTick = level != null ? level.getGameTime() : 0L;
+        }
     }
 }
