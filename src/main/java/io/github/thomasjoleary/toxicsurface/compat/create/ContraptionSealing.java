@@ -4,6 +4,7 @@ package io.github.thomasjoleary.toxicsurface.compat.create;
 
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import com.simibubi.create.content.contraptions.Contraption;
+import io.github.thomasjoleary.toxicsurface.core.enclosure.BlockMapPassabilityProbe;
 import io.github.thomasjoleary.toxicsurface.core.enclosure.EnclosureScanner;
 import io.github.thomasjoleary.toxicsurface.core.enclosure.ScanResult;
 import java.util.List;
@@ -40,7 +41,7 @@ public final class ContraptionSealing {
                     Mth.floor(local.x),
                     Mth.floor(local.y),
                     Mth.floor(local.z),
-                    new ContraptionPassabilityProbe(contraption),
+                    new BlockMapPassabilityProbe(contraption.getBlocks()),
                     budget);
             if (result.isSealed()) {
                 return true;

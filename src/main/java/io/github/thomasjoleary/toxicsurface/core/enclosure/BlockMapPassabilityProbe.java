@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-package io.github.thomasjoleary.toxicsurface.compat.create;
+package io.github.thomasjoleary.toxicsurface.core.enclosure;
 
-import com.simibubi.create.content.contraptions.Contraption;
-import io.github.thomasjoleary.toxicsurface.core.enclosure.PassabilityProbe;
+import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.DoorBlock;
@@ -17,25 +16,28 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate.StructureBlockInfo;
 
 /**
- * {@link PassabilityProbe} backed by a Create {@link Contraption}'s captured blocks rather than the
- * world, so the enclosure flood-fill can seal rooms inside a moving contraption (DESIGN.md §9). Cells
- * are addressed in the contraption's local block grid (the keys of {@link Contraption#getBlocks()}).
- * Mirrors {@code LevelPassabilityProbe}'s rules, but reads collision shapes against an empty getter
- * since the structure has no surrounding world at these positions. Loaded only with Create.
+ * {@link PassabilityProbe} over a captured block map (the {@code Map<BlockPos, StructureBlockInfo>}
+ * keyed by local position that a Create contraption exposes via {@code getBlocks()}), so the enclosure
+ * flood-fill can seal rooms inside a moving contraption (DESIGN.md §9). Mirrors
+ * {@link LevelPassabilityProbe}'s door/piston/collision rules, but reads collision shapes against an
+ * empty block getter since the captured structure has no surrounding world at these positions.
+ *
+ * <p>Deliberately free of any Create type (the map values are vanilla {@code StructureBlockInfo}), so
+ * the sealing rules can be exercised by the standalone GameTests with a hand-built block map.
  */
-public final class ContraptionPassabilityProbe implements PassabilityProbe {
-    private final Contraption contraption;
+public final class BlockMapPassabilityProbe implements PassabilityProbe {
+    private final Map<BlockPos, StructureBlockInfo> blocks;
     private final BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
 
-    public ContraptionPassabilityProbe(Contraption contraption) {
-        this.contraption = contraption;
+    public BlockMapPassabilityProbe(Map<BlockPos, StructureBlockInfo> blocks) {
+        this.blocks = blocks;
     }
 
     @Override
     public boolean isPassable(int x, int y, int z) {
-        StructureBlockInfo info = contraption.getBlocks().get(cursor.set(x, y, z));
+        StructureBlockInfo info = blocks.get(cursor.set(x, y, z));
         if (info == null) {
-            return true; // no contraption block here — open (air, or outside the structure)
+            return true; // no captured block here — open (air, or outside the structure)
         }
         BlockState state = info.state();
         if (state.isAir()) {

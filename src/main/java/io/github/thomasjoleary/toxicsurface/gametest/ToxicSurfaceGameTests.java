@@ -3,23 +3,30 @@
 package io.github.thomasjoleary.toxicsurface.gametest;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
+import io.github.thomasjoleary.toxicsurface.core.enclosure.BlockMapPassabilityProbe;
 import io.github.thomasjoleary.toxicsurface.core.enclosure.EnclosureScanner;
 import io.github.thomasjoleary.toxicsurface.core.enclosure.LevelPassabilityProbe;
+import io.github.thomasjoleary.toxicsurface.core.enclosure.ScanResult;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlocks;
+import java.util.HashMap;
+import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate.StructureBlockInfo;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
  * Headless GameTests (DESIGN.md §10) that exercise the Minecraft-integrated behaviour the standalone
  * unit tests can't reach: the enclosure flood-fill against a <em>real</em> level (not the mock probe),
- * and the toxic-sludge fluid's float-on-water rules. All tests load the shared {@code empty} arena
- * template and build their own scenario with the helper. Standalone (no Create); run by CI's
- * {@code gameTestServer} job and {@code ./gradlew runGameTestServer}.
+ * the contraption seal's rules against a captured-block map (DESIGN.md §9), and the toxic-sludge
+ * fluid's float-on-water rules. All tests load the shared {@code empty} arena template and build their
+ * own scenario with the helper. Standalone (no Create); run by CI's {@code gameTestServer} job and
+ * {@code ./gradlew runGameTestServer}.
  *
  * <p>These classes live in the main jar but are inert unless the {@code toxicsurface} GameTest
  * namespace is enabled, so they never affect normal play.
@@ -103,6 +110,52 @@ public final class ToxicSurfaceGameTests {
         }
     }
 
+    // ------------------------------------------------------------------ contraption (captured-block) sealing
+    // These exercise the contraption seal's sealing rules via BlockMapPassabilityProbe against a
+    // hand-built captured-block map — no Create needed — so the §9 contraption logic can't silently
+    // regress. (The world→local coordinate mapping and detection are Create-only and verified in-game.)
+    @GameTest(template = "empty")
+    public static void contraptionSealedBox(GameTestHelper helper) {
+        if (scanBoxMap(hollowStoneBoxMap()).isSealed()) {
+            helper.succeed();
+        } else {
+            helper.fail("a fully walled contraption box should read as a sealed pocket");
+        }
+    }
+
+    @GameTest(template = "empty")
+    public static void contraptionBreachedBox(GameTestHelper helper) {
+        Map<BlockPos, StructureBlockInfo> map = hollowStoneBoxMap();
+        map.remove(new BlockPos(3, 5, 3)); // punch a hole in the ceiling
+        if (scanBoxMap(map).isSealed()) {
+            helper.fail("a contraption box with a hole should read as exposed");
+        } else {
+            helper.succeed();
+        }
+    }
+
+    @GameTest(template = "empty")
+    public static void contraptionClosedDoorSeals(GameTestHelper helper) {
+        Map<BlockPos, StructureBlockInfo> map = hollowStoneBoxMap();
+        putBlock(map, 3, 3, 1, Blocks.OAK_DOOR.defaultBlockState().setValue(BlockStateProperties.OPEN, false));
+        if (scanBoxMap(map).isSealed()) {
+            helper.succeed();
+        } else {
+            helper.fail("a closed door in a contraption wall should seal");
+        }
+    }
+
+    @GameTest(template = "empty")
+    public static void contraptionOpenDoorExposes(GameTestHelper helper) {
+        Map<BlockPos, StructureBlockInfo> map = hollowStoneBoxMap();
+        putBlock(map, 3, 3, 1, Blocks.OAK_DOOR.defaultBlockState().setValue(BlockStateProperties.OPEN, true));
+        if (scanBoxMap(map).isSealed()) {
+            helper.fail("an open door in a contraption wall should not seal");
+        } else {
+            helper.succeed();
+        }
+    }
+
     // ------------------------------------------------------------------ sludge floats on water
     /** A sludge source above a water pool must not sink into (or contaminate) the water below it. */
     @GameTest(template = "empty")
@@ -134,6 +187,31 @@ public final class ToxicSurfaceGameTests {
     }
 
     // ------------------------------------------------------------------ helpers
+    /** Flood-fill the captured-block map from its interior centre (3,3,3) with the contraption probe. */
+    private static ScanResult scanBoxMap(Map<BlockPos, StructureBlockInfo> blocks) {
+        return EnclosureScanner.scan(3, 3, 3, new BlockMapPassabilityProbe(blocks), BUDGET);
+    }
+
+    /** A hollow stone shell (1,1,1)-(5,5,5); interior cells are simply absent (as in a real capture). */
+    private static Map<BlockPos, StructureBlockInfo> hollowStoneBoxMap() {
+        Map<BlockPos, StructureBlockInfo> map = new HashMap<>();
+        for (int x = 1; x <= 5; x++) {
+            for (int y = 1; y <= 5; y++) {
+                for (int z = 1; z <= 5; z++) {
+                    if (x == 1 || x == 5 || y == 1 || y == 5 || z == 1 || z == 5) {
+                        putBlock(map, x, y, z, Blocks.STONE.defaultBlockState());
+                    }
+                }
+            }
+        }
+        return map;
+    }
+
+    private static void putBlock(Map<BlockPos, StructureBlockInfo> map, int x, int y, int z, BlockState state) {
+        BlockPos pos = new BlockPos(x, y, z);
+        map.put(pos, new StructureBlockInfo(pos, state, null));
+    }
+
     private static boolean scanSealed(GameTestHelper helper, int rx, int ry, int rz) {
         BlockPos p = helper.absolutePos(new BlockPos(rx, ry, rz));
         return EnclosureScanner.scan(p.getX(), p.getY(), p.getZ(), new LevelPassabilityProbe(helper.getLevel()), BUDGET)
