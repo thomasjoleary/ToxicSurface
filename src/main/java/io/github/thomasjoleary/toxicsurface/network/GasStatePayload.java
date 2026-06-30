@@ -13,10 +13,13 @@ import net.minecraft.resources.ResourceLocation;
  * Server → client state for the receiving player (DESIGN.md §3, §4): whether they are exposed to
  * toxic gas ({@code inGas}, drives the fog), their toxic air bar as a {@code 0..1} fraction
  * ({@code air}, drives the HUD bubble row), and whether they stand in toxic open air regardless of
- * protection ({@code inToxicArea}, drives the toxic-rain overlay so a masked player still sees it).
+ * protection ({@code inToxicArea}, drives the toxic-rain overlay so a masked player still sees it),
+ * and the dimension's current toxic ceiling Y ({@code toxicCeilingY}, or {@code Integer.MIN_VALUE}
+ * when not yet toxic) so the client can colour rain green below the gas line and blue above it.
  * All resolved server-side (ceiling + sealing + mask/suit state); the client only renders from them.
  */
-public record GasStatePayload(boolean inGas, float air, boolean inToxicArea) implements CustomPacketPayload {
+public record GasStatePayload(boolean inGas, float air, boolean inToxicArea, int toxicCeilingY)
+        implements CustomPacketPayload {
     public static final Type<GasStatePayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "gas_state"));
 
@@ -27,6 +30,8 @@ public record GasStatePayload(boolean inGas, float air, boolean inToxicArea) imp
             GasStatePayload::air,
             ByteBufCodecs.BOOL,
             GasStatePayload::inToxicArea,
+            ByteBufCodecs.INT,
+            GasStatePayload::toxicCeilingY,
             GasStatePayload::new);
 
     @Override

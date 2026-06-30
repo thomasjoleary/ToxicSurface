@@ -32,9 +32,9 @@ public class MechanicalWeaverRenderer implements BlockEntityRenderer<MechanicalW
     // top into a tent — they "come out of the machine" and reach down into each item — dipping their
     // tips in and out of phase (over-under) to sell the stitching.
     private static final float TIP_SPREAD = 0.16f; // tips land over the two inputs (0.5 ± spread)
-    private static final float TIP_BASE_Y = 1.05f; // resting tip height, just above the depot
-    private static final float ROD_LENGTH = 0.62f; // scaled length of each rod
-    private static final float TIP_DIP = 0.10f; // how far a rod pushes into the item on its stroke
+    private static final float TIP_BASE_Y = 1.02f; // resting tip height, just above the depot
+    private static final float ROD_LENGTH = 0.55f; // scaled length of each rod (lower tent apex)
+    private static final float TIP_DIP = 0.02f; // dip depth; capped so the rod's bottom never sinks below 1.0
     private static final float BOB_SPEED = 0.35f; // radians per tick
 
     private final ItemRenderer itemRenderer;

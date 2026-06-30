@@ -14,13 +14,21 @@ public final class ClientGasState {
     private static volatile float air = 1.0f;
     /** In toxic open air regardless of protection — drives the toxic-rain overlay. */
     private static volatile boolean inToxicArea = false;
+    /** Dimension's current toxic ceiling Y, or {@link Integer#MIN_VALUE} when not yet toxic. */
+    private static volatile int toxicCeilingY = Integer.MIN_VALUE;
 
     private ClientGasState() {}
 
-    public static void set(boolean inGasValue, float airValue, boolean inToxicAreaValue) {
+    public static void set(boolean inGasValue, float airValue, boolean inToxicAreaValue, int toxicCeilingYValue) {
         inGas = inGasValue;
         air = airValue;
         inToxicArea = inToxicAreaValue;
+        toxicCeilingY = toxicCeilingYValue;
+    }
+
+    /** The dimension's toxic ceiling Y; {@link Integer#MIN_VALUE} means not toxic (rain stays normal). */
+    public static int toxicCeilingY() {
+        return toxicCeilingY;
     }
 
     public static boolean isInGas() {
