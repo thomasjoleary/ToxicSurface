@@ -4,11 +4,9 @@ package io.github.thomasjoleary.toxicsurface.compat.create;
 
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import com.simibubi.create.content.contraptions.Contraption;
-import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.core.enclosure.EnclosureScanner;
 import io.github.thomasjoleary.toxicsurface.core.enclosure.ScanResult;
 import java.util.List;
-import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
@@ -25,9 +23,6 @@ import net.minecraft.world.phys.Vec3;
  * and let the flood-fill decide; a contraption the player isn't enclosed in simply won't seal.
  */
 public final class ContraptionSealing {
-    // Temporary: logs the local mapping + scan result once per cycle while diagnosing in-world.
-    private static final boolean DEBUG = true;
-
     private ContraptionSealing() {}
 
     public static boolean isSealedInContraption(ServerLevel level, Player player, int budget) {
@@ -41,22 +36,12 @@ public final class ContraptionSealing {
             }
             // World eye position → the contraption's local block grid (the getBlocks() key space).
             Vec3 local = entity.toLocalVector(eye, 1.0f);
-            int lx = Mth.floor(local.x);
-            int ly = Mth.floor(local.y);
-            int lz = Mth.floor(local.z);
-            ScanResult result = EnclosureScanner.scan(lx, ly, lz, new ContraptionPassabilityProbe(contraption), budget);
-            if (DEBUG) {
-                ToxicSurface.LOGGER.info(
-                        "ContraptionSeal: local=({},{},{}) blocks={} startCellHasBlock={} cellBelowHasBlock={} scan={} pocket={}",
-                        lx,
-                        ly,
-                        lz,
-                        contraption.getBlocks().size(),
-                        contraption.getBlocks().containsKey(new BlockPos(lx, ly, lz)),
-                        contraption.getBlocks().containsKey(new BlockPos(lx, ly - 1, lz)),
-                        result.isSealed() ? "SEALED" : "EXPOSED",
-                        result.size());
-            }
+            ScanResult result = EnclosureScanner.scan(
+                    Mth.floor(local.x),
+                    Mth.floor(local.y),
+                    Mth.floor(local.z),
+                    new ContraptionPassabilityProbe(contraption),
+                    budget);
             if (result.isSealed()) {
                 return true;
             }

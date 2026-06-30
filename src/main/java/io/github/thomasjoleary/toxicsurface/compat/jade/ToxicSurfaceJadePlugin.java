@@ -4,6 +4,7 @@ package io.github.thomasjoleary.toxicsurface.compat.jade;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import snownee.jade.api.IWailaClientRegistration;
 import snownee.jade.api.IWailaCommonRegistration;
 import snownee.jade.api.IWailaPlugin;
@@ -22,8 +23,10 @@ public class ToxicSurfaceJadePlugin implements IWailaPlugin {
 
     @Override
     public void register(IWailaCommonRegistration registration) {
-        // Server-side: harvest live state from any block entity implementing JadeReadout.
-        registration.registerBlockDataProvider(PROVIDER, JadeReadout.class);
+        // Server-side: harvest live state from any block entity. Jade only accepts a Block/BlockEntity
+        // class here (not our marker interface), so register for all block entities and let the
+        // provider's shouldRequestData ({@code instanceof JadeReadout}) limit it to our machines.
+        registration.registerBlockDataProvider(PROVIDER, BlockEntity.class);
     }
 
     @Override
