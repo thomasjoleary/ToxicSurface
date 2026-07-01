@@ -135,11 +135,15 @@ public final class CreateContent {
     /**
      * Exposes machine I/O so hoppers/Create pipes can automate them: the Mechanical Weaver's and
      * Waste Generator's item inventories, and the Sludge Generator's fluid tank (so Create pumps
-     * fill it directly).
+     * fill it directly). The Weaver exposes its restricted external handler here — automation can
+     * insert into the inputs but only extract the finished output, not the in-progress inputs
+     * (DESIGN.md §7, matches Create's own processing machines).
      */
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {
         event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK, MECHANICAL_WEAVER_BE.get(), (weaver, side) -> weaver.getItemHandler());
+                Capabilities.ItemHandler.BLOCK,
+                MECHANICAL_WEAVER_BE.get(),
+                (weaver, side) -> weaver.getExternalItemHandler());
         event.registerBlockEntity(
                 Capabilities.ItemHandler.BLOCK, WASTE_GENERATOR_BE.get(), (gen, side) -> gen.getItemHandler());
         event.registerBlockEntity(

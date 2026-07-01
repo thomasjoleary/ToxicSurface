@@ -71,6 +71,48 @@ public class MechanicalWeaverBlockEntity extends KineticBlockEntity implements J
         return items;
     }
 
+    /**
+     * The capability exposed to hoppers/funnels/Create pipes: insertion follows the same input-slot
+     * routing as {@link #getItemHandler()}, but extraction is restricted to {@link #SLOT_OUTPUT} —
+     * matching how Create's own processing machines (e.g. the Millstone) only let automation pull
+     * the finished result, not the in-progress inputs.
+     */
+    public IItemHandler getExternalItemHandler() {
+        return externalItems;
+    }
+
+    private final IItemHandler externalItems = new IItemHandler() {
+        @Override
+        public int getSlots() {
+            return items.getSlots();
+        }
+
+        @Override
+        public ItemStack getStackInSlot(int slot) {
+            return items.getStackInSlot(slot);
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            return items.insertItem(slot, stack, simulate);
+        }
+
+        @Override
+        public ItemStack extractItem(int slot, int amount, boolean simulate) {
+            return slot == SLOT_OUTPUT ? items.extractItem(slot, amount, simulate) : ItemStack.EMPTY;
+        }
+
+        @Override
+        public int getSlotLimit(int slot) {
+            return items.getSlotLimit(slot);
+        }
+
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            return items.isItemValid(slot, stack);
+        }
+    };
+
     /** The stack in a slot, for the in-world renderer (client reads the synced inventory). */
     public ItemStack getRenderStack(int slot) {
         return items.getStackInSlot(slot);
