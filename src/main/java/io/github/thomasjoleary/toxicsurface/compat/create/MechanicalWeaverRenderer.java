@@ -9,6 +9,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.entity.ItemRenderer;
+import net.minecraft.core.Direction;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -17,15 +18,19 @@ import net.minecraft.world.level.Level;
 /**
  * In-world renderer for the {@link MechanicalWeaverBlockEntity} (DESIGN.md §3 "deployer-style"
  * weaver, pass 1). Draws the two inputs (or the finished output) resting on the block's depot-style
- * top face, and — while weaving — a pair of crossing "weaving sticks" that bob over-under to sell the
+ * work face, and — while weaving — a pair of crossing "weaving sticks" that bob over-under to sell the
  * stitching motion.
  *
- * <p>Pass 1 uses vanilla sticks as stand-in geometry so the motion can be evaluated; pass 2 swaps in
- * a proper weaving-head model and texture. Client-only and Create-gated, registered by
+ * <p>All geometry is computed as if {@link MechanicalWeaverBlock#WORK_FACE} = {@link Direction#UP},
+ * then rotated into the actual work-face orientation via {@link #applyWorkFaceTransform}. This keeps
+ * the coordinate arithmetic simple regardless of the shaft orientation chosen at placement.
+ *
+ * <p>Pass 1 uses vanilla end rods as stand-in geometry so the motion can be evaluated; pass 2 swaps
+ * in a proper weaving-head model and texture. Client-only and Create-gated, registered by
  * {@link CreateClientContent}, so it never classloads without Create.
  */
 public class MechanicalWeaverRenderer implements BlockEntityRenderer<MechanicalWeaverBlockEntity> {
-    private static final float ITEM_Y = 1.02f; // just above the block's top face
+    private static final float ITEM_Y = 1.02f; // just above the block's work face
     private static final float ITEM_SCALE = 0.5f;
 
     // Weaving sticks (stand-in: end rods). Two rods stand on the two inputs and lean together at the
@@ -55,9 +60,13 @@ public class MechanicalWeaverRenderer implements BlockEntityRenderer<MechanicalW
         if (level == null) {
             return;
         }
-        // The BER's packedLight is sampled at the block's own (opaque, dark) position; sample the open
-        // air one block up where the depot items and sticks actually sit, or everything renders black.
-        int light = LevelRenderer.getLightColor(level, be.getBlockPos().above());
+        Direction workFace = be.getBlockState().getValue(MechanicalWeaverBlock.WORK_FACE);
+        // Sample light from the open space on the work-face side of the block, not the opaque interior.
+        int light = LevelRenderer.getLightColor(level, be.getBlockPos().relative(workFace));
+
+        // Rotate the whole scene so that the UP-based geometry lands on the actual work face.
+        poseStack.pushPose();
+        applyWorkFaceTransform(poseStack, workFace);
 
         ItemStack output = be.getRenderStack(MechanicalWeaverBlockEntity.SLOT_OUTPUT);
         if (!output.isEmpty()) {
@@ -96,6 +105,29 @@ public class MechanicalWeaverRenderer implements BlockEntityRenderer<MechanicalW
             renderRod(be, -1f, phase, poseStack, buffer, light, packedOverlay);
             renderRod(be, +1f, phase + (float) Math.PI, poseStack, buffer, light, packedOverlay); // over-under
         }
+
+        poseStack.popPose();
+    }
+
+    /**
+     * Rotates the pose so that the UP-based geometry (items at y=1.02, rods extending upward) lands
+     * on the given {@code workFace}. Does nothing for {@link Direction#UP}. Rotates around the block
+     * centre (0.5, 0.5, 0.5) so the geometry stays inside the block's footprint after rotation.
+     */
+    private static void applyWorkFaceTransform(PoseStack poseStack, Direction workFace) {
+        if (workFace == Direction.UP) {
+            return;
+        }
+        poseStack.translate(0.5, 0.5, 0.5);
+        switch (workFace) {
+            case DOWN -> poseStack.mulPose(Axis.XP.rotationDegrees(180));
+            case NORTH -> poseStack.mulPose(Axis.XP.rotationDegrees(-90));
+            case SOUTH -> poseStack.mulPose(Axis.XP.rotationDegrees(90));
+            case EAST -> poseStack.mulPose(Axis.ZP.rotationDegrees(-90));
+            case WEST -> poseStack.mulPose(Axis.ZP.rotationDegrees(90));
+            default -> {}
+        }
+        poseStack.translate(-0.5, -0.5, -0.5);
     }
 
     /** Renders a single item lying flat (face up) on the depot surface at the given block-local spot. */

@@ -11,11 +11,14 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.neoforged.neoforge.items.IItemHandler;
 
@@ -23,10 +26,40 @@ import net.neoforged.neoforge.items.IItemHandler;
  * The Mechanical Weaver block (DESIGN.md §3). A {@link DirectionalKineticBlock} driven by a
  * rotation shaft on the face it points at; {@link IBE} wires it to
  * {@link MechanicalWeaverBlockEntity}. Only registered when Create is present.
+ *
+ * <p>{@link #WORK_FACE} is the face where items rest and the weaving rods animate — always
+ * perpendicular to {@link #FACING}. For horizontal shaft orientations it is always {@link Direction#UP};
+ * for vertical shaft orientations it is set to the player's horizontal facing direction at placement
+ * time. The block model uses a distinct texture on this face so it is immediately recognisable.
  */
 public class MechanicalWeaverBlock extends DirectionalKineticBlock implements IBE<MechanicalWeaverBlockEntity> {
+    /**
+     * The face where items rest and rods animate — always perpendicular to {@link #FACING}.
+     * {@code UP} when the shaft runs horizontally; one of the four horizontal directions when the
+     * shaft runs vertically.
+     */
+    public static final DirectionProperty WORK_FACE = DirectionProperty.create("work_face");
+
     public MechanicalWeaverBlock(Properties properties) {
         super(properties);
+        registerDefaultState(
+                stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(WORK_FACE, Direction.UP));
+    }
+
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        super.createBlockStateDefinition(builder); // adds FACING
+        builder.add(WORK_FACE);
+    }
+
+    @Override
+    public BlockState getStateForPlacement(BlockPlaceContext context) {
+        BlockState state = super.getStateForPlacement(context); // sets FACING
+        Direction facing = state.getValue(FACING);
+        // Horizontal shaft → work face is always UP; vertical shaft → set to the horizontal
+        // direction the player is facing so they can aim the work surface where they need it.
+        Direction workFace = facing.getAxis() == Direction.Axis.Y ? context.getHorizontalDirection() : Direction.UP;
+        return state.setValue(WORK_FACE, workFace);
     }
 
     @Override

@@ -1,10 +1,16 @@
 {
     "variants": {
-        "facing=down":  { "model": "toxicsurface:block/mechanical_weaver" },
-        "facing=up":    { "model": "toxicsurface:block/mechanical_weaver" },
-        "facing=north": { "model": "toxicsurface:block/mechanical_weaver", "x": 90 },
-        "facing=south": { "model": "toxicsurface:block/mechanical_weaver", "x": 90 },
-        "facing=east":  { "model": "toxicsurface:block/mechanical_weaver", "x": 90, "y": 90 },
-        "facing=west":  { "model": "toxicsurface:block/mechanical_weaver", "x": 90, "y": 90 }
+        "facing=north,work_face=up":   { "model": "toxicsurface:block/mechanical_weaver", "x": 90 },
+        "facing=south,work_face=up":   { "model": "toxicsurface:block/mechanical_weaver", "x": 90, "y": 180 },
+        "facing=east,work_face=up":    { "model": "toxicsurface:block/mechanical_weaver", "x": 90, "y": 90 },
+        "facing=west,work_face=up":    { "model": "toxicsurface:block/mechanical_weaver", "x": 90, "y": 270 },
+        "facing=up,work_face=north":   { "model": "toxicsurface:block/mechanical_weaver" },
+        "facing=up,work_face=east":    { "model": "toxicsurface:block/mechanical_weaver", "y": 90 },
+        "facing=up,work_face=south":   { "model": "toxicsurface:block/mechanical_weaver", "y": 180 },
+        "facing=up,work_face=west":    { "model": "toxicsurface:block/mechanical_weaver", "y": 270 },
+        "facing=down,work_face=north": { "model": "toxicsurface:block/mechanical_weaver" },
+        "facing=down,work_face=east":  { "model": "toxicsurface:block/mechanical_weaver", "y": 90 },
+        "facing=down,work_face=south": { "model": "toxicsurface:block/mechanical_weaver", "y": 180 },
+        "facing=down,work_face=west":  { "model": "toxicsurface:block/mechanical_weaver", "y": 270 }
     }
 }

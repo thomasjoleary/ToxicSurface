@@ -6,6 +6,7 @@ import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import io.github.thomasjoleary.toxicsurface.block.WeaverLogic;
 import io.github.thomasjoleary.toxicsurface.compat.jade.JadeReadout;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
@@ -168,14 +169,18 @@ public class MechanicalWeaverBlockEntity extends KineticBlockEntity implements J
         } else {
             out.grow(recipe.result().getCount());
         }
-        // A small white puff to punctuate the transformation.
+        // A small white puff to punctuate the transformation, offset toward the work face.
         if (level instanceof ServerLevel server) {
             BlockPos pos = getBlockPos();
+            Direction workFace = getBlockState().getValue(MechanicalWeaverBlock.WORK_FACE);
+            double ox = workFace.getStepX() * 0.6;
+            double oy = workFace.getStepY() * 0.6;
+            double oz = workFace.getStepZ() * 0.6;
             server.sendParticles(
                     ParticleTypes.POOF,
-                    pos.getX() + 0.5,
-                    pos.getY() + 1.1,
-                    pos.getZ() + 0.5,
+                    pos.getX() + 0.5 + ox,
+                    pos.getY() + 0.5 + oy,
+                    pos.getZ() + 0.5 + oz,
                     6,
                     0.15,
                     0.08,

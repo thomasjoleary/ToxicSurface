@@ -1,7 +1,12 @@
 {
-    "parent": "minecraft:block/cube_column",
+    "parent": "minecraft:block/cube",
     "textures": {
-        "end": "toxicsurface:block/shaft_socket",
-        "side": "toxicsurface:block/weaver_side"
+        "particle": "toxicsurface:block/weaver_side",
+        "up":    "toxicsurface:block/shaft_socket",
+        "down":  "toxicsurface:block/shaft_socket",
+        "north": "toxicsurface:block/weaver_top",
+        "south": "toxicsurface:block/weaver_side",
+        "east":  "toxicsurface:block/weaver_side",
+        "west":  "toxicsurface:block/weaver_side"
     }
 }
