@@ -12,6 +12,32 @@ real client. Ordered so the **newest / least-verified** code comes first. Most i
 
 ## Priority 1 — added this session, verify in-game
 
+### Volumetric toxic-gas haze (NEW — never seen rendered, needs careful checking)
+Replaces the old "fog only shows while your own cell is exposed" behavior with a real per-pixel
+effect (`ToxicVolumetricFog`): each frame it reconstructs every pixel's world Y from the depth
+buffer and blends in green haze, scaled by distance, wherever that point is at/below the toxic
+ceiling — regardless of whether *you* are sealed/cleansed/above it. Verified so far: the custom
+core shader (`shaders/core/toxic_fog.json`/`.vsh`/`.fsh`) compiles and links cleanly on a real
+headless client boot (Xvfb) with no errors and no crash. **Never seen actually rendered** — the
+math (matrix inversion order, depth-range convention, distance falloff) is unverified beyond
+"it compiles." Please check closely:
+- [ ] Standing in a **cleanser bubble**: the ground at your feet stays clear, but gas is visibly
+      hazy a short distance outside the bubble's edge
+- [ ] Standing **above the toxic ceiling**, looking down: the ground below reads as hazy/green,
+      increasingly so with distance; the sky above you does *not* get tinted
+- [ ] **Sealed room, looking out a window**: the room interior stays clear; toxic ground/haze is
+      visible through the glass at a distance
+- [ ] No visual artifacts at the horizon / distant sky (the shader discards near max depth to
+      avoid tinting empty sky — confirm no green haze "ceiling" appears at the far draw distance)
+- [ ] Haze fades to nothing above the ceiling and near the camera; doesn't look like a flat
+      full-screen tint
+- [ ] `fogIntensity` accessibility slider at 0 disables the effect entirely; scales it in between
+- [ ] With Iris/Oculus active: effect is skipped (no z-fight/crash), matches the old fog handler's
+      shader bow-out
+- [ ] No FPS cliff — it's one full-screen pass per frame only while a dimension is toxic
+- [ ] Old `ToxicFogHandler` (personal screen fog while exposed) still layers correctly on top —
+      the two effects shouldn't visually fight
+
 ### Conditional green rain
 - [x] Below the toxic ceiling Y: rain droplets render green (not blue)
 - [x] Above the ceiling Y: rain renders normally (blue)

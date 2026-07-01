@@ -2,9 +2,12 @@
 
 package io.github.thomasjoleary.toxicsurface.client;
 
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.registry.ModMenus;
 import io.github.thomasjoleary.toxicsurface.registry.ModParticles;
+import java.io.IOException;
+import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
 import net.neoforged.api.distmarker.Dist;
@@ -16,6 +19,7 @@ import net.neoforged.neoforge.client.event.RegisterDimensionSpecialEffectsEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
+import net.neoforged.neoforge.client.event.RegisterShadersEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
@@ -71,5 +75,21 @@ public final class ClientModBusEvents {
     @SubscribeEvent
     public static void registerParticleProviders(RegisterParticleProvidersEvent event) {
         event.registerSpriteSet(ModParticles.TOXIC_RAIN_SPLASH.get(), ToxicRainSplashParticle.Provider::new);
+    }
+
+    /** The depth-reconstruction shader behind {@link ToxicVolumetricFog}'s per-pixel gas haze. */
+    @SubscribeEvent
+    public static void registerShaders(RegisterShadersEvent event) {
+        try {
+            event.registerShader(
+                    new ShaderInstance(
+                            event.getResourceProvider(),
+                            ResourceLocation.fromNamespaceAndPath(ToxicSurface.MODID, "toxic_fog"),
+                            DefaultVertexFormat.POSITION),
+                    shader -> ToxicVolumetricFog.shader = shader);
+        } catch (IOException e) {
+            ToxicSurface.LOGGER.error(
+                    "Failed to compile the toxic-fog shader; the volumetric haze effect will be disabled", e);
+        }
     }
 }
