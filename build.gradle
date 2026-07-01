@@ -80,9 +80,9 @@ repositories {
         name = "TerraformersMC (EMI)"
         url = "https://maven.terraformersmc.com/releases"
     }
-    // Jade (Phase 8) — in-world tooltip API, via the Modrinth maven.
+    // Jade (Phase 8) and Create: Aeronautics — both published on the Modrinth maven.
     maven {
-        name = "Modrinth (Jade)"
+        name = "Modrinth"
         url = "https://api.modrinth.com/maven"
         content { includeGroup "maven.modrinth" }
     }
@@ -106,6 +106,16 @@ def viewerRuntime = providers.gradleProperty("viewerRuntime")
         .map { it.toBoolean() }
         .getOrElse(false)
 def useEmi = providers.gradleProperty("useEmi")
+        .map { it.toBoolean() }
+        .getOrElse(false)
+
+// Whether to load Create: Aeronautics alongside Create for dev runs. Must be combined with
+// -PcreateRuntime=true. Aeronautics sealing works automatically because its ships extend
+// AbstractContraptionEntity (no compat code needed). Aeronautics requires Sable as a separate
+// mod; if FML aborts on startup with a missing-dependency error for Sable, grab the Sable jar
+// from Modrinth (maven.modrinth:sable:<version>) and drop it in run/mods/ by hand (no prefix,
+// so syncRunMods won't clean it), or add it as a second extraRunMods entry here with its version.
+def aeroRuntime = providers.gradleProperty("aeroRuntime")
         .map { it.toBoolean() }
         .getOrElse(false)
 
@@ -154,6 +164,9 @@ dependencies {
     // Ponder + Registrate that way).
     if (createRuntime) {
         extraRunMods("com.simibubi.create:create-1.21.1:${create_version}") { transitive = false }
+    }
+    if (aeroRuntime) {
+        extraRunMods("maven.modrinth:create-aeronautics:${aeronautics_version}") { transitive = false }
     }
     if (viewerRuntime) {
         if (useEmi) {
