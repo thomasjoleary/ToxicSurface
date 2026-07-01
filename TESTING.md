@@ -26,7 +26,7 @@ real client. Ordered so the **newest / least-verified** code comes first. Most i
 - [x] White poof particle fires on each completed output
 - [x] Weaver processes kelp+wool and wool+string without GUI (right-click inserts/extracts)
 - [x] At very high RPM the animation plays visibly faster (not just a strobe)
-- [ ] Rod positions look correct from all four horizontal facings (rods always cross above the items)
+- [x] Rod positions look correct from all four horizontal facings (rods always cross above the items)
 
 > **Rod position constants** (adjust if needed): `MechanicalWeaverRenderer.java` —
 > `TIP_SPREAD = 0.16`, `TIP_BASE_Y = 0.90`, `TIP_DIP = 0.05`, `ROD_LENGTH = 0.55`
