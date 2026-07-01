@@ -23,6 +23,7 @@ public final class ToxicityState extends SavedData {
     private static final String KEY_POLLUTION = "pollutionTicks";
     private static final String KEY_TELEGRAPH_STAGE = "telegraphStage";
     private static final String KEY_CEILING_OVERRIDE = "ceilingOverride";
+    private static final String KEY_SUPPRESSED = "suppressed";
 
     private long startTick = NOT_STARTED;
 
@@ -35,6 +36,14 @@ public final class ToxicityState extends SavedData {
     /** A testing-command override forcing the ceiling to a fixed Y regardless of the model (§12). */
     private int ceilingOverride = NO_OVERRIDE;
 
+    /**
+     * Set by {@code /toxicsurface toxicity off} to stop the natural clock from immediately
+     * re-triggering: {@link ToxicityTicker#onLevelTick} compares the world's current tick against
+     * the absolute {@code timeToToxicTicks} threshold, which stays crossed forever once real game
+     * time has passed it, so simply un-setting the start tick isn't enough (DESIGN.md §12).
+     */
+    private boolean suppressed = false;
+
     public static ToxicityState get(ServerLevel level) {
         return level.getDataStorage()
                 .computeIfAbsent(new SavedData.Factory<>(ToxicityState::new, ToxicityState::load), NAME);
@@ -46,6 +55,7 @@ public final class ToxicityState extends SavedData {
         state.pollutionTicks = tag.getLong(KEY_POLLUTION); // absent → 0
         state.telegraphStage = tag.getInt(KEY_TELEGRAPH_STAGE); // absent → 0
         state.ceilingOverride = tag.contains(KEY_CEILING_OVERRIDE) ? tag.getInt(KEY_CEILING_OVERRIDE) : NO_OVERRIDE;
+        state.suppressed = tag.getBoolean(KEY_SUPPRESSED); // absent → false
         return state;
     }
 
@@ -55,6 +65,7 @@ public final class ToxicityState extends SavedData {
         tag.putLong(KEY_POLLUTION, pollutionTicks);
         tag.putInt(KEY_TELEGRAPH_STAGE, telegraphStage);
         tag.putInt(KEY_CEILING_OVERRIDE, ceilingOverride);
+        tag.putBoolean(KEY_SUPPRESSED, suppressed);
         return tag;
     }
 
@@ -125,5 +136,17 @@ public final class ToxicityState extends SavedData {
         telegraphStage = 0;
         ceilingOverride = NO_OVERRIDE;
         setDirty();
+    }
+
+    /** Whether the natural clock is held back from re-triggering (see {@link #suppressed}). */
+    public boolean isSuppressed() {
+        return suppressed;
+    }
+
+    public void setSuppressed(boolean value) {
+        if (value != suppressed) {
+            suppressed = value;
+            setDirty();
+        }
     }
 }

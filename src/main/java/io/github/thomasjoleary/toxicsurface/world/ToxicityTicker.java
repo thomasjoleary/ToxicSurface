@@ -37,7 +37,10 @@ public final class ToxicityTicker {
             return;
         }
         ToxicityState state = ToxicityState.get(level);
-        if (state.hasStarted()) {
+        // Suppressed by "/toxicsurface toxicity off": without this check the absolute
+        // timeToToxicTicks threshold stays crossed forever once real game time passes it, so the
+        // very next tick after a reset would immediately re-trigger (DESIGN.md §12).
+        if (state.hasStarted() || state.isSuppressed()) {
             return;
         }
         // Generator pollution counts toward the clock, so heavy waste-burning can bring the

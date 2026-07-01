@@ -135,6 +135,8 @@ public final class ToxicSurfaceCommand {
         }
         if (state.hasStarted()) {
             send(source, "escalation started at tick " + state.startTick());
+        } else if (state.isSuppressed()) {
+            send(source, "escalation not started — SUPPRESSED (forced off; '/toxicsurface toxicity on|in' re-arms it)");
         } else {
             long remaining =
                     ToxicSurfaceConfig.TIME_TO_TOXIC_TICKS.get() - (level.getGameTime() + state.pollutionTicks());
@@ -260,6 +262,7 @@ public final class ToxicSurfaceCommand {
                     + level.dimension().location() + " (started at tick " + state.startTick() + ")."));
             return 0;
         }
+        state.setSuppressed(false); // an explicit "on" always re-arms the natural clock too
         ToxicityTicker.forceStart(level);
         send(source, "Toxicity forced ON in " + level.dimension().location());
         return 1;
@@ -268,7 +271,12 @@ public final class ToxicSurfaceCommand {
     private static int toxicityOff(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         CommandSourceStack source = ctx.getSource();
         ServerLevel level = source.getLevel();
-        ToxicityState.get(level).reset();
+        ToxicityState state = ToxicityState.get(level);
+        state.reset();
+        // Without this, the natural clock re-checks every tick against the absolute
+        // timeToToxicTicks threshold, which real game time has already passed — so it would
+        // re-trigger on the very next tick. "on"/"in" clear it again to re-arm the clock.
+        state.setSuppressed(true);
         send(source, "Toxicity forced OFF in " + level.dimension().location() + " (clock and ceiling override reset).");
         return 1;
     }
@@ -279,6 +287,7 @@ public final class ToxicSurfaceCommand {
         int ticks = IntegerArgumentType.getInteger(ctx, "ticks");
         ToxicityState state = ToxicityState.get(level);
         state.reset(); // pollutionTicks -> 0 so the threshold below lines up exactly
+        state.setSuppressed(false); // re-arm the natural clock so it actually counts down again
         int threshold = (int) Math.min(Integer.MAX_VALUE, level.getGameTime() + ticks);
         ToxicSurfaceConfig.TIME_TO_TOXIC_TICKS.set(threshold);
         send(
