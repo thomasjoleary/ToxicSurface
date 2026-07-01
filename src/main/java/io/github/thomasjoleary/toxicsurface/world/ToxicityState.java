@@ -15,10 +15,14 @@ import net.minecraft.world.level.saveddata.SavedData;
 public final class ToxicityState extends SavedData {
     public static final long NOT_STARTED = -1L;
 
+    /** Sentinel for {@link #ceilingOverride()}: no override, use the computed model (DESIGN.md §12). */
+    public static final int NO_OVERRIDE = Integer.MIN_VALUE;
+
     private static final String NAME = "toxicsurface_toxicity";
     private static final String KEY_START_TICK = "startTick";
     private static final String KEY_POLLUTION = "pollutionTicks";
     private static final String KEY_TELEGRAPH_STAGE = "telegraphStage";
+    private static final String KEY_CEILING_OVERRIDE = "ceilingOverride";
 
     private long startTick = NOT_STARTED;
 
@@ -27,6 +31,9 @@ public final class ToxicityState extends SavedData {
 
     /** How many pre-toxicity telegraph thresholds have already fired (DESIGN.md §3). */
     private int telegraphStage = 0;
+
+    /** A testing-command override forcing the ceiling to a fixed Y regardless of the model (§12). */
+    private int ceilingOverride = NO_OVERRIDE;
 
     public static ToxicityState get(ServerLevel level) {
         return level.getDataStorage()
@@ -38,6 +45,7 @@ public final class ToxicityState extends SavedData {
         state.startTick = tag.contains(KEY_START_TICK) ? tag.getLong(KEY_START_TICK) : NOT_STARTED;
         state.pollutionTicks = tag.getLong(KEY_POLLUTION); // absent → 0
         state.telegraphStage = tag.getInt(KEY_TELEGRAPH_STAGE); // absent → 0
+        state.ceilingOverride = tag.contains(KEY_CEILING_OVERRIDE) ? tag.getInt(KEY_CEILING_OVERRIDE) : NO_OVERRIDE;
         return state;
     }
 
@@ -46,6 +54,7 @@ public final class ToxicityState extends SavedData {
         tag.putLong(KEY_START_TICK, startTick);
         tag.putLong(KEY_POLLUTION, pollutionTicks);
         tag.putInt(KEY_TELEGRAPH_STAGE, telegraphStage);
+        tag.putInt(KEY_CEILING_OVERRIDE, ceilingOverride);
         return tag;
     }
 
@@ -88,6 +97,33 @@ public final class ToxicityState extends SavedData {
             return;
         }
         pollutionTicks += ticks;
+        setDirty();
+    }
+
+    /** The forced ceiling Y, or {@link #NO_OVERRIDE} if the model's computed value should be used. */
+    public int ceilingOverride() {
+        return ceilingOverride;
+    }
+
+    /** Forces the ceiling to {@code y} regardless of the escalation model (testing command, §12). */
+    public void setCeilingOverride(int y) {
+        if (y != ceilingOverride) {
+            ceilingOverride = y;
+            setDirty();
+        }
+    }
+
+    /** Resumes the escalation model's computed ceiling. */
+    public void clearCeilingOverride() {
+        setCeilingOverride(NO_OVERRIDE);
+    }
+
+    /** Reverts this dimension to pre-toxicity: clears the start tick, pollution, telegraph, override. */
+    public void reset() {
+        startTick = NOT_STARTED;
+        pollutionTicks = 0L;
+        telegraphStage = 0;
+        ceilingOverride = NO_OVERRIDE;
         setDirty();
     }
 }

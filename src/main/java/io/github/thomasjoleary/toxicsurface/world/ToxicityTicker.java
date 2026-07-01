@@ -44,13 +44,26 @@ public final class ToxicityTicker {
         // world's first turn toxic forward (DESIGN.md §7 "worsens the apocalypse").
         long remaining = ToxicSurfaceConfig.TIME_TO_TOXIC_TICKS.get() - (level.getGameTime() + state.pollutionTicks());
         if (remaining <= 0) {
-            state.startNow(level.getGameTime());
-            ToxicSurface.LOGGER.info(
-                    "The air has turned toxic in {}", level.dimension().location());
-            awardActivationAdvancement(level);
+            forceStart(level);
         } else {
             maybeTelegraph(level, state, remaining);
         }
+    }
+
+    /**
+     * Activates toxicity immediately: records the start tick, logs, and awards the activation
+     * advancement. A no-op if already started. Shared by the natural clock above and the
+     * {@code /toxicsurface} testing command (DESIGN.md §12).
+     */
+    public static void forceStart(ServerLevel level) {
+        ToxicityState state = ToxicityState.get(level);
+        if (state.hasStarted()) {
+            return;
+        }
+        state.startNow(level.getGameTime());
+        ToxicSurface.LOGGER.info(
+                "The air has turned toxic in {}", level.dimension().location());
+        awardActivationAdvancement(level);
     }
 
     /** Fires a telegraph warning the first tick the countdown crosses each configured threshold. */
@@ -121,9 +134,16 @@ public final class ToxicityTicker {
                 .contains(level.dimension().location().toString());
     }
 
-    /** Current toxic ceiling Y for the level, or {@link #NOT_TOXIC} if not yet active. */
+    /**
+     * Current toxic ceiling Y for the level, or {@link #NOT_TOXIC} if not yet active. A
+     * {@code /toxicsurface ceiling} override takes priority over the computed model — including
+     * before the natural clock has started — so testing can force a specific line at any time.
+     */
     public static int currentToxicY(ServerLevel level) {
         ToxicityState state = ToxicityState.get(level);
+        if (state.ceilingOverride() != ToxicityState.NO_OVERRIDE) {
+            return state.ceilingOverride();
+        }
         if (!state.hasStarted()) {
             return NOT_TOXIC;
         }
