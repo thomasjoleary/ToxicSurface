@@ -40,12 +40,11 @@ real client. Ordered so the **newest / least-verified** code comes first. Most i
 - [x] Fan blowing sludge bulk-contaminates industrial filters → dirty industrial filter
 - [x] Washing dirty filters with a fan+water produces 1–2 toxic residue (50 % chance) + wet filter
 - [ ] Wet filter dries in a furnace → clean industrial filter (ready to re-use)
-- [ ] Dirty filter in generator scrubber slot suppresses smog; clean filter allows it
+- [ ] Clean industrial filter in scrubber slot suppresses smog; dirty/absent filter allows smog
 
 ### Contraption sealing [Create]
 - [x] A player sealed inside a moving contraption is protected from toxic gas (confirmed via log)
-- [ ] Assembling a contraption around a player mid-session seals them immediately
-- [ ] Disassembling breaks the seal (player exposed again)
+- [ ] A contraption with a gap (open door, extended piston) in its wall does NOT seal the player
 - [ ] Unsealed room in a contraption does NOT grant protection
 
 ### [Jade] machine readouts
