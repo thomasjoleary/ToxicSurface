@@ -16,7 +16,7 @@ real client. Ordered so the **newest / least-verified** code comes first. Most i
 - [x] Below the toxic ceiling Y: rain droplets render green (not blue)
 - [x] Above the ceiling Y: rain renders normally (blue)
 - [x] Green rain visible **through windows** in a sealed room (Y-level check, not player state)
-- [ ] Toggle rain with `/weather rain` and confirm color swaps when ceiling is active vs not
+- [x] Toggle rain with `/weather rain` and confirm color swaps when ceiling is active vs not
 - [ ] With Iris/Oculus shaders active: vanilla rain is used (no shader z-fight), no crash
 
 ### Mechanical Weaver — depot style [Create]
@@ -24,8 +24,8 @@ real client. Ordered so the **newest / least-verified** code comes first. Most i
 - [x] Two END_ROD weaving sticks animate in crossing over-under pattern (3 stitches per craft)
 - [x] Animation speed scales with incoming RPM
 - [x] White poof particle fires on each completed output
-- [ ] Weaver processes kelp+wool and wool+string without GUI (right-click inserts/extracts)
-- [ ] At very high RPM the animation plays visibly faster (not just a strobe)
+- [x] Weaver processes kelp+wool and wool+string without GUI (right-click inserts/extracts)
+- [x] At very high RPM the animation plays visibly faster (not just a strobe)
 - [ ] Rod positions look correct from all four horizontal facings (rods always cross above the items)
 
 > **Rod position constants** (adjust if needed): `MechanicalWeaverRenderer.java` —
@@ -34,18 +34,18 @@ real client. Ordered so the **newest / least-verified** code comes first. Most i
 ### Generator right-click interaction [Create]
 - [x] Right-clicking a Waste Generator with an industrial filter inserts it
 - [x] Right-clicking empty-handed extracts the filter (or top-most non-empty stack)
-- [ ] Same interaction works on the Sludge Generator
+- [x] Same interaction works on the Sludge Generator
 
 ### Industrial filter full cycle [Create]
 - [x] Fan blowing sludge bulk-contaminates industrial filters → dirty industrial filter
 - [x] Washing dirty filters with a fan+water produces 1–2 toxic residue (50 % chance) + wet filter
-- [ ] Wet filter dries in a furnace → clean industrial filter (ready to re-use)
-- [ ] Clean industrial filter in scrubber slot suppresses smog; dirty/absent filter allows smog
+- [x] Wet filter dries in a furnace → clean industrial filter (ready to re-use)
+- [x] Clean industrial filter in scrubber slot suppresses smog; dirty/absent filter allows smog
 
 ### Contraption sealing [Create]
 - [x] A player sealed inside a moving contraption is protected from toxic gas (confirmed via log)
-- [ ] A contraption with a gap (open door, extended piston) in its wall does NOT seal the player
-- [ ] Unsealed room in a contraption does NOT grant protection
+- [x] A contraption with a gap (open door, extended piston) in its wall does NOT seal the player
+- [x] Unsealed room in a contraption does NOT grant protection
 
 ### [Jade] machine readouts
 - [x] Cleanser: shows live range, active state, RPM on shift-hover
