@@ -61,8 +61,8 @@ public final class ToxicGasFogRenderer {
     private static final float FOG_R = 0.24f;
     private static final float FOG_G = 0.34f;
     private static final float FOG_B = 0.12f;
-    private static final float FOG_DENSITY = 0.04f;
-    private static final float FOG_MAX_ALPHA = 0.85f;
+    private static final float FOG_DENSITY = 0.055f;
+    private static final float FOG_MAX_ALPHA = 0.9f;
 
     /** Set by {@link ClientModBusEvents#registerShaders} once the core shader compiles. */
     static ShaderInstance shader;
