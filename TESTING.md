@@ -12,42 +12,46 @@ real client. Ordered so the **newest / least-verified** code comes first. Most i
 
 ## Priority 1 — added this session, verify in-game
 
-### Volumetric toxic-gas haze (NEW, revised this session — never seen rendered, needs careful checking)
-Replaces the old "fog only shows while your own cell is exposed" behavior with a real per-pixel
-effect (`ToxicVolumetricFog`): each frame it reconstructs every pixel's world Y from the depth
-buffer and blends in green haze, scaled by distance, wherever that point is at/below the toxic
-ceiling — regardless of whether *you* are sealed/cleansed/above it.
+### Toxic-gas haze — now real world-space geometry (REWRITTEN this session — never seen rendered)
+Two earlier passes at this (screen-space depth reconstruction, then a server-throttled ray-march
+to keep sealed rooms clear) both shipped real bugs — the ray-march in particular caused visible
+flashing, since a single view-direction sample refreshed twice a second can't smoothly track a
+turning camera. Replaced entirely with `ToxicGasFieldRenderer`: real translucent boxes placed in
+world space (using vanilla's own `RenderType.debugQuads()` — no custom shader, no GLSL, no
+per-frame matrix math) over grid columns judged "exposed" (nothing solid reaches the toxic
+ceiling's height there, via the existing heightmap — treats a player's roof and a natural mountain
+identically). The ordinary GPU depth test then hides it behind real walls/roofs automatically and
+instantly, the same way a wall already hides water on the other side — no ray-march, no per-tick
+network payload, no flashing by construction. Rebuilds a ~128×128-block grid around the player
+every ~1s (or sooner if they move ~12+ blocks), not every frame.
 
-First pass had a real bug (caught via screenshots): a sealed room's own far wall is just "a solid
-surface below the ceiling Y" to the depth buffer, same as genuinely exposed exterior ground at the
-same distance — so long sealed hallways still hazed up in the distance. Fixed with
-`GasVisibilityRay`: every throttle cycle it walks the player's actual view direction through the
-mod's real sealing/cleanser/smog rules (the same ones that gate damage) and reports how far out
-actual exposed gas was found; the shader (`MinFogDistance` uniform) holds the haze back until at
-least that distance. Also bumped density/max-alpha (`FOG_DENSITY`/`FOG_MAX_ALPHA` in
-`ToxicVolumetricFog.java`) so it reads as near-opaque from altitude instead of a thin tint.
+**Known gap:** doesn't know about Cleanser bubbles yet (those aren't bounded by real blocks, so
+depth-test occlusion can't carve them out) — standing in one may still show nearby fog geometry.
+Flagging as a follow-up, not fixed this pass.
 
-Verified so far: the shader (with the new `MinFogDistance` uniform) still compiles and links
-cleanly on a real headless client boot (Xvfb), unit tests green, GameTests green. **Never seen
-actually rendered** — please check closely:
-- [ ] **Sealed room, no windows** (the reported case): standing/walking around inside shows *no*
-      haze anywhere, even looking down a long hallway — the room reads completely clear
-- [ ] **Sealed room, looking out a window**: interior stays clear; haze appears starting roughly
-      at the window/opening, not before it
-- [ ] Standing in a **cleanser bubble**: the ground at your feet stays clear, haze starts roughly
-      at the bubble's edge
+Verified so far: compiles clean, no custom shader risk this time (uses `RenderType.debugQuads()`,
+already used elsewhere in vanilla for exactly this kind of "translucent depth-tested world
+geometry" — much lower architectural risk than the previous two attempts), a full headless client
+boot under Xvfb shows no crash, unit tests + GameTests green. **Never seen actually rendered** —
+please check closely:
+- [ ] **Sealed room, no windows** (originally reported broken): walking around inside shows *no*
+      haze anywhere, even down a long hallway
+- [ ] **No flashing** (the specific complaint that triggered this rewrite): turn the camera around
+      inside/near a room — the haze should never pop or flicker, since it's real geometry now
+- [ ] **Sealed room, looking out a window**: interior stays clear; haze appears roughly starting at
+      the window/opening
 - [ ] Standing **above the toxic ceiling**, looking down: reads as thick/near-opaque haze over the
-      ground, increasingly so with altitude; the sky above you does *not* get tinted
-- [ ] Overall thickness: haze from altitude should look close to opaque now (not a thin tint) —
-      if still too thin/thick, `FOG_DENSITY`/`FOG_MAX_ALPHA` in `ToxicVolumetricFog.java` are the
-      knobs
-- [ ] `MinFogDistance` updates smoothly as you walk toward an opening (not a visible pop/snap —
-      it only refreshes every 10 ticks, so some lag when you turn quickly is expected)
-- [ ] No visual artifacts at the horizon / distant sky (shader discards near max depth)
+      ground (bumped `TOP_ALPHA` in `ToxicGasFieldRenderer.java` for this — tune there if still
+      too thin/thick)
+- [ ] Standing in a **cleanser bubble**: known gap above — expect this to still look wrong for now
+- [ ] Grid boundary (~64 blocks out) doesn't look jarring — a wall appears at the edge of loaded
+      coverage; consider whether `GRID_RADIUS_CELLS` needs to be bigger
+- [ ] Walking/flying around: grid rebuild (every ~1s or ~12 blocks moved) isn't visually jarring —
+      look for pop-in at the edges as it recenters
 - [ ] `fogIntensity` accessibility slider at 0 disables the effect entirely; scales it in between
 - [ ] With Iris/Oculus active: effect is skipped (no z-fight/crash)
-- [ ] No FPS cliff or visible stutter (the new per-player ray-march runs every 10 ticks, reusing
-      the same enclosure cache the sealing check already uses)
+- [ ] No FPS cliff — grid rebuild is throttled and cheap (heightmap lookups only), per-frame cost
+      is just drawing the cached quad list
 - [ ] Old `ToxicFogHandler` (personal screen fog while exposed) still layers correctly on top
 
 ### Conditional green rain

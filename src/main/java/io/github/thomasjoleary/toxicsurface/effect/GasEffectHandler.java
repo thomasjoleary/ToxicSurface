@@ -79,16 +79,11 @@ public final class GasEffectHandler {
         }
 
         // Sync exposure (fog) + air bar (HUD bubble row) + toxic-area (rain overlay) + the dimension's
-        // toxic ceiling Y (rain colour below vs above the gas line) + how far actual exposed gas is
-        // visible along the player's view (volumetric haze doesn't tint a sealed room's own interior)
-        // (DESIGN.md §3, §4).
+        // toxic ceiling Y (rain colour below vs above the gas line) (DESIGN.md §3, §4).
         if (player instanceof ServerPlayer serverPlayer) {
             float airFraction = Mth.clamp((float) air / AirBarModel.fullAir(drain), 0f, 1f);
             int ceiling = ToxicityTicker.currentToxicY(level);
-            int budget = ToxicSurfaceConfig.ENCLOSURE_FLOOD_FILL_BUDGET.get();
-            float minFogDistance = GasVisibilityRay.distanceToExposedGas(level, player, budget);
-            PacketDistributor.sendToPlayer(
-                    serverPlayer, new GasStatePayload(exposed, airFraction, inGas, ceiling, minFogDistance));
+            PacketDistributor.sendToPlayer(serverPlayer, new GasStatePayload(exposed, airFraction, inGas, ceiling));
         }
     }
 
