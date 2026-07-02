@@ -12,100 +12,50 @@ real client. Ordered so the **newest / least-verified** code comes first. Most i
 
 ## Priority 1 — added this session, verify in-game
 
-### Toxic-gas haze — now real world-space geometry (REWRITTEN this session — never seen rendered)
-Two earlier passes at this (screen-space depth reconstruction, then a server-throttled ray-march
-to keep sealed rooms clear) both shipped real bugs — the ray-march in particular caused visible
-flashing, since a single view-direction sample refreshed twice a second can't smoothly track a
-turning camera. Replaced entirely with `ToxicGasFieldRenderer`: real translucent boxes placed in
-world space (using vanilla's own `RenderType.debugQuads()` — no custom shader, no GLSL, no
-per-frame matrix math) over grid columns judged "exposed" (nothing solid reaches the toxic
-ceiling's height there, via the existing heightmap — treats a player's roof and a natural mountain
-identically). The ordinary GPU depth test then hides it behind real walls/roofs automatically and
-instantly, the same way a wall already hides water on the other side — no ray-march, no per-tick
-network payload, no flashing by construction. Rebuilds a ~128×128-block grid around the player
-every ~1s (or sooner if they move ~12+ blocks), not every frame.
+### Toxic-gas haze — screen-space per-pixel fog (REWRITTEN again; never seen rendered by me)
+History: this went through a hard-geometry phase (translucent world-space boxes on a 4-block grid).
+It fixed the corridor and window cases, but screenshots showed it couldn't escape three problems
+that are *inherent* to view-independent geometry: a blocky/flat "fog sea" top and visible cell
+seams, holes stepping over hills, and clear ground when viewed from high up (bounded grid + hard
+top). The "dense from above yet soft near the ceiling" look is fundamentally view-dependent, so the
+geometry approach was abandoned for a screen-space one.
 
-**Known gap:** doesn't know about Cleanser bubbles yet (those aren't bounded by real blocks, so
-depth-test occlusion can't carve them out) — standing in one may still show nearby fog geometry.
-Flagging as a follow-up, not fixed this pass.
+Current: `ToxicGasFogRenderer` + the `toxic_fog` core shader. After the level draws, a fullscreen
+pass reconstructs each surface pixel's world position from the depth buffer and adds green haze
+scaled by camera distance — but only where that pixel is genuinely exposed toxic air: at/below the
+ceiling, and at the top of its own column (a pixel well below its column's highest solid is under a
+roof → sealed → skipped). The "is this column open / under cover" test samples a 256×256 per-column
+terrain-top texture (`MOTION_BLOCKING` heightmap, 16-bit height packed into R+G), rebuilt around the
+camera every ~1s or when it drifts >16 blocks. Because the test is per-pixel and the height data
+updates smoothly, there are no cell seams and no flashing (the flashing before came from a single
+throttled view-ray; this replaces it with exact per-pixel height data).
 
-**Second real-client screenshot found a third structural bug, now fixed:** after the interior-walls
-fix below made outdoor haze work, sealed rooms started showing fog again. Cause: the wall band's
-floor was one constant (`ceilingY - WALL_HEIGHT`) applied to every exposed column alike. A column
-only reads "exposed" because nothing reaches the ceiling's *exact* height there — a base whose roof
-is lower than the (since-risen) ceiling still passes that check, so the flat floor let the wall
-band dip below the roof and straight into the room's own interior air. Nothing occludes that,
-since the camera and the misplaced geometry share the same open pocket. Fixed: each column's floor
-is now clamped to `max(that column's own solid height, ceilingY - WALL_HEIGHT)`, so the geometry
-never sits below a real roof — the roof then correctly occludes it from inside, same as before.
-
-**Third screenshot: still fog in the hillside corridor → root cause was cell-centre sampling, now
-fixed properly.** Each 4×4 cell's exposure/floor came from ONE sample at its centre; on a hillside
-base, the centre often lands on open low ground while the cell overlaps carved-out rooms — that
-cell's bottom cap and boundary walls then slice through the room's air every 4 blocks (the stacked
-panes = the uniform green down the corridor). Fix: `scanCell` samples **every column** in the cell
-and takes the **max** surface height as the floor. Invariant: enclosed air always has solid above
-it in its own column, so a floor clearing every column's top can never enter a sealed room; walls
-are clamped the same way on both sides of each shared plane. Other fixes in the same pass: walls
-inset 0.01 off block-grid planes (no z-fighting on grid-aligned player walls), bottom cap only
-where the band hangs in open air (no green film painted on flat ground), switched to the
-client-synced `MOTION_BLOCKING` heightmap (NO_LEAVES isn't sent to clients; side effect: fog sits
-on tree canopies now), grid centres on the camera not the player (spectator/freecam), stale
-geometry cleared on dimension change, and degenerate quads guarded when a structure top sits
-exactly at the ceiling.
-
-**Fourth screenshot round: corridor + window confirmed good — but tall blocks (a pillar / raised
-terrain island) cleared fog from a big patch of surrounding open ground.** The "max of all columns"
-rule above was the culprit: one column poking above the ceiling marked the whole 4×4 cell
-NOT_EXPOSED, blanking its fog. Fix: floor at the highest *open* column (≤ ceiling), ignore columns
-poking above it, and skip a cell only when *every* column is covered. Pillars/trees/walls now keep
-fog around them (the block itself occludes the fog behind it); fully-roofed cells (sealed room
-interior) still skip. Residual trade-off: a roof overhanging open ground with no wall between can
-leak a thin band of fog — normal walled rooms don't (solid walls occlude edge fog, interior cells
-are fully covered). To recheck:
-- [ ] Pillar / tall block in open ground: fog fills in around it (no square hole)
-- [ ] Raised terrain poking above the ceiling: surrounding lower open ground still fogs
-- [ ] Sealed room interior still fully clear (no regression from this change)
-
-**First real-client screenshot (this session) found a second structural bug and it's now fixed:**
-walls were only drawn at the outer silhouette of a contiguous exposed region, to avoid double-
-drawing the shared edge between two exposed cells. That meant a big open field showed haze only at
-its rim and a thin cap far overhead — completely clear once you were looking into its middle,
-exactly "I can see the borders where it's loaded in, but nothing within it." Fixed: every exposed
-cell now unconditionally owns its west/north wall (an interior partition when the neighbour is also
-exposed, the silhouette edge when it isn't), so looking across open ground now crosses one wall
-every `CELL_SIZE` (4) blocks — each wall's alpha was dropped hard (0.55 → 0.14) so that many stacked
-crossings accumulate into a gradually thickening haze with distance instead of a flat wall of color.
-
-Also note: if a location shows *no* haze at all (not even at range) and it doesn't look like a
-sealed-room case, check `/toxicsurface status` — it might just mean the toxic ceiling Y is below
-where you're standing/looking, i.e. you're legitimately above the gas there.
-
-Verified so far: compiles clean, no custom shader risk (uses `RenderType.debugQuads()`, an
-already-proven vanilla render type), unit tests + GameTests green. **Still not seen rendered by
-me** — please check closely:
-- [ ] **Sealed room, no windows**: walking around inside shows *no* haze anywhere, even down a long
-      hallway
-- [ ] **Open field / outdoors, looking into the middle of it** (the newly-fixed bug): haze should
-      now be visible throughout, gradually thickening with distance — not just at the edges
-- [ ] **No flashing**: turn the camera around inside/near a room — the haze should never pop or
-      flicker, since it's real geometry
-- [ ] **Sealed room, looking out a window**: interior stays clear; haze visible outside, thickening
-      with distance
-- [ ] Standing **above the toxic ceiling**, looking down: reads as thick/near-opaque haze over the
-      ground (`TOP_ALPHA` in `ToxicGasFieldRenderer.java` — tune there if still too thin/thick)
-- [ ] Standing in a **cleanser bubble**: known gap above — expect this to still look wrong for now
-- [ ] Close-up, the haze shouldn't look like a visible grid/maze of walls — if the low-alpha
-      partition lines are individually noticeable up close, `WALL_ALPHA` needs to drop further
-- [ ] Grid boundary (~64 blocks out) doesn't look jarring; consider whether `GRID_RADIUS_CELLS`
-      needs to be bigger
-- [ ] Walking/flying around: grid rebuild (every ~1s or ~12 blocks moved) isn't visually jarring —
-      look for pop-in at the edges as it recenters
-- [ ] `fogIntensity` accessibility slider at 0 disables the effect entirely; scales it in between
-- [ ] With Iris/Oculus active: effect is skipped (no z-fight/crash)
-- [ ] No FPS cliff — grid rebuild is throttled and cheap (heightmap lookups only), per-frame cost
-      is just drawing the cached quad list
-- [ ] Old `ToxicFogHandler` (personal screen fog while exposed) still layers correctly on top
+Verified by me: compiles clean; unit tests + GameTests green; a real headless client boot (Xvfb)
+reaches the title screen with the shader compiling and linking on the actual GL engine, no errors,
+no crash. **Not verified: the actual rendered result, and the in-world texture-upload path** (that
+code only runs once a world loads, which the headless title-screen boot doesn't reach) — so the
+first live run is where any encoding/orientation/reconstruction bug would surface. Please check:
+- [ ] It renders at all in a toxic world (if totally absent, likely a depth-reconstruction or
+      height-texture bug — grab a screenshot and the log)
+- [ ] **Soft, not blocky**: no flat green top plane, no cell seams, no hard grid
+- [ ] **Hills**: no holes looking up or down a slope; haze drapes over terrain
+- [ ] **From high up looking down**: reads dense over the ground (long ray through the layer),
+      out to the ~128-block map radius; beyond that it fades to nothing (raise `MAP_SIZE` if the
+      boundary is too close — cost scales with its square)
+- [ ] **Sealed room, no windows**: interior fully clear (per-pixel under-cover test)
+- [ ] **Sealed room / base, looking out a window**: interior clear, haze outside thickening with
+      distance
+- [ ] **No flashing** when turning the camera or moving
+- [ ] North/south not mirrored (a Z-flip in the height texture would offset the mask from reality —
+      if sealed areas fog and open areas don't, the texture V-orientation is inverted)
+- [ ] `fogIntensity` slider at 0 disables it; scales alpha in between
+- [ ] With Iris/Oculus active: effect is skipped (no crash/z-fight)
+- [ ] No FPS cliff or once-a-second hitch (the 256×256 = 65k heightmap lookups on rebuild)
+- [ ] Old `ToxicFogHandler` (personal screen fog while in gas) still layers on top without fighting
+- [ ] **Known gap (unchanged):** Cleanser bubbles aren't carved out — the shader has no bubble data
+      yet; standing in one may still show haze. Needs cleanser-range sync; follow-up.
+- [ ] Colour / density feel right (`FOG_R/G/B`, `FOG_DENSITY`, `FOG_MAX_ALPHA` in
+      `ToxicGasFogRenderer.java`; density saturates the haze by ~distance 1/DENSITY blocks)
 
 ### Conditional green rain
 - [x] Below the toxic ceiling Y: rain droplets render green (not blue)
