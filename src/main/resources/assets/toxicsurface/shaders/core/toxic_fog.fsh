@@ -56,6 +56,14 @@ void main() {
     float surfaceDist = length(rel);
     vec3 dir = rel / max(surfaceDist, 1e-4);
 
+    // The surface (whatever this pixel shows) above the ceiling is above the gas layer — a cloud, a
+    // mountain peak poking out of the gas, a tall build — and must be seen clear, not tinted. (Clouds
+    // are geometry, not far-plane sky, so the sky test above doesn't catch them; without this they
+    // pick up the gas the ray crosses on the way up and read green.)
+    if (CameraPos.y + rel.y > CeilingY) {
+        discard;
+    }
+
     float marchDist = min(surfaceDist, MAX_DIST);
     if (marchDist <= 0.1) {
         discard;
