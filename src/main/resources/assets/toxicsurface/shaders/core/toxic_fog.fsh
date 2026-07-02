@@ -16,47 +16,57 @@ in vec2 texCoord;
 
 out vec4 fragColor;
 
-// Decodes a column's terrain-top Y from the two high/low bytes packed into R and G.
-float decodeTop(vec2 uv) {
+const int STEPS = 24;
+const float MAX_DIST = 180.0;     // ray march cap (also ~the height-map coverage limit)
+
+// Terrain top (highest solid) at a world column, decoded from the two high/low bytes in R and G.
+// Returns a huge value for columns outside the mapped region so those samples never count as air.
+float terrainTop(vec2 worldXZ) {
+    vec2 uv = (worldXZ - HeightOrigin) / HeightWorldSize;
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+        return 1.0e6;
+    }
     vec4 t = texture(HeightSampler, uv);
     float hi = floor(t.r * 255.0 + 0.5);
     float lo = floor(t.g * 255.0 + 0.5);
     return (hi * 256.0 + lo) - 64.0;
 }
 
-// Per-pixel toxic haze. For each rendered surface pixel we reconstruct its world position from the
-// depth buffer and add green haze scaled by distance from the camera — but only where that surface
-// is genuinely exposed toxic air: at or below the ceiling, and at the top of its own column (a pixel
-// well below its column's highest solid is under a roof, i.e. sealed, so it is skipped). Because the
-// test is per pixel and the height data updates smoothly, there are no cell seams and no flashing;
-// the depth reconstruction naturally hazes distant ground more than near ground, and — since it is
-// evaluated along the true view ray — reads dense looking down from above yet soft near the ceiling.
+// Volumetric toxic haze. Rather than tinting the surface pixel, we march the view ray from the
+// camera to the surface and accumulate how much genuinely-exposed toxic *air* it crosses — air that
+// is at/below the ceiling and above the terrain in its own column. This reads as real depth (distant
+// ground fades into haze, trees/hills fog uniformly) and keeps sealed rooms clear for free: a ray
+// inside a room stays below its roof the whole way, so it accumulates zero exposed air. The height
+// data is a small per-column texture rebuilt around the camera, so there is no cell blockiness and no
+// flashing.
 void main() {
     float depth = texture(DepthSampler, texCoord).r;
-    if (depth > 0.9999) {
-        discard; // open sky: nothing to tint
-    }
 
+    // Reconstruct the camera-relative direction/endpoint of this pixel's view ray.
     vec4 clip = vec4(texCoord * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
     vec4 rel4 = InvViewProj * clip;
-    vec3 rel = rel4.xyz / rel4.w;   // camera-relative world offset
-    vec3 world = rel + CameraPos;
+    vec3 rel = rel4.xyz / rel4.w;
+    float surfaceDist = length(rel);
+    vec3 dir = rel / max(surfaceDist, 1e-4);
 
-    if (world.y > CeilingY) {
-        discard; // surface sits above the gas layer
+    // Stop at the surface; for open sky (no surface) march a fixed cap so horizon air still hazes.
+    float marchDist = (depth > 0.9999) ? MAX_DIST : min(surfaceDist, MAX_DIST);
+    if (marchDist <= 0.1) {
+        discard;
     }
 
-    vec2 uv = (world.xz - HeightOrigin) / HeightWorldSize;
-    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
-        discard; // outside the mapped region around the player
+    float stepLen = marchDist / float(STEPS);
+    float exposed = 0.0;
+    for (int i = 0; i < STEPS; i++) {
+        vec3 p = CameraPos + dir * ((float(i) + 0.5) * stepLen);
+        if (p.y <= CeilingY && p.y >= terrainTop(p.xz)) {
+            exposed += stepLen;
+        }
     }
 
-    float top = decodeTop(uv);
-    if (world.y < top - 1.5) {
-        discard; // under cover (a roof) in this column: sealed, no gas
+    if (exposed <= 0.0) {
+        discard;
     }
-
-    float dist = length(rel);
-    float a = FogMaxAlpha * (1.0 - exp(-FogDensity * dist));
+    float a = FogMaxAlpha * (1.0 - exp(-FogDensity * exposed));
     fragColor = vec4(FogColor, a);
 }

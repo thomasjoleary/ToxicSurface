@@ -20,42 +20,40 @@ seams, holes stepping over hills, and clear ground when viewed from high up (bou
 top). The "dense from above yet soft near the ceiling" look is fundamentally view-dependent, so the
 geometry approach was abandoned for a screen-space one.
 
-Current: `ToxicGasFogRenderer` + the `toxic_fog` core shader. After the level draws, a fullscreen
-pass reconstructs each surface pixel's world position from the depth buffer and adds green haze
-scaled by camera distance — but only where that pixel is genuinely exposed toxic air: at/below the
-ceiling, and at the top of its own column (a pixel well below its column's highest solid is under a
-roof → sealed → skipped). The "is this column open / under cover" test samples a 256×256 per-column
-terrain-top texture (`MOTION_BLOCKING` heightmap, 16-bit height packed into R+G), rebuilt around the
-camera every ~1s or when it drifts >16 blocks. Because the test is per-pixel and the height data
-updates smoothly, there are no cell seams and no flashing (the flashing before came from a single
-throttled view-ray; this replaces it with exact per-pixel height data).
+Current: `ToxicGasFogRenderer` + the `toxic_fog` core shader, **raymarched** (revised after the first
+render — the initial per-surface version tinted ground green like paint and made trees patchy). The
+fullscreen pass now marches each pixel's view ray from the camera to the surface and accumulates how
+much genuinely-exposed toxic *air* it crosses — air at/below the ceiling and above the terrain in its
+own column (`MOTION_BLOCKING` heightmap, packed 16-bit into a 256×256 R+G texture rebuilt around the
+camera every ~1s / >16-block drift). Reads as real volumetric depth (distant ground fades into haze;
+trees/hills fog uniformly) and keeps sealed rooms clear for free: a ray inside a room stays below its
+roof the whole way, accumulating zero. Per-pixel with smoothly-updated height data → no cell seams,
+no flashing. User confirmed: no fog inside a sealed room.
 
 Verified by me: compiles clean; unit tests + GameTests green; a real headless client boot (Xvfb)
-reaches the title screen with the shader compiling and linking on the actual GL engine, no errors,
-no crash. **Not verified: the actual rendered result, and the in-world texture-upload path** (that
-code only runs once a world loads, which the headless title-screen boot doesn't reach) — so the
-first live run is where any encoding/orientation/reconstruction bug would surface. Please check:
-- [ ] It renders at all in a toxic world (if totally absent, likely a depth-reconstruction or
-      height-texture bug — grab a screenshot and the log)
-- [ ] **Soft, not blocky**: no flat green top plane, no cell seams, no hard grid
-- [ ] **Hills**: no holes looking up or down a slope; haze drapes over terrain
-- [ ] **From high up looking down**: reads dense over the ground (long ray through the layer),
-      out to the ~128-block map radius; beyond that it fades to nothing (raise `MAP_SIZE` if the
-      boundary is too close — cost scales with its square)
-- [ ] **Sealed room, no windows**: interior fully clear (per-pixel under-cover test)
+reaches the title screen with the (raymarch) shader compiling and linking on the actual GL engine,
+no errors, no crash. **Not verified: the rendered result.** Please check:
+- [ ] **Volumetric, not painted**: distant ground/trees fade *into* green haze (losing contrast);
+      it should not look like green paint on surfaces, and trees should fog uniformly (not dark
+      trunks + green tops like the per-surface version)
+- [ ] **Hills**: haze drapes smoothly, no holes up or down a slope
+- [ ] **From high up looking down**: dense over the ground (long ray through the layer), out to the
+      ~128-block map radius, fading past it (raise `MAP_SIZE`/`MAX_DIST` if the edge is too close —
+      cost scales with `MAP_SIZE` squared and `STEPS`)
+- [ ] **Sealed room, no windows**: interior fully clear (confirmed once; recheck after raymarch)
 - [ ] **Sealed room / base, looking out a window**: interior clear, haze outside thickening with
       distance
 - [ ] **No flashing** when turning the camera or moving
-- [ ] North/south not mirrored (a Z-flip in the height texture would offset the mask from reality —
-      if sealed areas fog and open areas don't, the texture V-orientation is inverted)
+- [ ] Looking up at the sky: no green above the ceiling (fog stops where the ray crosses the ceiling)
 - [ ] `fogIntensity` slider at 0 disables it; scales alpha in between
 - [ ] With Iris/Oculus active: effect is skipped (no crash/z-fight)
-- [ ] No FPS cliff or once-a-second hitch (the 256×256 = 65k heightmap lookups on rebuild)
+- [ ] No FPS cliff — raymarch is `STEPS` (24) texture lookups/pixel; drop `STEPS` if low-end GPUs
+      struggle. Once-a-second rebuild is 65k heightmap lookups.
 - [ ] Old `ToxicFogHandler` (personal screen fog while in gas) still layers on top without fighting
 - [ ] **Known gap (unchanged):** Cleanser bubbles aren't carved out — the shader has no bubble data
       yet; standing in one may still show haze. Needs cleanser-range sync; follow-up.
-- [ ] Colour / density feel right (`FOG_R/G/B`, `FOG_DENSITY`, `FOG_MAX_ALPHA` in
-      `ToxicGasFogRenderer.java`; density saturates the haze by ~distance 1/DENSITY blocks)
+- [ ] Colour / density feel right (`FOG_R/G/B`, `FOG_DENSITY` = per block of exposed air,
+      `FOG_MAX_ALPHA` in `ToxicGasFogRenderer.java`)
 
 ### Conditional green rain
 - [x] Below the toxic ceiling Y: rain droplets render green (not blue)
