@@ -29,23 +29,38 @@ every ~1s (or sooner if they move ~12+ blocks), not every frame.
 depth-test occlusion can't carve them out) — standing in one may still show nearby fog geometry.
 Flagging as a follow-up, not fixed this pass.
 
-Verified so far: compiles clean, no custom shader risk this time (uses `RenderType.debugQuads()`,
-already used elsewhere in vanilla for exactly this kind of "translucent depth-tested world
-geometry" — much lower architectural risk than the previous two attempts), a full headless client
-boot under Xvfb shows no crash, unit tests + GameTests green. **Never seen actually rendered** —
-please check closely:
-- [ ] **Sealed room, no windows** (originally reported broken): walking around inside shows *no*
-      haze anywhere, even down a long hallway
-- [ ] **No flashing** (the specific complaint that triggered this rewrite): turn the camera around
-      inside/near a room — the haze should never pop or flicker, since it's real geometry now
-- [ ] **Sealed room, looking out a window**: interior stays clear; haze appears roughly starting at
-      the window/opening
+**First real-client screenshot (this session) found a second structural bug and it's now fixed:**
+walls were only drawn at the outer silhouette of a contiguous exposed region, to avoid double-
+drawing the shared edge between two exposed cells. That meant a big open field showed haze only at
+its rim and a thin cap far overhead — completely clear once you were looking into its middle,
+exactly "I can see the borders where it's loaded in, but nothing within it." Fixed: every exposed
+cell now unconditionally owns its west/north wall (an interior partition when the neighbour is also
+exposed, the silhouette edge when it isn't), so looking across open ground now crosses one wall
+every `CELL_SIZE` (4) blocks — each wall's alpha was dropped hard (0.55 → 0.14) so that many stacked
+crossings accumulate into a gradually thickening haze with distance instead of a flat wall of color.
+
+Also note: if a location shows *no* haze at all (not even at range) and it doesn't look like a
+sealed-room case, check `/toxicsurface status` — it might just mean the toxic ceiling Y is below
+where you're standing/looking, i.e. you're legitimately above the gas there.
+
+Verified so far: compiles clean, no custom shader risk (uses `RenderType.debugQuads()`, an
+already-proven vanilla render type), unit tests + GameTests green. **Still not seen rendered by
+me** — please check closely:
+- [ ] **Sealed room, no windows**: walking around inside shows *no* haze anywhere, even down a long
+      hallway
+- [ ] **Open field / outdoors, looking into the middle of it** (the newly-fixed bug): haze should
+      now be visible throughout, gradually thickening with distance — not just at the edges
+- [ ] **No flashing**: turn the camera around inside/near a room — the haze should never pop or
+      flicker, since it's real geometry
+- [ ] **Sealed room, looking out a window**: interior stays clear; haze visible outside, thickening
+      with distance
 - [ ] Standing **above the toxic ceiling**, looking down: reads as thick/near-opaque haze over the
-      ground (bumped `TOP_ALPHA` in `ToxicGasFieldRenderer.java` for this — tune there if still
-      too thin/thick)
+      ground (`TOP_ALPHA` in `ToxicGasFieldRenderer.java` — tune there if still too thin/thick)
 - [ ] Standing in a **cleanser bubble**: known gap above — expect this to still look wrong for now
-- [ ] Grid boundary (~64 blocks out) doesn't look jarring — a wall appears at the edge of loaded
-      coverage; consider whether `GRID_RADIUS_CELLS` needs to be bigger
+- [ ] Close-up, the haze shouldn't look like a visible grid/maze of walls — if the low-alpha
+      partition lines are individually noticeable up close, `WALL_ALPHA` needs to drop further
+- [ ] Grid boundary (~64 blocks out) doesn't look jarring; consider whether `GRID_RADIUS_CELLS`
+      needs to be bigger
 - [ ] Walking/flying around: grid rebuild (every ~1s or ~12 blocks moved) isn't visually jarring —
       look for pop-in at the edges as it recenters
 - [ ] `fogIntensity` accessibility slider at 0 disables the effect entirely; scales it in between

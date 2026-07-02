@@ -63,8 +63,13 @@ public final class ToxicGasFieldRenderer {
     /** Top caps are usually viewed from above at range, so they can read near-opaque. */
     private static final float TOP_ALPHA = 0.9f;
 
-    /** Walls sit right where the haze visually "starts", so a lighter alpha reads as a haze, not a wall. */
-    private static final float WALL_ALPHA = 0.55f;
+    /**
+     * Per-wall alpha. Walls are now drawn on <em>every</em> cell-to-cell boundary within an exposed
+     * region, not just its outer silhouette (see {@link #buildGrid}) — looking across open ground
+     * crosses one every {@link #CELL_SIZE} blocks, so a low per-wall alpha accumulates into a
+     * believably thickening haze with distance instead of a single wall right at the field's edge.
+     */
+    private static final float WALL_ALPHA = 0.14f;
 
     private static List<Quad> cachedQuads = List.of();
     private static long lastRebuildTick = Long.MIN_VALUE;
@@ -159,9 +164,14 @@ public final class ToxicGasFieldRenderer {
     /**
      * Samples a grid of columns around the player: a column is "exposed" if nothing solid reaches
      * the ceiling's height there (so ordinary terrain or a roof both correctly count as sealing it).
-     * Emits a top cap for every exposed cell, plus a wall only on the sides bordering a non-exposed
-     * (or out-of-range) neighbour — an exposed cell surrounded by other exposed cells gets no interior
-     * walls, avoiding z-fighting seams and keeping the triangle count down.
+     * Emits a top cap for every exposed cell, plus a wall at <em>every</em> cell-to-cell boundary
+     * touching an exposed cell — including boundaries between two exposed cells, not just the outer
+     * silhouette. Without interior walls, a large open exposed area (a field, the outdoors past a
+     * sealed base) reads as a hollow shell: haze only at its outer edge and a thin cap far overhead,
+     * with nothing visible once you're looking into its middle — exactly the "only see it at the
+     * edges" bug reported from a screenshot. Each shared boundary is drawn exactly once (only the
+     * west/north walls are unconditional; east/south only fire at a true silhouette edge) so two
+     * neighbouring exposed cells never double-draw the same plane.
      */
     private static List<Quad> buildGrid(ClientLevel level, LocalPlayer player, int ceilingY) {
         int diameter = GRID_RADIUS_CELLS * 2 + 1;
@@ -197,17 +207,17 @@ public final class ToxicGasFieldRenderer {
                 quads.add(
                         new Quad(x0, bottomY, z0, x0, bottomY, z1, x1, bottomY, z1, x1, bottomY, z0, TOP_ALPHA * 0.5f));
 
-                if (!isExposed(exposed, cx, cz - 1, diameter)) { // north wall
-                    quads.add(
-                            new Quad(x0, bottomY, z0, x1, bottomY, z0, x1, ceilingY, z0, x0, ceilingY, z0, WALL_ALPHA));
-                }
+                // West/north walls are unconditional: this cell always owns the boundary it shares
+                // with its west/north neighbour, whether that neighbour is exposed (an interior
+                // partition) or not (the true silhouette edge). East/south only fire when that
+                // specific neighbour isn't exposed, so the boundary with an exposed east/south
+                // neighbour is left for THAT cell's own (unconditional) west/north wall to draw —
+                // every shared plane gets exactly one wall, never two.
+                quads.add(new Quad(x0, bottomY, z0, x1, bottomY, z0, x1, ceilingY, z0, x0, ceilingY, z0, WALL_ALPHA));
+                quads.add(new Quad(x0, bottomY, z1, x0, bottomY, z0, x0, ceilingY, z0, x0, ceilingY, z1, WALL_ALPHA));
                 if (!isExposed(exposed, cx, cz + 1, diameter)) { // south wall
                     quads.add(
                             new Quad(x1, bottomY, z1, x0, bottomY, z1, x0, ceilingY, z1, x1, ceilingY, z1, WALL_ALPHA));
-                }
-                if (!isExposed(exposed, cx - 1, cz, diameter)) { // west wall
-                    quads.add(
-                            new Quad(x0, bottomY, z1, x0, bottomY, z0, x0, ceilingY, z0, x0, ceilingY, z1, WALL_ALPHA));
                 }
                 if (!isExposed(exposed, cx + 1, cz, diameter)) { // east wall
                     quads.add(
