@@ -41,13 +41,6 @@ float terrainTop(vec2 worldXZ) {
 // flashing.
 void main() {
     float depth = texture(DepthSampler, texCoord).r;
-    if (depth > 0.9999) {
-        // Open sky: the gas is ground-hugging, so it must not tint the sky. (Marching a fixed
-        // distance here made near-horizontal sky rays skim the exposed layer and haze the sky — a
-        // green band along the top of the view. Distant *terrain* at the horizon still fogs below,
-        // since those pixels have a real surface depth.)
-        discard;
-    }
 
     // Reconstruct the camera-relative direction/endpoint of this pixel's view ray.
     vec4 clip = vec4(texCoord * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
@@ -56,15 +49,8 @@ void main() {
     float surfaceDist = length(rel);
     vec3 dir = rel / max(surfaceDist, 1e-4);
 
-    // The surface (whatever this pixel shows) above the ceiling is above the gas layer — a cloud, a
-    // mountain peak poking out of the gas, a tall build — and must be seen clear, not tinted. (Clouds
-    // are geometry, not far-plane sky, so the sky test above doesn't catch them; without this they
-    // pick up the gas the ray crosses on the way up and read green.)
-    if (CameraPos.y + rel.y > CeilingY) {
-        discard;
-    }
-
-    float marchDist = min(surfaceDist, MAX_DIST);
+    // Stop at the surface; for open sky (no surface) march a fixed cap so horizon air still hazes.
+    float marchDist = (depth > 0.9999) ? MAX_DIST : min(surfaceDist, MAX_DIST);
     if (marchDist <= 0.1) {
         discard;
     }

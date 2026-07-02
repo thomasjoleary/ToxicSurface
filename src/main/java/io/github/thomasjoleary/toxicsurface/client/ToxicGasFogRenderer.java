@@ -2,6 +2,8 @@
 
 package io.github.thomasjoleary.toxicsurface.client;
 
+import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -66,6 +68,14 @@ public final class ToxicGasFogRenderer {
     static ShaderInstance shader;
 
     private static DynamicTexture heightTexture;
+    /**
+     * A standalone copy of the scene depth. Sampling the main render target's own depth texture while
+     * it is still attached as that target's depth buffer is a GL feedback loop (undefined behaviour) —
+     * it left a stable garbage region of the screen reading as far-plane, so the fog there behaved as
+     * if it were open sky. We blit depth into this un-attached target and sample the copy instead.
+     */
+    private static TextureTarget depthCopy;
+
     private static int mapOriginX;
     private static int mapOriginZ;
     private static long lastRebuildTick = Long.MIN_VALUE;
@@ -112,7 +122,21 @@ public final class ToxicGasFogRenderer {
                 .mul(event.getModelViewMatrix())
                 .invert();
 
-        shader.setSampler("DepthSampler", mc.getMainRenderTarget().getDepthTextureId());
+        // Copy the scene depth into a separate target and sample that, to avoid the feedback loop of
+        // reading the main target's depth while it is still attached (see depthCopy field). copyDepthFrom
+        // leaves framebuffer 0 bound, so re-bind the main target before drawing the fog quad into it.
+        RenderTarget main = mc.getMainRenderTarget();
+        if (depthCopy == null || depthCopy.width != main.width || depthCopy.height != main.height) {
+            if (depthCopy == null) {
+                depthCopy = new TextureTarget(main.width, main.height, true, Minecraft.ON_OSX);
+            } else {
+                depthCopy.resize(main.width, main.height, Minecraft.ON_OSX);
+            }
+        }
+        depthCopy.copyDepthFrom(main);
+        main.bindWrite(false);
+
+        shader.setSampler("DepthSampler", depthCopy.getDepthTextureId());
         shader.setSampler("HeightSampler", heightTexture.getId());
         shader.safeGetUniform("InvViewProj").set(invViewProj);
         shader.safeGetUniform("CameraPos").set((float) cam.x, (float) cam.y, (float) cam.z);
