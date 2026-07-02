@@ -29,6 +29,16 @@ every ~1s (or sooner if they move ~12+ blocks), not every frame.
 depth-test occlusion can't carve them out) — standing in one may still show nearby fog geometry.
 Flagging as a follow-up, not fixed this pass.
 
+**Second real-client screenshot found a third structural bug, now fixed:** after the interior-walls
+fix below made outdoor haze work, sealed rooms started showing fog again. Cause: the wall band's
+floor was one constant (`ceilingY - WALL_HEIGHT`) applied to every exposed column alike. A column
+only reads "exposed" because nothing reaches the ceiling's *exact* height there — a base whose roof
+is lower than the (since-risen) ceiling still passes that check, so the flat floor let the wall
+band dip below the roof and straight into the room's own interior air. Nothing occludes that,
+since the camera and the misplaced geometry share the same open pocket. Fixed: each column's floor
+is now clamped to `max(that column's own solid height, ceilingY - WALL_HEIGHT)`, so the geometry
+never sits below a real roof — the roof then correctly occludes it from inside, same as before.
+
 **First real-client screenshot (this session) found a second structural bug and it's now fixed:**
 walls were only drawn at the outer silhouette of a contiguous exposed region, to avoid double-
 drawing the shared edge between two exposed cells. That meant a big open field showed haze only at

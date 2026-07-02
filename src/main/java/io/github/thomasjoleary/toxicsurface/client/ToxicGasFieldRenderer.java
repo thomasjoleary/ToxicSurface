@@ -172,12 +172,23 @@ public final class ToxicGasFieldRenderer {
      * edges" bug reported from a screenshot. Each shared boundary is drawn exactly once (only the
      * west/north walls are unconditional; east/south only fire at a true silhouette edge) so two
      * neighbouring exposed cells never double-draw the same plane.
+     *
+     * <p>Each cell's geometry is floored at <em>that cell's own</em> solid height, not a single
+     * ceiling-relative constant. A column only reads "exposed" because nothing reaches the ceiling's
+     * exact height there — a base whose own roof sits lower than the (possibly since-risen) ceiling
+     * still passes that check, so without this clamp the wall band would dip below the roof and
+     * straight into the room's own interior air, which nothing then occludes (camera and geometry
+     * share the same open pocket) — exactly the "fog inside a sealed room" regression a screenshot
+     * caught. Flooring at the column's own height keeps the geometry at or above any real roof, so
+     * the room's own solid ceiling correctly occludes it from within.
      */
     private static List<Quad> buildGrid(ClientLevel level, LocalPlayer player, int ceilingY) {
         int diameter = GRID_RADIUS_CELLS * 2 + 1;
         boolean[][] exposed = new boolean[diameter][diameter];
+        int[][] floorY = new int[diameter][diameter];
         int originCellX = Math.floorDiv((int) Math.floor(player.getX()), CELL_SIZE) - GRID_RADIUS_CELLS;
         int originCellZ = Math.floorDiv((int) Math.floor(player.getZ()), CELL_SIZE) - GRID_RADIUS_CELLS;
+        int bandBottom = ceilingY - WALL_HEIGHT;
 
         for (int cz = 0; cz < diameter; cz++) {
             for (int cx = 0; cx < diameter; cx++) {
@@ -188,11 +199,11 @@ public final class ToxicGasFieldRenderer {
                 }
                 int topY = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, blockX, blockZ);
                 exposed[cx][cz] = topY <= ceilingY;
+                floorY[cx][cz] = Math.max(topY, bandBottom); // never dip below this column's own surface
             }
         }
 
         List<Quad> quads = new ArrayList<>();
-        float bottomY = ceilingY - WALL_HEIGHT;
         for (int cz = 0; cz < diameter; cz++) {
             for (int cx = 0; cx < diameter; cx++) {
                 if (!exposed[cx][cz]) {
@@ -202,6 +213,7 @@ public final class ToxicGasFieldRenderer {
                 float z0 = (originCellZ + cz) * CELL_SIZE;
                 float x1 = x0 + CELL_SIZE;
                 float z1 = z0 + CELL_SIZE;
+                float bottomY = floorY[cx][cz];
 
                 quads.add(new Quad(x0, ceilingY, z0, x1, ceilingY, z0, x1, ceilingY, z1, x0, ceilingY, z1, TOP_ALPHA));
                 quads.add(
