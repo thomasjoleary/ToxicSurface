@@ -10,9 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
@@ -22,39 +22,51 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
 /**
  * Renders the toxic-gas haze as real, depth-tested world-space geometry (DESIGN.md §3 gas
- * visibility) instead of a screen-space post-process. A prior depth-reconstruction shader approach
- * worked in principle but needed a server-throttled, single-ray "how far until real gas" heuristic
- * to keep sealed rooms clear — and that heuristic snapped/flashed as the ray's sampled result
- * changed, since it only refreshed twice a second and covered one screen-wide value for the whole
- * view. This is simpler and doesn't flash: translucent boxes are placed in world space over columns
- * the mod judges "exposed" (nothing solid reaches the toxic ceiling there), and the GPU's ordinary
- * depth test — the same one that already correctly hides water behind a wall — does the rest. A
- * sealed room's own roof/walls occlude the fog automatically and instantly; there's no server round
- * trip or per-frame ray march involved at all.
+ * visibility): translucent cell boxes below the toxic ceiling, drawn with vanilla's own
+ * {@link RenderType#debugQuads()} so the GPU's ordinary depth test hides them behind real
+ * walls/roofs — no shader, no ray-march, no per-tick network payload, no flashing.
  *
- * <p>The exposure classification (which columns get fog geometry) is a coarse, periodically-rebuilt
- * grid using vanilla's already-maintained heightmap (whether anything solid reaches the ceiling's
- * height in that column) — cheap, and it naturally treats natural terrain (being inside a mountain)
- * the same as a player-built roof. It does <em>not</em> know about Cleanser bubbles (those aren't
- * bounded by real blocks, so depth-test occlusion can't help there); standing in one may still show
- * nearby fog geometry until it's carved out in a follow-up.
+ * <p>The load-bearing rule is how a cell's fog <em>floor</em> is chosen: every column in the cell is
+ * sampled and the floor is the <b>maximum</b> surface height found ({@link #scanCell}). Any enclosed
+ * air necessarily has solid blocks somewhere above it in its own column (its roof), so a floor that
+ * clears every column's top can never dip into a sealed room — and boundary walls are clamped by the
+ * same rule on both sides of the shared plane. An earlier version sampled only the cell's centre
+ * column, and on a hillside base the centre often landed on open low ground while the cell overlapped
+ * carved-out rooms — its geometry then sliced through the room's air every {@link #CELL_SIZE} blocks,
+ * which nothing could occlude (camera and quads shared the same air pocket).
+ *
+ * <p>The trade-offs of heightmap-based exposure: fog conservatively skips air under overhangs and
+ * around anything poking above the ceiling in the same cell, and it sits on top of tree canopies
+ * (leaves count as cover in {@code MOTION_BLOCKING} — the type used deliberately, since it is one of
+ * the two heightmaps vanilla actually syncs to clients). It also does not know about Cleanser
+ * bubbles (not bounded by real blocks); carving those out needs range sync and is a follow-up.
  */
 @EventBusSubscriber(modid = ToxicSurface.MODID, value = Dist.CLIENT)
 public final class ToxicGasFieldRenderer {
-    /** Horizontal footprint of one grid cell. */
+    /** Horizontal footprint of one grid cell. Cells are grid-aligned, so they never straddle chunks. */
     private static final int CELL_SIZE = 4;
 
-    /** Grid extends this many cells each direction from the player (±64 blocks at CELL_SIZE=4). */
+    /** Grid extends this many cells each direction from the camera (±64 blocks at CELL_SIZE=4). */
     private static final int GRID_RADIUS_CELLS = 16;
 
-    /** How far below the ceiling the walls/caps extend. */
+    /** Fog band thickness: geometry extends at most this far down from the ceiling over open ground. */
     private static final int WALL_HEIGHT = 40;
 
     /** Rebuild at least this often so block changes (a new hole in a roof) eventually show up. */
     private static final long REBUILD_INTERVAL_TICKS = 20;
 
-    /** Rebuild early if the player has moved this far from where the grid was last centred. */
+    /** Rebuild early if the camera has moved this far from where the grid was last centred. */
     private static final double REBUILD_MOVE_THRESHOLD_SQ = (CELL_SIZE * 3.0) * (CELL_SIZE * 3.0);
+
+    /** Sentinel in the per-cell floor grid: this cell gets no fog geometry at all. */
+    private static final int NOT_EXPOSED = Integer.MIN_VALUE;
+
+    /**
+     * Inset applied to wall planes and caps so they never sit exactly on a block-grid plane:
+     * player-built walls land on those planes constantly, and a coplanar translucent quad would
+     * z-fight with the block face it rests against.
+     */
+    private static final float EPS = 0.01f;
 
     private static final float FOG_R = 0.32f;
     private static final float FOG_G = 0.45f;
@@ -64,14 +76,14 @@ public final class ToxicGasFieldRenderer {
     private static final float TOP_ALPHA = 0.9f;
 
     /**
-     * Per-wall alpha. Walls are now drawn on <em>every</em> cell-to-cell boundary within an exposed
-     * region, not just its outer silhouette (see {@link #buildGrid}) — looking across open ground
-     * crosses one every {@link #CELL_SIZE} blocks, so a low per-wall alpha accumulates into a
-     * believably thickening haze with distance instead of a single wall right at the field's edge.
+     * Per-wall alpha. Interior boundaries between exposed cells each carry one wall, so looking
+     * across open ground crosses one every {@link #CELL_SIZE} blocks — a low per-wall alpha
+     * accumulates into a haze that thickens with distance instead of reading as discrete panes.
      */
     private static final float WALL_ALPHA = 0.14f;
 
     private static List<Quad> cachedQuads = List.of();
+    private static ClientLevel lastLevel;
     private static long lastRebuildTick = Long.MIN_VALUE;
     private static double lastBuildX = Double.NaN;
     private static double lastBuildZ = Double.NaN;
@@ -101,8 +113,7 @@ public final class ToxicGasFieldRenderer {
         }
         Minecraft mc = Minecraft.getInstance();
         ClientLevel level = mc.level;
-        LocalPlayer player = mc.player;
-        if (level == null || player == null || ShaderState.shadersActive()) {
+        if (level == null || ShaderState.shadersActive()) {
             return;
         }
         int ceilingY = ClientGasState.toxicCeilingY();
@@ -115,12 +126,13 @@ public final class ToxicGasFieldRenderer {
             return;
         }
 
-        maybeRebuild(level, player, ceilingY);
+        // Centre on the camera (not the player) so spectator/freecam views still get coverage.
+        Vec3 cam = event.getCamera().getPosition();
+        maybeRebuild(level, cam, ceilingY);
         if (cachedQuads.isEmpty()) {
             return;
         }
 
-        Vec3 cam = event.getCamera().getPosition();
         PoseStack poseStack = event.getPoseStack();
         poseStack.pushPose();
         poseStack.translate(-cam.x, -cam.y, -cam.z);
@@ -144,106 +156,125 @@ public final class ToxicGasFieldRenderer {
         consumer.addVertex(pose, x, y, z).setColor(FOG_R, FOG_G, FOG_B, a);
     }
 
-    private static void maybeRebuild(ClientLevel level, LocalPlayer player, int ceilingY) {
+    private static void maybeRebuild(ClientLevel level, Vec3 cam, int ceilingY) {
         long now = level.getGameTime();
-        double dx = player.getX() - lastBuildX;
-        double dz = player.getZ() - lastBuildZ;
+        // A level change (dimension switch, rejoin) invalidates everything immediately — the cached
+        // quads describe the previous world's terrain.
+        boolean levelChanged = level != lastLevel;
+        double dx = cam.x - lastBuildX;
+        double dz = cam.z - lastBuildZ;
         boolean moved = Double.isNaN(lastBuildX) || dx * dx + dz * dz > REBUILD_MOVE_THRESHOLD_SQ;
         boolean stale = now - lastRebuildTick >= REBUILD_INTERVAL_TICKS;
-        boolean ceilingChanged = ceilingY != lastCeilingY;
-        if (!moved && !stale && !ceilingChanged) {
+        if (!levelChanged && !moved && !stale && ceilingY == lastCeilingY) {
             return;
         }
+        lastLevel = level;
         lastRebuildTick = now;
-        lastBuildX = player.getX();
-        lastBuildZ = player.getZ();
+        lastBuildX = cam.x;
+        lastBuildZ = cam.z;
         lastCeilingY = ceilingY;
-        cachedQuads = buildGrid(level, player, ceilingY);
+        cachedQuads = buildGrid(level, cam, ceilingY);
     }
 
     /**
-     * Samples a grid of columns around the player: a column is "exposed" if nothing solid reaches
-     * the ceiling's height there (so ordinary terrain or a roof both correctly count as sealing it).
-     * Emits a top cap for every exposed cell, plus a wall at <em>every</em> cell-to-cell boundary
-     * touching an exposed cell — including boundaries between two exposed cells, not just the outer
-     * silhouette. Without interior walls, a large open exposed area (a field, the outdoors past a
-     * sealed base) reads as a hollow shell: haze only at its outer edge and a thin cap far overhead,
-     * with nothing visible once you're looking into its middle — exactly the "only see it at the
-     * edges" bug reported from a screenshot. Each shared boundary is drawn exactly once (only the
-     * west/north walls are unconditional; east/south only fire at a true silhouette edge) so two
-     * neighbouring exposed cells never double-draw the same plane.
-     *
-     * <p>Each cell's geometry is floored at <em>that cell's own</em> solid height, not a single
-     * ceiling-relative constant. A column only reads "exposed" because nothing reaches the ceiling's
-     * exact height there — a base whose own roof sits lower than the (possibly since-risen) ceiling
-     * still passes that check, so without this clamp the wall band would dip below the roof and
-     * straight into the room's own interior air, which nothing then occludes (camera and geometry
-     * share the same open pocket) — exactly the "fog inside a sealed room" regression a screenshot
-     * caught. Flooring at the column's own height keeps the geometry at or above any real roof, so
-     * the room's own solid ceiling correctly occludes it from within.
+     * Builds the fog geometry for the grid around the camera. Per exposed cell: a near-opaque top cap
+     * at the ceiling, a bottom cap only where the band's bottom hangs in open air (a cap resting on
+     * flat terrain would z-fight the ground and paint it green underfoot), and translucent walls.
+     * Wall ownership: each cell unconditionally draws its west/north wall — dropped to the lower of
+     * the two adjoining floors, so the vertical step between differing floors is covered too — while
+     * east/south are only drawn at a true silhouette edge (a neighbour with no fog at all). Every
+     * shared plane thus gets exactly one wall.
      */
-    private static List<Quad> buildGrid(ClientLevel level, LocalPlayer player, int ceilingY) {
+    private static List<Quad> buildGrid(ClientLevel level, Vec3 cam, int ceilingY) {
         int diameter = GRID_RADIUS_CELLS * 2 + 1;
-        boolean[][] exposed = new boolean[diameter][diameter];
-        int[][] floorY = new int[diameter][diameter];
-        int originCellX = Math.floorDiv((int) Math.floor(player.getX()), CELL_SIZE) - GRID_RADIUS_CELLS;
-        int originCellZ = Math.floorDiv((int) Math.floor(player.getZ()), CELL_SIZE) - GRID_RADIUS_CELLS;
+        int originCellX = Math.floorDiv(Mth.floor(cam.x), CELL_SIZE) - GRID_RADIUS_CELLS;
+        int originCellZ = Math.floorDiv(Mth.floor(cam.z), CELL_SIZE) - GRID_RADIUS_CELLS;
         int bandBottom = ceilingY - WALL_HEIGHT;
 
+        int[][] floors = new int[diameter][diameter];
         for (int cz = 0; cz < diameter; cz++) {
             for (int cx = 0; cx < diameter; cx++) {
-                int blockX = (originCellX + cx) * CELL_SIZE + CELL_SIZE / 2;
-                int blockZ = (originCellZ + cz) * CELL_SIZE + CELL_SIZE / 2;
-                if (!level.hasChunk(blockX >> 4, blockZ >> 4)) {
-                    continue; // treat unloaded columns as not-exposed rather than force-loading them
-                }
-                int topY = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, blockX, blockZ);
-                exposed[cx][cz] = topY <= ceilingY;
-                floorY[cx][cz] = Math.max(topY, bandBottom); // never dip below this column's own surface
+                floors[cx][cz] = scanCell(
+                        level, (originCellX + cx) * CELL_SIZE, (originCellZ + cz) * CELL_SIZE, ceilingY, bandBottom);
             }
         }
 
         List<Quad> quads = new ArrayList<>();
+        float capY = ceilingY - EPS;
         for (int cz = 0; cz < diameter; cz++) {
             for (int cx = 0; cx < diameter; cx++) {
-                if (!exposed[cx][cz]) {
+                int floor = floors[cx][cz];
+                if (floor == NOT_EXPOSED) {
                     continue;
                 }
                 float x0 = (originCellX + cx) * CELL_SIZE;
                 float z0 = (originCellZ + cz) * CELL_SIZE;
                 float x1 = x0 + CELL_SIZE;
                 float z1 = z0 + CELL_SIZE;
-                float bottomY = floorY[cx][cz];
 
-                quads.add(new Quad(x0, ceilingY, z0, x1, ceilingY, z0, x1, ceilingY, z1, x0, ceilingY, z1, TOP_ALPHA));
-                quads.add(
-                        new Quad(x0, bottomY, z0, x0, bottomY, z1, x1, bottomY, z1, x1, bottomY, z0, TOP_ALPHA * 0.5f));
-
-                // West/north walls are unconditional: this cell always owns the boundary it shares
-                // with its west/north neighbour, whether that neighbour is exposed (an interior
-                // partition) or not (the true silhouette edge). East/south only fire when that
-                // specific neighbour isn't exposed, so the boundary with an exposed east/south
-                // neighbour is left for THAT cell's own (unconditional) west/north wall to draw —
-                // every shared plane gets exactly one wall, never two.
-                quads.add(new Quad(x0, bottomY, z0, x1, bottomY, z0, x1, ceilingY, z0, x0, ceilingY, z0, WALL_ALPHA));
-                quads.add(new Quad(x0, bottomY, z1, x0, bottomY, z0, x0, ceilingY, z0, x0, ceilingY, z1, WALL_ALPHA));
-                if (!isExposed(exposed, cx, cz + 1, diameter)) { // south wall
-                    quads.add(
-                            new Quad(x1, bottomY, z1, x0, bottomY, z1, x0, ceilingY, z1, x1, ceilingY, z1, WALL_ALPHA));
+                if (floor < capY) {
+                    quads.add(new Quad(x0, capY, z0, x1, capY, z0, x1, capY, z1, x0, capY, z1, TOP_ALPHA));
+                    if (floor <= bandBottom) {
+                        float y = floor + EPS;
+                        quads.add(new Quad(x0, y, z0, x1, y, z0, x1, y, z1, x0, y, z1, TOP_ALPHA * 0.5f));
+                    }
                 }
-                if (!isExposed(exposed, cx + 1, cz, diameter)) { // east wall
-                    quads.add(
-                            new Quad(x1, bottomY, z0, x1, bottomY, z1, x1, ceilingY, z1, x1, ceilingY, z0, WALL_ALPHA));
+
+                float westLo = Math.min(floor, floorOr(floors, cx - 1, cz, floor));
+                if (westLo < capY) {
+                    float x = x0 + EPS;
+                    quads.add(new Quad(x, westLo, z0, x, westLo, z1, x, capY, z1, x, capY, z0, WALL_ALPHA));
+                }
+                float northLo = Math.min(floor, floorOr(floors, cx, cz - 1, floor));
+                if (northLo < capY) {
+                    float z = z0 + EPS;
+                    quads.add(new Quad(x0, northLo, z, x1, northLo, z, x1, capY, z, x0, capY, z, WALL_ALPHA));
+                }
+                if (!hasFog(floors, cx + 1, cz) && floor < capY) {
+                    float x = x1 - EPS;
+                    quads.add(new Quad(x, floor, z0, x, floor, z1, x, capY, z1, x, capY, z0, WALL_ALPHA));
+                }
+                if (!hasFog(floors, cx, cz + 1) && floor < capY) {
+                    float z = z1 - EPS;
+                    quads.add(new Quad(x0, floor, z, x1, floor, z, x1, capY, z, x0, capY, z, WALL_ALPHA));
                 }
             }
         }
         return quads;
     }
 
-    private static boolean isExposed(boolean[][] exposed, int cx, int cz, int diameter) {
-        if (cx < 0 || cz < 0 || cx >= diameter || cz >= diameter) {
-            return false; // out of grid range: treat as a boundary so the edge of coverage gets a wall
+    /**
+     * Classifies one cell: {@link #NOT_EXPOSED} if unloaded or anything in it reaches above the
+     * ceiling, otherwise the fog floor — the highest surface in the cell (or the band bottom,
+     * whichever is higher). Sampling <em>every</em> column (not just the centre) is what guarantees
+     * the floor clears every roof in the cell's footprint, so fog can never enter enclosed air.
+     * {@code MOTION_BLOCKING} rather than {@code MOTION_BLOCKING_NO_LEAVES}: only the former is
+     * synced to clients — the NO_LEAVES map would be lazily recomputed per chunk on first touch.
+     */
+    private static int scanCell(ClientLevel level, int baseX, int baseZ, int ceilingY, int bandBottom) {
+        // CELL_SIZE divides 16 and cells are grid-aligned, so the whole cell is in one chunk.
+        if (!level.hasChunk(baseX >> 4, baseZ >> 4)) {
+            return NOT_EXPOSED;
         }
-        return exposed[cx][cz];
+        int maxTop = Integer.MIN_VALUE;
+        for (int dz = 0; dz < CELL_SIZE; dz++) {
+            for (int dx = 0; dx < CELL_SIZE; dx++) {
+                maxTop = Math.max(maxTop, level.getHeight(Heightmap.Types.MOTION_BLOCKING, baseX + dx, baseZ + dz));
+            }
+        }
+        return maxTop > ceilingY ? NOT_EXPOSED : Math.max(maxTop, bandBottom);
+    }
+
+    /** The neighbour's floor, or {@code fallback} when it is outside the grid or has no fog. */
+    private static int floorOr(int[][] floors, int cx, int cz, int fallback) {
+        if (cx < 0 || cz < 0 || cx >= floors.length || cz >= floors.length) {
+            return fallback;
+        }
+        int floor = floors[cx][cz];
+        return floor == NOT_EXPOSED ? fallback : floor;
+    }
+
+    private static boolean hasFog(int[][] floors, int cx, int cz) {
+        return cx >= 0 && cz >= 0 && cx < floors.length && cz < floors.length && floors[cx][cz] != NOT_EXPOSED;
     }
 }

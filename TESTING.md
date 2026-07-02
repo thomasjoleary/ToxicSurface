@@ -39,6 +39,22 @@ since the camera and the misplaced geometry share the same open pocket. Fixed: e
 is now clamped to `max(that column's own solid height, ceilingY - WALL_HEIGHT)`, so the geometry
 never sits below a real roof — the roof then correctly occludes it from inside, same as before.
 
+**Third screenshot: still fog in the hillside corridor → root cause was cell-centre sampling, now
+fixed properly.** Each 4×4 cell's exposure/floor came from ONE sample at its centre; on a hillside
+base, the centre often lands on open low ground while the cell overlaps carved-out rooms — that
+cell's bottom cap and boundary walls then slice through the room's air every 4 blocks (the stacked
+panes = the uniform green down the corridor). Fix: `scanCell` samples **every column** in the cell
+and takes the **max** surface height as the floor. Invariant: enclosed air always has solid above
+it in its own column, so a floor clearing every column's top can never enter a sealed room; walls
+are clamped the same way on both sides of each shared plane. Other fixes in the same pass: walls
+inset 0.01 off block-grid planes (no z-fighting on grid-aligned player walls), bottom cap only
+where the band hangs in open air (no green film painted on flat ground), switched to the
+client-synced `MOTION_BLOCKING` heightmap (NO_LEAVES isn't sent to clients; side effect: fog sits
+on tree canopies now), grid centres on the camera not the player (spectator/freecam), stale
+geometry cleared on dimension change, and degenerate quads guarded when a structure top sits
+exactly at the ceiling. Trade-off to eyeball in-game: fog now conservatively recedes up to 4 blocks
+around anything tall in a cell, and hugs the *highest* terrain in each 4×4 on rugged ground.
+
 **First real-client screenshot (this session) found a second structural bug and it's now fixed:**
 walls were only drawn at the outer silhouette of a contiguous exposed region, to avoid double-
 drawing the shared edge between two exposed cells. That meant a big open field showed haze only at
