@@ -56,9 +56,9 @@ public final class ToxicGasFogRenderer {
     /** Encoded top for an unloaded/unknown column: huge, so the shader's under-cover test always skips it. */
     private static final int UNKNOWN_TOP = 30000;
 
-    private static final float FOG_R = 0.32f;
-    private static final float FOG_G = 0.45f;
-    private static final float FOG_B = 0.16f;
+    private static final float FOG_R = 0.24f;
+    private static final float FOG_G = 0.34f;
+    private static final float FOG_B = 0.12f;
     private static final float FOG_DENSITY = 0.04f;
     private static final float FOG_MAX_ALPHA = 0.85f;
 
