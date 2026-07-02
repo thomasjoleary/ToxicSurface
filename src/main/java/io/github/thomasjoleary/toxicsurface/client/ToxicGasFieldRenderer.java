@@ -26,17 +26,19 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  * {@link RenderType#debugQuads()} so the GPU's ordinary depth test hides them behind real
  * walls/roofs — no shader, no ray-march, no per-tick network payload, no flashing.
  *
- * <p>The load-bearing rule is how a cell's fog <em>floor</em> is chosen: every column in the cell is
- * sampled and the floor is the <b>maximum</b> surface height found ({@link #scanCell}). Any enclosed
- * air necessarily has solid blocks somewhere above it in its own column (its roof), so a floor that
- * clears every column's top can never dip into a sealed room — and boundary walls are clamped by the
- * same rule on both sides of the shared plane. An earlier version sampled only the cell's centre
- * column, and on a hillside base the centre often landed on open low ground while the cell overlapped
- * carved-out rooms — its geometry then sliced through the room's air every {@link #CELL_SIZE} blocks,
- * which nothing could occlude (camera and quads shared the same air pocket).
+ * <p>The load-bearing rule is how a cell's fog <em>floor</em> is chosen ({@link #scanCell}): every
+ * column is sampled, columns poking above the ceiling are ignored, and the floor is the highest of
+ * the remaining (open) columns. A cell is skipped only when <em>every</em> column is covered — a
+ * fully roofed pocket (a sealed room's interior, or terrain wholly above the ceiling). The floor thus
+ * sits at an open surface at/below the ceiling, so fog stays above it; a fully-roofed cell is skipped,
+ * so a sealed room's interior stays clear; and a lone pillar/tree/wall no longer clears the fog around
+ * it. Two earlier rules failed here: sampling only the centre column sliced fog through hillside
+ * rooms, and taking the max of <em>all</em> columns let one tall block above the ceiling blank its cell.
  *
- * <p>The trade-offs of heightmap-based exposure: fog conservatively skips air under overhangs and
- * around anything poking above the ceiling in the same cell, and it sits on top of tree canopies
+ * <p>The trade-offs of heightmap-based exposure: fog conservatively skips air under overhangs, and a
+ * covered column sharing a cell with an open one (a roof overhanging open ground with no wall between)
+ * can get a thin fog leak — normal sealed rooms don't, since their solid walls occlude edge fog and
+ * their interior cells are fully covered. Fog sits on top of tree canopies
  * (leaves count as cover in {@code MOTION_BLOCKING} — the type used deliberately, since it is one of
  * the two heightmaps vanilla actually syncs to clients). It also does not know about Cleanser
  * bubbles (not bounded by real blocks); carving those out needs range sync and is a follow-up.
@@ -245,9 +247,9 @@ public final class ToxicGasFieldRenderer {
 
     /**
      * Classifies one cell: {@link #NOT_EXPOSED} if unloaded or anything in it reaches above the
-     * ceiling, otherwise the fog floor — the highest surface in the cell (or the band bottom,
-     * whichever is higher). Sampling <em>every</em> column (not just the centre) is what guarantees
-     * the floor clears every roof in the cell's footprint, so fog can never enter enclosed air.
+     * ceiling, otherwise the fog floor: the highest <em>open</em> column (one at or below the
+     * ceiling), clamped up to the band bottom. Columns poking above the ceiling are ignored so a lone
+     * tall block cannot blank the cell; the cell is skipped only when every column is covered.
      * {@code MOTION_BLOCKING} rather than {@code MOTION_BLOCKING_NO_LEAVES}: only the former is
      * synced to clients — the NO_LEAVES map would be lazily recomputed per chunk on first touch.
      */
@@ -256,13 +258,22 @@ public final class ToxicGasFieldRenderer {
         if (!level.hasChunk(baseX >> 4, baseZ >> 4)) {
             return NOT_EXPOSED;
         }
-        int maxTop = Integer.MIN_VALUE;
+        // Floor at the highest OPEN column (surface at or below the ceiling). Columns that poke above
+        // the ceiling -- a pillar, a tree, a wall, raised terrain -- are skipped, not counted toward
+        // the floor, so a single tall block no longer blanks out its whole cell (the old max-of-all
+        // rule did exactly that: the big fog-free holes seen around pillars). A cell is only skipped
+        // when EVERY column is covered -- a fully roofed pocket (a sealed room's interior, or terrain
+        // wholly above the ceiling) -- which is what should genuinely suppress fog.
+        int maxOpen = Integer.MIN_VALUE;
         for (int dz = 0; dz < CELL_SIZE; dz++) {
             for (int dx = 0; dx < CELL_SIZE; dx++) {
-                maxTop = Math.max(maxTop, level.getHeight(Heightmap.Types.MOTION_BLOCKING, baseX + dx, baseZ + dz));
+                int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING, baseX + dx, baseZ + dz);
+                if (top <= ceilingY) {
+                    maxOpen = Math.max(maxOpen, top);
+                }
             }
         }
-        return maxTop > ceilingY ? NOT_EXPOSED : Math.max(maxTop, bandBottom);
+        return maxOpen == Integer.MIN_VALUE ? NOT_EXPOSED : Math.max(maxOpen, bandBottom);
     }
 
     /** The neighbour's floor, or {@code fallback} when it is outside the grid or has no fog. */

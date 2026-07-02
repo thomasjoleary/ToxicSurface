@@ -52,8 +52,20 @@ where the band hangs in open air (no green film painted on flat ground), switche
 client-synced `MOTION_BLOCKING` heightmap (NO_LEAVES isn't sent to clients; side effect: fog sits
 on tree canopies now), grid centres on the camera not the player (spectator/freecam), stale
 geometry cleared on dimension change, and degenerate quads guarded when a structure top sits
-exactly at the ceiling. Trade-off to eyeball in-game: fog now conservatively recedes up to 4 blocks
-around anything tall in a cell, and hugs the *highest* terrain in each 4×4 on rugged ground.
+exactly at the ceiling.
+
+**Fourth screenshot round: corridor + window confirmed good — but tall blocks (a pillar / raised
+terrain island) cleared fog from a big patch of surrounding open ground.** The "max of all columns"
+rule above was the culprit: one column poking above the ceiling marked the whole 4×4 cell
+NOT_EXPOSED, blanking its fog. Fix: floor at the highest *open* column (≤ ceiling), ignore columns
+poking above it, and skip a cell only when *every* column is covered. Pillars/trees/walls now keep
+fog around them (the block itself occludes the fog behind it); fully-roofed cells (sealed room
+interior) still skip. Residual trade-off: a roof overhanging open ground with no wall between can
+leak a thin band of fog — normal walled rooms don't (solid walls occlude edge fog, interior cells
+are fully covered). To recheck:
+- [ ] Pillar / tall block in open ground: fog fills in around it (no square hole)
+- [ ] Raised terrain poking above the ceiling: surrounding lower open ground still fogs
+- [ ] Sealed room interior still fully clear (no regression from this change)
 
 **First real-client screenshot (this session) found a second structural bug and it's now fixed:**
 walls were only drawn at the outer silhouette of a contiguous exposed region, to avoid double-
