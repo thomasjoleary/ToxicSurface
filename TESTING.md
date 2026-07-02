@@ -12,31 +12,43 @@ real client. Ordered so the **newest / least-verified** code comes first. Most i
 
 ## Priority 1 — added this session, verify in-game
 
-### Volumetric toxic-gas haze (NEW — never seen rendered, needs careful checking)
+### Volumetric toxic-gas haze (NEW, revised this session — never seen rendered, needs careful checking)
 Replaces the old "fog only shows while your own cell is exposed" behavior with a real per-pixel
 effect (`ToxicVolumetricFog`): each frame it reconstructs every pixel's world Y from the depth
 buffer and blends in green haze, scaled by distance, wherever that point is at/below the toxic
-ceiling — regardless of whether *you* are sealed/cleansed/above it. Verified so far: the custom
-core shader (`shaders/core/toxic_fog.json`/`.vsh`/`.fsh`) compiles and links cleanly on a real
-headless client boot (Xvfb) with no errors and no crash. **Never seen actually rendered** — the
-math (matrix inversion order, depth-range convention, distance falloff) is unverified beyond
-"it compiles." Please check closely:
-- [ ] Standing in a **cleanser bubble**: the ground at your feet stays clear, but gas is visibly
-      hazy a short distance outside the bubble's edge
-- [ ] Standing **above the toxic ceiling**, looking down: the ground below reads as hazy/green,
-      increasingly so with distance; the sky above you does *not* get tinted
-- [ ] **Sealed room, looking out a window**: the room interior stays clear; toxic ground/haze is
-      visible through the glass at a distance
-- [ ] No visual artifacts at the horizon / distant sky (the shader discards near max depth to
-      avoid tinting empty sky — confirm no green haze "ceiling" appears at the far draw distance)
-- [ ] Haze fades to nothing above the ceiling and near the camera; doesn't look like a flat
-      full-screen tint
+ceiling — regardless of whether *you* are sealed/cleansed/above it.
+
+First pass had a real bug (caught via screenshots): a sealed room's own far wall is just "a solid
+surface below the ceiling Y" to the depth buffer, same as genuinely exposed exterior ground at the
+same distance — so long sealed hallways still hazed up in the distance. Fixed with
+`GasVisibilityRay`: every throttle cycle it walks the player's actual view direction through the
+mod's real sealing/cleanser/smog rules (the same ones that gate damage) and reports how far out
+actual exposed gas was found; the shader (`MinFogDistance` uniform) holds the haze back until at
+least that distance. Also bumped density/max-alpha (`FOG_DENSITY`/`FOG_MAX_ALPHA` in
+`ToxicVolumetricFog.java`) so it reads as near-opaque from altitude instead of a thin tint.
+
+Verified so far: the shader (with the new `MinFogDistance` uniform) still compiles and links
+cleanly on a real headless client boot (Xvfb), unit tests green, GameTests green. **Never seen
+actually rendered** — please check closely:
+- [ ] **Sealed room, no windows** (the reported case): standing/walking around inside shows *no*
+      haze anywhere, even looking down a long hallway — the room reads completely clear
+- [ ] **Sealed room, looking out a window**: interior stays clear; haze appears starting roughly
+      at the window/opening, not before it
+- [ ] Standing in a **cleanser bubble**: the ground at your feet stays clear, haze starts roughly
+      at the bubble's edge
+- [ ] Standing **above the toxic ceiling**, looking down: reads as thick/near-opaque haze over the
+      ground, increasingly so with altitude; the sky above you does *not* get tinted
+- [ ] Overall thickness: haze from altitude should look close to opaque now (not a thin tint) —
+      if still too thin/thick, `FOG_DENSITY`/`FOG_MAX_ALPHA` in `ToxicVolumetricFog.java` are the
+      knobs
+- [ ] `MinFogDistance` updates smoothly as you walk toward an opening (not a visible pop/snap —
+      it only refreshes every 10 ticks, so some lag when you turn quickly is expected)
+- [ ] No visual artifacts at the horizon / distant sky (shader discards near max depth)
 - [ ] `fogIntensity` accessibility slider at 0 disables the effect entirely; scales it in between
-- [ ] With Iris/Oculus active: effect is skipped (no z-fight/crash), matches the old fog handler's
-      shader bow-out
-- [ ] No FPS cliff — it's one full-screen pass per frame only while a dimension is toxic
-- [ ] Old `ToxicFogHandler` (personal screen fog while exposed) still layers correctly on top —
-      the two effects shouldn't visually fight
+- [ ] With Iris/Oculus active: effect is skipped (no z-fight/crash)
+- [ ] No FPS cliff or visible stutter (the new per-player ray-march runs every 10 ticks, reusing
+      the same enclosure cache the sealing check already uses)
+- [ ] Old `ToxicFogHandler` (personal screen fog while exposed) still layers correctly on top
 
 ### Conditional green rain
 - [x] Below the toxic ceiling Y: rain droplets render green (not blue)

@@ -16,19 +16,32 @@ public final class ClientGasState {
     private static volatile boolean inToxicArea = false;
     /** Dimension's current toxic ceiling Y, or {@link Integer#MIN_VALUE} when not yet toxic. */
     private static volatile int toxicCeilingY = Integer.MIN_VALUE;
+    /** How far along the view direction actual exposed gas was found; drives the volumetric haze. */
+    private static volatile float minFogDistance = 0f;
 
     private ClientGasState() {}
 
-    public static void set(boolean inGasValue, float airValue, boolean inToxicAreaValue, int toxicCeilingYValue) {
+    public static void set(
+            boolean inGasValue,
+            float airValue,
+            boolean inToxicAreaValue,
+            int toxicCeilingYValue,
+            float minFogDistanceValue) {
         inGas = inGasValue;
         air = airValue;
         inToxicArea = inToxicAreaValue;
         toxicCeilingY = toxicCeilingYValue;
+        minFogDistance = minFogDistanceValue;
     }
 
     /** The dimension's toxic ceiling Y; {@link Integer#MIN_VALUE} means not toxic (rain stays normal). */
     public static int toxicCeilingY() {
         return toxicCeilingY;
+    }
+
+    /** Distance along the player's view direction confirmed safe of exposed gas (see {@code GasVisibilityRay}). */
+    public static float minFogDistance() {
+        return minFogDistance;
     }
 
     public static boolean isInGas() {

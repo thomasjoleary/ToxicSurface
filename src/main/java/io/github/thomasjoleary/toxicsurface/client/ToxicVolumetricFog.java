@@ -31,10 +31,13 @@ import org.joml.Matrix4f;
  * of the current projection * model-view matrix) and blends in green haze, scaled by distance from
  * the camera, wherever that reconstructed point sits at or below the dimension's toxic ceiling — with
  * no regard for whether the <em>camera</em> is sealed/cleansed/above it. That's what makes gas outside
- * a cleanser bubble, outside a sealed room's window, or on the ground far below visible, while the
- * clear space right around the camera (a sealed interior, the inside of a cleanser bubble) stays
- * clear since those pixels reconstruct to depths/positions above the ceiling or too close to accrue
- * any distance-based haze.
+ * a cleanser bubble, outside a sealed room's window, or on the ground far below visible.
+ *
+ * <p>Depth alone can't tell a sealed room's own (safe) far wall from exposed exterior ground at the
+ * same distance — both are just "a solid surface below the ceiling Y." {@code ClientGasState}'s
+ * {@code minFogDistance} (from {@link io.github.thomasjoleary.toxicsurface.effect.GasVisibilityRay}
+ * walking the same rules that gate real exposure/damage along the player's view direction) holds the
+ * haze back until that confirmed-safe distance, so a sealed interior stays clear even at range.
  *
  * <p>Bows out under an active Iris/Oculus shader pack (its own pipeline doesn't expect us drawing
  * directly against {@code RenderSystem}), matching {@link ToxicWeatherEffects}. The shader is
@@ -43,8 +46,10 @@ import org.joml.Matrix4f;
  */
 @EventBusSubscriber(modid = ToxicSurface.MODID, value = Dist.CLIENT)
 public final class ToxicVolumetricFog {
-    private static final float FOG_DENSITY = 0.05f;
-    private static final float FOG_MAX_ALPHA = 0.75f;
+    // Thick enough to read as near-opaque looking straight down at gassy ground from altitude
+    // (~30+ blocks), while staying a lighter haze up close. Tune here if it still reads too thin/thick.
+    private static final float FOG_DENSITY = 0.08f;
+    private static final float FOG_MAX_ALPHA = 0.92f;
     private static final float FOG_R = 0.32f;
     private static final float FOG_G = 0.45f;
     private static final float FOG_B = 0.16f;
@@ -93,6 +98,7 @@ public final class ToxicVolumetricFog {
         shader.safeGetUniform("InvViewProj").set(invViewProj);
         shader.safeGetUniform("CameraY").set(cameraY);
         shader.safeGetUniform("CeilingY").set((float) ClientGasState.toxicCeilingY());
+        shader.safeGetUniform("MinFogDistance").set(ClientGasState.minFogDistance());
         shader.safeGetUniform("FogColor").set(FOG_R, FOG_G, FOG_B);
         shader.safeGetUniform("FogDensity").set(FOG_DENSITY);
         shader.safeGetUniform("FogMaxAlpha").set(FOG_MAX_ALPHA * intensity);

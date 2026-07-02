@@ -8,6 +8,7 @@
         { "name": "InvViewProj", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
         { "name": "CameraY", "type": "float", "count": 1, "values": [ 0.0 ] },
         { "name": "CeilingY", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "MinFogDistance", "type": "float", "count": 1, "values": [ 0.0 ] },
         { "name": "FogColor", "type": "float", "count": 3, "values": [ 0.32, 0.45, 0.16 ] },
         { "name": "FogDensity", "type": "float", "count": 1, "values": [ 0.05 ] },
         { "name": "FogMaxAlpha", "type": "float", "count": 1, "values": [ 0.0 ] }
