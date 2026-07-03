@@ -18,6 +18,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
@@ -57,6 +58,9 @@ public final class ToxicGasFogRenderer {
 
     /** Encoded top for an unloaded/unknown column: huge, so the shader's under-cover test always skips it. */
     private static final int UNKNOWN_TOP = 30000;
+
+    /** How far below a non-full top block to look for a real sealing cube before treating a column as open. */
+    private static final int MAX_ROOF_SCAN = 16;
 
     private static final float FOG_R = 0.24f;
     private static final float FOG_G = 0.34f;
@@ -202,17 +206,41 @@ public final class ToxicGasFogRenderer {
         if (pixels == null) {
             return;
         }
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (int tz = 0; tz < MAP_SIZE; tz++) {
             for (int tx = 0; tx < MAP_SIZE; tx++) {
                 int worldX = mapOriginX + tx;
                 int worldZ = mapOriginZ + tz;
-                int top = level.hasChunk(worldX >> 4, worldZ >> 4)
-                        ? level.getHeight(Heightmap.Types.MOTION_BLOCKING, worldX, worldZ)
-                        : UNKNOWN_TOP;
-                pixels.setPixelRGBA(tx, tz, encodeTop(top));
+                pixels.setPixelRGBA(tx, tz, encodeTop(sealingTop(level, cursor, worldX, worldZ)));
             }
         }
         heightTexture.upload();
+    }
+
+    /**
+     * The Y at/above which this column is genuinely open toxic air — i.e. the top of the highest block
+     * that actually <em>seals</em> the column (a full cube: solid ground, a glass skylight, a roof), not
+     * merely the highest block that blocks motion. The raw {@code MOTION_BLOCKING} height also picks up
+     * thin non-full blocks — a Create shaft, a fence, a torch — and treating one as a roof would clear a
+     * fog-free column around it (the pale halo the player noticed). So if the motion-blocking top block
+     * is not a full cube, we look a short way down for one that is; finding none nearby, the column reads
+     * as open (a lone thin structure casts no fog shadow) rather than roofed.
+     */
+    private static int sealingTop(ClientLevel level, BlockPos.MutableBlockPos cursor, int worldX, int worldZ) {
+        if (!level.hasChunk(worldX >> 4, worldZ >> 4)) {
+            return UNKNOWN_TOP;
+        }
+        int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING, worldX, worldZ);
+        int limit = Math.max(level.getMinBuildHeight(), top - 1 - MAX_ROOF_SCAN);
+        for (int y = top - 1; y >= limit; y--) {
+            cursor.set(worldX, y, worldZ);
+            if (level.getBlockState(cursor).isCollisionShapeFullBlock(level, cursor)) {
+                return y + 1; // top surface of the sealing cube is the fog floor
+            }
+        }
+        // No sealing cube within the scan window: treat as open ground so a thin block/structure sitting
+        // above a gap doesn't mask the air around it. Void level keeps p.y >= ground true up the column.
+        return level.getMinBuildHeight();
     }
 
     /**
