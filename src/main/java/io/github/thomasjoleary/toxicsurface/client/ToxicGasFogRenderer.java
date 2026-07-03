@@ -45,10 +45,32 @@ import org.joml.Matrix4f;
  */
 @EventBusSubscriber(modid = ToxicSurface.MODID, value = Dist.CLIENT)
 public final class ToxicGasFogRenderer {
-    /** Side length (blocks and texels — 1 block per texel) of the per-column height map around the camera. */
-    private static final int MAP_SIZE = 256;
+    // The fog's horizontal coverage and ray-march reach follow the player's render distance, so the haze
+    // fills out to (roughly) as far as they can see rather than a fixed radius — clamped to keep the
+    // per-column height map cheap enough to rebuild each refresh at very high render distances.
+    /** Smallest coverage radius in blocks (8 chunks) — keeps the effect sensible at tiny render distances. */
+    private static final int MIN_RADIUS = 128;
 
-    private static final int MAP_HALF = MAP_SIZE / 2;
+    /** Largest coverage radius in blocks (16 chunks) — a bigger height map gets costly to rebuild. */
+    private static final int MAX_RADIUS = 256;
+
+    /** Target world blocks per ray-march step; the step count is {@code maxDist / this}, clamped below. */
+    private static final float BLOCKS_PER_STEP = 6f;
+
+    private static final int MIN_STEPS = 24;
+
+    /** Loop bound; must match {@code MAX_STEPS} in toxic_fog.fsh. */
+    private static final int MAX_STEPS = 64;
+
+    /** Side length (blocks/texels, 1 block per texel) of the per-column height map — {@code 2 * radius}. */
+    private static int mapSize = 2 * MIN_RADIUS;
+
+    private static int mapHalf = MIN_RADIUS;
+
+    /** Ray-march cap and step count for this frame, derived from render distance; read in {@link #draw}. */
+    private static float maxDist = MIN_RADIUS;
+
+    private static int steps = MIN_STEPS;
 
     /** Rebuild the height map when the camera drifts this far from where it was last centred. */
     private static final int REBUILD_MOVE_THRESHOLD = 16;
@@ -111,6 +133,7 @@ public final class ToxicGasFogRenderer {
         }
 
         try {
+            updateCoverage(mc);
             Vec3 cam = event.getCamera().getPosition();
             rebuildIfNeeded(level, cam, ceilingY);
             draw(event, mc, cam, ceilingY, intensity);
@@ -121,6 +144,21 @@ public final class ToxicGasFogRenderer {
                 shader = null;
             }
         }
+    }
+
+    /**
+     * Sizes the height map, march cap, and step count to the player's effective render distance (clamped
+     * to [{@link #MIN_RADIUS}, {@link #MAX_RADIUS}]) so the fog reaches about as far as they can see. Cheap
+     * to call every frame; the actual (costly) height-map rebuild only happens when the size or centre
+     * changes, via {@link #rebuildIfNeeded}.
+     */
+    private static void updateCoverage(Minecraft mc) {
+        int renderBlocks = mc.options.getEffectiveRenderDistance() * 16;
+        int radius = Mth.clamp(renderBlocks, MIN_RADIUS, MAX_RADIUS);
+        mapSize = radius * 2;
+        mapHalf = radius;
+        maxDist = radius;
+        steps = Mth.clamp(Math.round(maxDist / BLOCKS_PER_STEP), MIN_STEPS, MAX_STEPS);
     }
 
     private static void draw(RenderLevelStageEvent event, Minecraft mc, Vec3 cam, int ceilingY, float intensity) {
@@ -148,7 +186,9 @@ public final class ToxicGasFogRenderer {
         shader.safeGetUniform("CameraPos").set((float) cam.x, (float) cam.y, (float) cam.z);
         shader.safeGetUniform("CeilingY").set((float) ceilingY);
         shader.safeGetUniform("HeightOrigin").set((float) mapOriginX, (float) mapOriginZ);
-        shader.safeGetUniform("HeightWorldSize").set((float) MAP_SIZE);
+        shader.safeGetUniform("HeightWorldSize").set((float) mapSize);
+        shader.safeGetUniform("MaxDist").set(maxDist);
+        shader.safeGetUniform("Steps").set(steps);
         shader.safeGetUniform("FogColor").set(FOG_R, FOG_G, FOG_B);
         shader.safeGetUniform("FogDensity").set(FOG_DENSITY);
         shader.safeGetUniform("FogMaxAlpha").set(FOG_MAX_ALPHA * intensity);
@@ -180,9 +220,9 @@ public final class ToxicGasFogRenderer {
 
     private static void rebuildIfNeeded(ClientLevel level, Vec3 cam, int ceilingY) {
         long now = level.getGameTime();
-        int desiredOriginX = Mth.floor(cam.x) - MAP_HALF;
-        int desiredOriginZ = Mth.floor(cam.z) - MAP_HALF;
-        boolean firstOrLevelChange = heightTexture == null || level != lastLevel;
+        int desiredOriginX = Mth.floor(cam.x) - mapHalf;
+        int desiredOriginZ = Mth.floor(cam.z) - mapHalf;
+        boolean firstOrLevelChange = heightTexture == null || level != lastLevel || resized();
         boolean drifted = Math.abs(desiredOriginX - mapOriginX) > REBUILD_MOVE_THRESHOLD
                 || Math.abs(desiredOriginZ - mapOriginZ) > REBUILD_MOVE_THRESHOLD;
         boolean stale = now - lastRebuildTick >= REBUILD_INTERVAL_TICKS;
@@ -197,9 +237,18 @@ public final class ToxicGasFogRenderer {
         buildHeightTexture(level);
     }
 
+    /** True if the height texture exists but no longer matches the current {@link #mapSize}. */
+    private static boolean resized() {
+        NativeImage pixels = heightTexture == null ? null : heightTexture.getPixels();
+        return pixels != null && pixels.getWidth() != mapSize;
+    }
+
     private static void buildHeightTexture(ClientLevel level) {
-        if (heightTexture == null) {
-            heightTexture = new DynamicTexture(MAP_SIZE, MAP_SIZE, false);
+        if (heightTexture == null || resized()) {
+            if (heightTexture != null) {
+                heightTexture.close(); // render distance changed: drop the old-sized texture and reallocate
+            }
+            heightTexture = new DynamicTexture(mapSize, mapSize, false);
             heightTexture.setFilter(false, false); // nearest, no mipmap: encoded bytes must not be blended
         }
         NativeImage pixels = heightTexture.getPixels();
@@ -207,8 +256,8 @@ public final class ToxicGasFogRenderer {
             return;
         }
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-        for (int tz = 0; tz < MAP_SIZE; tz++) {
-            for (int tx = 0; tx < MAP_SIZE; tx++) {
+        for (int tz = 0; tz < mapSize; tz++) {
+            for (int tx = 0; tx < mapSize; tx++) {
                 int worldX = mapOriginX + tx;
                 int worldZ = mapOriginZ + tz;
                 pixels.setPixelRGBA(tx, tz, encodeTop(sealingTop(level, cursor, worldX, worldZ)));

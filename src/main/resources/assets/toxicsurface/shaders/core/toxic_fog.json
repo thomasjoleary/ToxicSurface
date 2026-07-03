@@ -11,6 +11,8 @@
         { "name": "CeilingY", "type": "float", "count": 1, "values": [ 0.0 ] },
         { "name": "HeightOrigin", "type": "float", "count": 2, "values": [ 0.0, 0.0 ] },
         { "name": "HeightWorldSize", "type": "float", "count": 1, "values": [ 256.0 ] },
+        { "name": "MaxDist", "type": "float", "count": 1, "values": [ 180.0 ] },
+        { "name": "Steps", "type": "int", "count": 1, "values": [ 32 ] },
         { "name": "FogColor", "type": "float", "count": 3, "values": [ 0.32, 0.45, 0.16 ] },
         { "name": "FogDensity", "type": "float", "count": 1, "values": [ 0.04 ] },
         { "name": "FogMaxAlpha", "type": "float", "count": 1, "values": [ 0.85 ] },

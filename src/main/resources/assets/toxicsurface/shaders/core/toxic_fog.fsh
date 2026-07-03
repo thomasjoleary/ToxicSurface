@@ -11,6 +11,8 @@ uniform float HeightWorldSize;    // world blocks the height texture spans (squa
 uniform vec3 FogColor;
 uniform float FogDensity;
 uniform float FogMaxAlpha;
+uniform float MaxDist;            // ray march cap (~the height-map coverage radius); follows render distance
+uniform int Steps;                // active march samples this frame; scales with MaxDist to hold step density
 
 // Nearby Cleanser bubbles (carve gas OUT) and generator smog clouds (add gas IN), packed as
 // {x, y, z, r} quads. See ToxicGasFogRenderer / ClientFogVolumes / FogVolumesPayload.
@@ -24,8 +26,7 @@ in vec2 texCoord;
 
 out vec4 fragColor;
 
-const int STEPS = 32;
-const float MAX_DIST = 180.0;     // ray march cap (also ~the height-map coverage limit)
+const int MAX_STEPS = 64;         // loop bound; the active count is the Steps uniform (must match renderer)
 const float SPHERE_EDGE = 3.0;    // blocks over which a volume's boundary fades, to hide step banding
 
 // Soft membership of world point p in sphere index i of a packed {x,y,z,r} array: 1 well inside,
@@ -76,15 +77,16 @@ void main() {
     vec3 dir = rel / max(surfaceDist, 1e-4);
 
     // Stop at the surface; for open sky (no surface) march a fixed cap so horizon air still hazes.
-    float marchDist = (depth > 0.9999) ? MAX_DIST : min(surfaceDist, MAX_DIST);
+    float marchDist = (depth > 0.9999) ? MaxDist : min(surfaceDist, MaxDist);
     if (marchDist <= 0.1) {
         discard;
     }
 
-    float stepLen = marchDist / float(STEPS);
+    float stepLen = marchDist / float(Steps);
     float jitter = ign(gl_FragCoord.xy);  // offset the samples within their cell to dither the banding
     float exposed = 0.0;
-    for (int i = 0; i < STEPS; i++) {
+    for (int i = 0; i < MAX_STEPS; i++) {
+        if (i >= Steps) break;
         vec3 p = CameraPos + dir * ((float(i) + jitter) * stepLen);
         float ground = terrainTop(p.xz);
 
