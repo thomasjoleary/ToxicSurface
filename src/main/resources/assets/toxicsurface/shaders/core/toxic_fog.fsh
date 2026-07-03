@@ -24,15 +24,25 @@ in vec2 texCoord;
 
 out vec4 fragColor;
 
-const int STEPS = 24;
+const int STEPS = 32;
 const float MAX_DIST = 180.0;     // ray march cap (also ~the height-map coverage limit)
+const float SPHERE_EDGE = 3.0;    // blocks over which a volume's boundary fades, to hide step banding
 
-// True if world point p lies inside sphere index i of a packed {x,y,z,r} array.
-bool insideSphere(vec3 p, float data[64], int i) {
+// Soft membership of world point p in sphere index i of a packed {x,y,z,r} array: 1 well inside,
+// ramping smoothly to 0 across the outer SPHERE_EDGE blocks. A hard in/out test makes the sphere
+// silhouette flip a whole ray-step of exposure at once (visible tearing); the ramp spreads that flip
+// over a few blocks so it reads as a soft edge instead.
+float sphereWeight(vec3 p, float data[64], int i) {
     vec3 c = vec3(data[i * 4], data[i * 4 + 1], data[i * 4 + 2]);
     float r = data[i * 4 + 3];
-    vec3 d = p - c;
-    return dot(d, d) <= r * r;
+    return 1.0 - smoothstep(r - SPHERE_EDGE, r, length(p - c));
+}
+
+// Interleaved-gradient noise in [0,1) from the pixel coord — a cheap, even dither used to offset the
+// ray's start within one step so the march's step banding dissolves into fine grain instead of hard
+// bands (there is no temporal accumulation here, so a stable screen-space dither is the best we can do).
+float ign(vec2 pix) {
+    return fract(52.9829189 * fract(dot(pix, vec2(0.06711056, 0.00583715))));
 }
 
 // Terrain top (highest solid) at a world column, decoded from the two high/low bytes in R and G.
@@ -72,34 +82,31 @@ void main() {
     }
 
     float stepLen = marchDist / float(STEPS);
+    float jitter = ign(gl_FragCoord.xy);  // offset the samples within their cell to dither the banding
     float exposed = 0.0;
     for (int i = 0; i < STEPS; i++) {
-        vec3 p = CameraPos + dir * ((float(i) + 0.5) * stepLen);
+        vec3 p = CameraPos + dir * ((float(i) + jitter) * stepLen);
         float ground = terrainTop(p.xz);
 
-        // Ambient world gas: at/below the ceiling and above this column's terrain.
-        bool toxic = (p.y <= CeilingY && p.y >= ground);
+        // Ambient world gas: at/below the ceiling and above this column's terrain. Density in [0,1].
+        float density = (p.y <= CeilingY && p.y >= ground) ? 1.0 : 0.0;
 
         // A running generator's smog makes a sphere toxic even outside the ambient layer (e.g. above
         // the ceiling or in an as-yet-clean area) — but never below the ground of its column.
         for (int s = 0; s < MAX_VOLUMES; s++) {
             if (s >= SmogCount) break;
-            if (p.y >= ground && insideSphere(p, SmogData, s)) {
-                toxic = true;
+            if (p.y >= ground) {
+                density = max(density, sphereWeight(p, SmogData, s));
             }
         }
 
-        // A Cleanser bubble wins over everything: no exposed gas anywhere inside it.
+        // A Cleanser bubble wins over everything: it fades the exposed gas back out inside its sphere.
         for (int c = 0; c < MAX_VOLUMES; c++) {
             if (c >= CleanserCount) break;
-            if (insideSphere(p, CleanserData, c)) {
-                toxic = false;
-            }
+            density *= (1.0 - sphereWeight(p, CleanserData, c));
         }
 
-        if (toxic) {
-            exposed += stepLen;
-        }
+        exposed += stepLen * density;
     }
 
     if (exposed <= 0.0) {
