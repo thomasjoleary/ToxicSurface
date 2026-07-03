@@ -11,13 +11,16 @@ import io.github.thomasjoleary.toxicsurface.core.gas.GasModel;
 import io.github.thomasjoleary.toxicsurface.item.FaceMaskItem;
 import io.github.thomasjoleary.toxicsurface.item.HazmatSuit;
 import io.github.thomasjoleary.toxicsurface.network.FilterExpiryPayload;
+import io.github.thomasjoleary.toxicsurface.network.FogVolumesPayload;
 import io.github.thomasjoleary.toxicsurface.network.GasStatePayload;
 import io.github.thomasjoleary.toxicsurface.registry.ModDamageTypes;
 import io.github.thomasjoleary.toxicsurface.registry.ModSounds;
 import io.github.thomasjoleary.toxicsurface.world.CleanserBubbles;
 import io.github.thomasjoleary.toxicsurface.world.SmogClouds;
 import io.github.thomasjoleary.toxicsurface.world.ToxicityTicker;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -49,6 +52,12 @@ import net.neoforged.neoforge.network.PacketDistributor;
 public final class GasEffectHandler {
     /** Effect checks run on this cadence, not every tick (DESIGN.md §8). */
     private static final int THROTTLE_TICKS = 10;
+
+    /** Sync fog volumes whose sphere reaches within this many blocks of the player (covers the fog map). */
+    private static final double FOG_VOLUME_REACH = 160.0;
+
+    /** Cap on synced fog volumes of each kind; matches the shader's uniform array size. */
+    private static final int MAX_VOLUMES = FogVolumesPayload.MAX;
 
     private static final Map<UUID, Integer> AIR = new HashMap<>();
 
@@ -84,7 +93,34 @@ public final class GasEffectHandler {
             float airFraction = Mth.clamp((float) air / AirBarModel.fullAir(drain), 0f, 1f);
             int ceiling = ToxicityTicker.currentToxicY(level);
             PacketDistributor.sendToPlayer(serverPlayer, new GasStatePayload(exposed, airFraction, inGas, ceiling));
+            syncFogVolumes(serverPlayer, level);
         }
+    }
+
+    /**
+     * Sends the nearby Cleanser bubbles (carved out of the fog) and generator smog clouds (added to
+     * it) so the volumetric fog shader can render them — they aren't real blocks, so the client can't
+     * see them any other way (DESIGN.md §3, §7). Sent every cycle so the client always has current
+     * spheres; an empty payload when none are near clears any it was holding.
+     */
+    private static void syncFogVolumes(ServerPlayer player, ServerLevel level) {
+        List<float[]> cleansers = new ArrayList<>();
+        List<float[]> smog = new ArrayList<>();
+        if (CleanserBubbles.hasAny(level)) {
+            CleanserBubbles.collectNear(level, player.getX(), player.getZ(), FOG_VOLUME_REACH, cleansers, MAX_VOLUMES);
+        }
+        if (SmogClouds.hasAny(level)) {
+            SmogClouds.collectNear(level, player.getX(), player.getZ(), FOG_VOLUME_REACH, smog, MAX_VOLUMES);
+        }
+        PacketDistributor.sendToPlayer(player, new FogVolumesPayload(toSpheres(cleansers), toSpheres(smog)));
+    }
+
+    private static List<FogVolumesPayload.Sphere> toSpheres(List<float[]> raw) {
+        List<FogVolumesPayload.Sphere> out = new ArrayList<>(raw.size());
+        for (float[] s : raw) {
+            out.add(new FogVolumesPayload.Sphere(s[0], s[1], s[2], s[3]));
+        }
+        return out;
     }
 
     /** Toxic gas at the player's head, ignoring protection (creative/spectator are never exposed). */

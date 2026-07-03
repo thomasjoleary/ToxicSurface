@@ -3,6 +3,7 @@
 package io.github.thomasjoleary.toxicsurface.network;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
+import io.github.thomasjoleary.toxicsurface.client.ClientFogVolumes;
 import io.github.thomasjoleary.toxicsurface.client.ClientGasState;
 import io.github.thomasjoleary.toxicsurface.client.ClientHudEffects;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -31,5 +32,9 @@ public final class ModNetworking {
                 FilterExpiryPayload.TYPE,
                 FilterExpiryPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(ClientHudEffects::triggerFilterExpiryFlash));
+        registrar.playToClient(
+                FogVolumesPayload.TYPE,
+                FogVolumesPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> ClientFogVolumes.set(payload)));
     }
 }
