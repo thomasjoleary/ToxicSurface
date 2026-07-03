@@ -35,6 +35,7 @@
     "jei.toxicsurface.wet_industrial_filter.info": "A washed industrial filter, still damp. Dry it with heat to restore a clean Industrial Filter: smelt it in a furnace, or blast it (blast furnace or a Create fan blowing through lava).",
     "jei.toxicsurface.toxic_residue.info": "Solid toxic contaminant reclaimed from filters and sludge. Burns in a Toxic Waste Generator as basic fuel, compacts into a Toxic Waste Block, or can be mixed back into sludge.",
     "jei.toxicsurface.toxic_waste_block.info": "Compacted toxic waste. As generator fuel it is the premium tier — it burns far longer than loose residue and spins the generator faster for more power.",
+    "config.jade.plugin_toxicsurface.machine": "ToxicSurface Machine Readouts",
     "jade.toxicsurface.range": "Range: %s blocks",
     "jade.toxicsurface.active": "Status: Active",
     "jade.toxicsurface.idle": "Status: Idle",
