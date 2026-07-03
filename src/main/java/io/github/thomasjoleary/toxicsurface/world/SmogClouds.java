@@ -4,6 +4,7 @@ package io.github.thomasjoleary.toxicsurface.world;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
@@ -52,6 +53,38 @@ public final class SmogClouds {
     public static boolean hasAny(ServerLevel level) {
         Map<Long, Cloud> map = CLOUDS.get(level.dimension());
         return map != null && !map.isEmpty();
+    }
+
+    /**
+     * Appends {@code {centerX, centerY, centerZ, radius}} for each live smog cloud whose sphere reaches
+     * within {@code reach} blocks (horizontally) of {@code (cx, cz)} into {@code out}, up to {@code max}
+     * entries — used to sync nearby clouds to the client so the fog shader adds haze inside them.
+     * Prunes stale entries as it goes.
+     */
+    public static void collectNear(ServerLevel level, double cx, double cz, double reach, List<float[]> out, int max) {
+        Map<Long, Cloud> map = CLOUDS.get(level.dimension());
+        if (map == null || map.isEmpty()) {
+            return;
+        }
+        long now = level.getGameTime();
+        Iterator<Map.Entry<Long, Cloud>> it = map.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<Long, Cloud> entry = it.next();
+            Cloud cloud = entry.getValue();
+            if (now - cloud.lastTick() > STALE_TICKS) {
+                it.remove();
+                continue;
+            }
+            if (out.size() >= max) {
+                continue;
+            }
+            BlockPos pos = BlockPos.of(entry.getKey());
+            double dx = (pos.getX() + 0.5) - cx;
+            double dz = (pos.getZ() + 0.5) - cz;
+            if (Math.sqrt(dx * dx + dz * dz) - cloud.range() <= reach) {
+                out.add(new float[] {pos.getX() + 0.5f, pos.getY() + 0.5f, pos.getZ() + 0.5f, cloud.range()});
+            }
+        }
     }
 
     /** True if the point is inside any live smog cloud; prunes stale entries as it goes. */

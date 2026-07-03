@@ -12,12 +12,28 @@ uniform vec3 FogColor;
 uniform float FogDensity;
 uniform float FogMaxAlpha;
 
+// Nearby Cleanser bubbles (carve gas OUT) and generator smog clouds (add gas IN), packed as
+// {x, y, z, r} quads. See ToxicGasFogRenderer / ClientFogVolumes / FogVolumesPayload.
+const int MAX_VOLUMES = 16;
+uniform int CleanserCount;
+uniform float CleanserData[64];   // MAX_VOLUMES * 4
+uniform int SmogCount;
+uniform float SmogData[64];       // MAX_VOLUMES * 4
+
 in vec2 texCoord;
 
 out vec4 fragColor;
 
 const int STEPS = 24;
 const float MAX_DIST = 180.0;     // ray march cap (also ~the height-map coverage limit)
+
+// True if world point p lies inside sphere index i of a packed {x,y,z,r} array.
+bool insideSphere(vec3 p, float data[64], int i) {
+    vec3 c = vec3(data[i * 4], data[i * 4 + 1], data[i * 4 + 2]);
+    float r = data[i * 4 + 3];
+    vec3 d = p - c;
+    return dot(d, d) <= r * r;
+}
 
 // Terrain top (highest solid) at a world column, decoded from the two high/low bytes in R and G.
 // Returns a huge value for columns outside the mapped region so those samples never count as air.
@@ -59,7 +75,29 @@ void main() {
     float exposed = 0.0;
     for (int i = 0; i < STEPS; i++) {
         vec3 p = CameraPos + dir * ((float(i) + 0.5) * stepLen);
-        if (p.y <= CeilingY && p.y >= terrainTop(p.xz)) {
+        float ground = terrainTop(p.xz);
+
+        // Ambient world gas: at/below the ceiling and above this column's terrain.
+        bool toxic = (p.y <= CeilingY && p.y >= ground);
+
+        // A running generator's smog makes a sphere toxic even outside the ambient layer (e.g. above
+        // the ceiling or in an as-yet-clean area) — but never below the ground of its column.
+        for (int s = 0; s < MAX_VOLUMES; s++) {
+            if (s >= SmogCount) break;
+            if (p.y >= ground && insideSphere(p, SmogData, s)) {
+                toxic = true;
+            }
+        }
+
+        // A Cleanser bubble wins over everything: no exposed gas anywhere inside it.
+        for (int c = 0; c < MAX_VOLUMES; c++) {
+            if (c >= CleanserCount) break;
+            if (insideSphere(p, CleanserData, c)) {
+                toxic = false;
+            }
+        }
+
+        if (toxic) {
             exposed += stepLen;
         }
     }

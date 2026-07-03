@@ -95,8 +95,10 @@ public final class ToxicGasFogRenderer {
         if (shader == null || level == null || ShaderState.shadersActive()) {
             return;
         }
+        // No ambient gas layer (dimension not toxic, or not toxic yet) — but a running generator's
+        // smog still hazes its own sphere, so only bail if there is neither a ceiling nor any smog.
         int ceilingY = ClientGasState.toxicCeilingY();
-        if (ceilingY == Integer.MIN_VALUE) {
+        if (ceilingY == Integer.MIN_VALUE && ClientFogVolumes.smogCount() == 0) {
             return;
         }
         float intensity = (float) (double) ToxicSurfaceClientConfig.FOG_INTENSITY.get();
@@ -146,6 +148,10 @@ public final class ToxicGasFogRenderer {
         shader.safeGetUniform("FogColor").set(FOG_R, FOG_G, FOG_B);
         shader.safeGetUniform("FogDensity").set(FOG_DENSITY);
         shader.safeGetUniform("FogMaxAlpha").set(FOG_MAX_ALPHA * intensity);
+        shader.safeGetUniform("CleanserCount").set(ClientFogVolumes.cleanserCount());
+        shader.safeGetUniform("CleanserData").set(ClientFogVolumes.cleanser());
+        shader.safeGetUniform("SmogCount").set(ClientFogVolumes.smogCount());
+        shader.safeGetUniform("SmogData").set(ClientFogVolumes.smog());
 
         RenderSystem.enableBlend();
         RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
