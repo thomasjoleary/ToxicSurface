@@ -14,7 +14,6 @@ import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceClientConfig;
-import io.github.thomasjoleary.toxicsurface.core.gas.SkyOpenness;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.ShaderInstance;
@@ -33,11 +32,9 @@ import org.joml.Matrix4f;
  * Renders the toxic-gas haze as a per-pixel screen-space effect (DESIGN.md §3 gas visibility). After
  * the level draws, a fullscreen pass reconstructs each surface pixel's world position from the depth
  * buffer and adds green haze scaled by distance — but only where that surface is genuinely exposed
- * toxic air (at/below the ceiling, and at/above its column's sky-openness floor). That floor is baked by
- * a wall-respecting flood ({@link SkyOpenness}) into a small {@link #heightTexture per-column texture}
- * rebuilt around the camera, so — matching {@link io.github.thomasjoleary.toxicsurface.core.gas.GasModel}
- * — fog fills open air and seeps under overhangs, yet a genuinely walled room stays clear. Exact per
- * pixel, and it updates smoothly.
+ * toxic air (at/below the ceiling, and at the top of its own column rather than under a roof). The
+ * "is this column open / is this pixel under cover" test reads a small {@link #heightTexture per-column
+ * terrain-top texture} rebuilt around the camera, so it is exact per pixel and updates smoothly.
  *
  * <p>This is deliberately view-dependent, which hard world-space geometry could not be: the haze
  * reads dense looking straight down from altitude (long ray through the layer) yet soft near the
@@ -86,14 +83,6 @@ public final class ToxicGasFogRenderer {
 
     /** How far below a non-full top block to look for a real sealing cube before treating a column as open. */
     private static final int MAX_ROOF_SCAN = 16;
-
-    /** How far below a cover to look for the air-pocket floor; a deeper pocket is treated as open all the way. */
-    private static final int MAX_POCKET_SCAN = 32;
-
-    /** Reusable per-column scratch for the sky-openness flood, sized to {@code mapSize * mapSize}. */
-    private static int[] coverBuf = new int[0];
-
-    private static int[] floorBuf = new int[0];
 
     private static final float FOG_R = 0.24f;
     private static final float FOG_G = 0.34f;
@@ -266,84 +255,41 @@ public final class ToxicGasFogRenderer {
         if (pixels == null) {
             return;
         }
-        int n = mapSize * mapSize;
-        if (coverBuf.length != n) {
-            coverBuf = new int[n];
-            floorBuf = new int[n];
-        }
-        int minY = level.getMinBuildHeight();
-        int maxY = level.getMaxBuildHeight();
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (int tz = 0; tz < mapSize; tz++) {
             for (int tx = 0; tx < mapSize; tx++) {
-                scanColumn(level, cursor, mapOriginX + tx, mapOriginZ + tz, minY, tz * mapSize + tx);
-            }
-        }
-        // Flood sky-openness across the columns so covered-but-open air (overhangs) exposes low while walls
-        // keep a room's air sealed — matching GasModel, which only exempts genuinely sealed space (DESIGN §3).
-        int[] sky = SkyOpenness.compute(mapSize, mapSize, coverBuf, floorBuf, minY, maxY);
-        for (int tz = 0; tz < mapSize; tz++) {
-            for (int tx = 0; tx < mapSize; tx++) {
-                pixels.setPixelRGBA(tx, tz, encodeTop(sky[tz * mapSize + tx]));
+                int worldX = mapOriginX + tx;
+                int worldZ = mapOriginZ + tz;
+                pixels.setPixelRGBA(tx, tz, encodeTop(sealingTop(level, cursor, worldX, worldZ)));
             }
         }
         heightTexture.upload();
     }
 
     /**
-     * Records this column's two heights for the sky-openness flood into {@link #coverBuf}/{@link #floorBuf}:
-     * <ul>
-     *   <li>{@code cover} — the top of the highest sealing cube (roof, ground, or overhang lip). As in the
-     *       halo fix, thin non-full blocks (a Create shaft, a fence, a torch) are skipped so they don't read
-     *       as a roof; if none is found near the motion-blocking top the column is fully open.
-     *   <li>{@code floor} — the floor of the air pocket beneath that cover. Solid directly under the cover
-     *       (a wall or plain ground) means no pocket, so {@code floor == cover} and the flood can't pass
-     *       under it; an air gap (an overhang) gives a low floor the flood flows through.
-     * </ul>
+     * The Y at/above which this column is genuinely open toxic air — i.e. the top of the highest block
+     * that actually <em>seals</em> the column (a full cube: solid ground, a glass skylight, a roof), not
+     * merely the highest block that blocks motion. The raw {@code MOTION_BLOCKING} height also picks up
+     * thin non-full blocks — a Create shaft, a fence, a torch — and treating one as a roof would clear a
+     * fog-free column around it (the pale halo the player noticed). So if the motion-blocking top block
+     * is not a full cube, we look a short way down for one that is; finding none nearby, the column reads
+     * as open (a lone thin structure casts no fog shadow) rather than roofed.
      */
-    private static void scanColumn(
-            ClientLevel level, BlockPos.MutableBlockPos cursor, int worldX, int worldZ, int minY, int idx) {
+    private static int sealingTop(ClientLevel level, BlockPos.MutableBlockPos cursor, int worldX, int worldZ) {
         if (!level.hasChunk(worldX >> 4, worldZ >> 4)) {
-            coverBuf[idx] = UNKNOWN_TOP; // unloaded: acts as a wall (clamped high) so openness can't leak through
-            floorBuf[idx] = UNKNOWN_TOP;
-            return;
+            return UNKNOWN_TOP;
         }
         int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING, worldX, worldZ);
-        int coverLimit = Math.max(minY, top - 1 - MAX_ROOF_SCAN);
-        int coverY = Integer.MIN_VALUE;
-        for (int y = top - 1; y >= coverLimit; y--) {
+        int limit = Math.max(level.getMinBuildHeight(), top - 1 - MAX_ROOF_SCAN);
+        for (int y = top - 1; y >= limit; y--) {
             cursor.set(worldX, y, worldZ);
             if (level.getBlockState(cursor).isCollisionShapeFullBlock(level, cursor)) {
-                coverY = y;
-                break;
+                return y + 1; // top surface of the sealing cube is the fog floor
             }
         }
-        if (coverY == Integer.MIN_VALUE) {
-            // Only thin blocks near the top (or nothing): fully open, so a lone structure casts no shadow.
-            coverBuf[idx] = minY;
-            floorBuf[idx] = minY;
-            return;
-        }
-        int cover = coverY + 1;
-        coverBuf[idx] = cover;
-
-        // Is there an air pocket right under the cover (overhang), or solid (wall/ground)?
-        int belowY = coverY - 1;
-        cursor.set(worldX, belowY, worldZ);
-        if (belowY < minY || level.getBlockState(cursor).isCollisionShapeFullBlock(level, cursor)) {
-            floorBuf[idx] = cover; // solid beneath the cover: no pocket, the flood is blocked here
-            return;
-        }
-        // Descend through the pocket to the first full cube below; that surface is the air floor.
-        int floorLimit = Math.max(minY, belowY - MAX_POCKET_SCAN);
-        for (int y = belowY - 1; y >= floorLimit; y--) {
-            cursor.set(worldX, y, worldZ);
-            if (level.getBlockState(cursor).isCollisionShapeFullBlock(level, cursor)) {
-                floorBuf[idx] = y + 1;
-                return;
-            }
-        }
-        floorBuf[idx] = minY; // pocket deeper than the scan cap: treat as open to the bottom
+        // No sealing cube within the scan window: treat as open ground so a thin block/structure sitting
+        // above a gap doesn't mask the air around it. Void level keeps p.y >= ground true up the column.
+        return level.getMinBuildHeight();
     }
 
     /**
