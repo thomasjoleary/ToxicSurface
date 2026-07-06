@@ -14,6 +14,10 @@ import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceClientConfig;
+import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
+import io.github.thomasjoleary.toxicsurface.core.enclosure.LevelPassabilityProbe;
+import io.github.thomasjoleary.toxicsurface.core.enclosure.RegionOpenness;
+import java.util.Arrays;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.ShaderInstance;
@@ -32,9 +36,13 @@ import org.joml.Matrix4f;
  * Renders the toxic-gas haze as a per-pixel screen-space effect (DESIGN.md §3 gas visibility). After
  * the level draws, a fullscreen pass reconstructs each surface pixel's world position from the depth
  * buffer and adds green haze scaled by distance — but only where that surface is genuinely exposed
- * toxic air (at/below the ceiling, and at the top of its own column rather than under a roof). The
- * "is this column open / is this pixel under cover" test reads a small {@link #heightTexture per-column
- * terrain-top texture} rebuilt around the camera, so it is exact per pixel and updates smoothly.
+ * toxic air (at/below the ceiling, and reachable by the atmosphere). Exposure is answered by two tiers:
+ * near the camera, a {@link #volumeTexture 3D air-connectivity volume} classified with the <em>same</em>
+ * passability rules the damage scanner uses ({@link LevelPassabilityProbe} + {@link RegionOpenness}),
+ * so fog floods a breached room, fills unsealed caves and overhangs, and stays out of sealed bases —
+ * exactly where the gas would hurt. Beyond the volume, a {@link #heightTexture per-column roof-test
+ * height map} approximates the same answer (distant interiors are barely visible anyway), and the
+ * shader blends the two softly at the volume's edge.
  *
  * <p>This is deliberately view-dependent, which hard world-space geometry could not be: the haze
  * reads dense looking straight down from altitude (long ray through the layer) yet soft near the
@@ -84,6 +92,31 @@ public final class ToxicGasFogRenderer {
     /** How far below a non-full top block to look for a real sealing cube before treating a column as open. */
     private static final int MAX_ROOF_SCAN = 16;
 
+    // Near-field exposure volume: a 3D air-connectivity grid around the camera, classified by the same
+    // passability rules the damage scanner uses (LevelPassabilityProbe + RegionOpenness). It is what lets
+    // fog flood a breached room, fill unsealed caves/overhangs, and stay out of sealed bases — per-column
+    // height data cannot see an opening under a roof line. Outside the volume the shader falls back to
+    // the height-map roof test, blended softly at the volume's edge.
+    /** Volume cell dimensions; must match {@code VOL_*} in toxic_fog.fsh. */
+    private static final int VOL_SX = 96;
+
+    private static final int VOL_SY = 48;
+    private static final int VOL_SZ = 96;
+
+    /** Y-slices per atlas row when packing the volume into a 2D texture; must match toxic_fog.fsh. */
+    private static final int VOL_ATLAS_COLS = 8;
+
+    /** Columns of the volume scanned per frame, so a rebuild never spikes one frame (amortized ~12 frames). */
+    private static final int VOL_COLUMNS_PER_FRAME = 768;
+
+    /** Restart the volume scan when the camera drifts this far from the last scan's centre. */
+    private static final int VOL_REBUILD_MOVE_THRESHOLD = 12;
+
+    /** ABGR pixels for {@link NativeImage}: R=255 marks a fog-able (exposed air, not fluid) cell. */
+    private static final int VOL_PIXEL_EXPOSED = 0xFF0000FF;
+
+    private static final int VOL_PIXEL_CLEAR = 0xFF000000;
+
     private static final float FOG_R = 0.24f;
     private static final float FOG_G = 0.34f;
     private static final float FOG_B = 0.12f;
@@ -108,6 +141,28 @@ public final class ToxicGasFogRenderer {
     private static int lastCeilingY = Integer.MIN_VALUE;
     private static ClientLevel lastLevel;
     private static boolean loggedFailure;
+
+    // Near-field volume state. The scan builds passable/fluid bit sets a slice of columns per frame
+    // (against scanOrigin*); on completion the flood classifies them and the result is packed into
+    // volumeTexture, which the shader reads against the *active* origin until the next build lands.
+    private static DynamicTexture volumeTexture;
+
+    private static RegionOpenness volumeFlood;
+    private static long[] volPassable;
+    private static long[] volFluid;
+    private static long[] volExposed;
+    /** Next column (of {@code VOL_SX * VOL_SZ}) to scan, or -1 when no scan is in progress. */
+    private static int volScanColumn = -1;
+
+    private static int scanOriginX;
+    private static int scanOriginY;
+    private static int scanOriginZ;
+    private static int volOriginX;
+    private static int volOriginY;
+    private static int volOriginZ;
+    private static boolean volumeReady;
+    private static long lastVolumeBuildTick = Long.MIN_VALUE;
+    private static ClientLevel volumeLevel;
 
     private ToxicGasFogRenderer() {}
 
@@ -136,6 +191,7 @@ public final class ToxicGasFogRenderer {
             updateCoverage(mc);
             Vec3 cam = event.getCamera().getPosition();
             rebuildIfNeeded(level, cam, ceilingY);
+            updateVolume(level, cam, ceilingY);
             draw(event, mc, cam, ceilingY, intensity);
         } catch (RuntimeException e) {
             if (!loggedFailure) {
@@ -161,6 +217,120 @@ public final class ToxicGasFogRenderer {
         steps = Mth.clamp(Math.round(maxDist / BLOCKS_PER_STEP), MIN_STEPS, MAX_STEPS);
     }
 
+    /**
+     * Drives the near-field volume rebuild a slice at a time. A scan reads passability/fluid state for
+     * {@link #VOL_COLUMNS_PER_FRAME} columns per frame (so no single frame pays the whole region), and on
+     * the final slice runs the {@link RegionOpenness} flood and swaps the packed result in. Between
+     * builds the previous volume stays active, so the fog lags a block change by at most a scan plus the
+     * rebuild interval (~1–2s), same as the height map.
+     */
+    private static void updateVolume(ClientLevel level, Vec3 cam, int ceilingY) {
+        long now = level.getGameTime();
+        if (level != volumeLevel) {
+            volumeLevel = level;
+            volumeReady = false;
+            volScanColumn = -1;
+        }
+        if (volScanColumn < 0) {
+            // When flying above the gas, anchor the volume just under the ceiling instead of the camera:
+            // that is where the structures worth resolving (bases, breaches) actually are.
+            int centerY = ceilingY == Integer.MIN_VALUE
+                    ? Mth.floor(cam.y)
+                    : Math.min(Mth.floor(cam.y), ceilingY + VOL_SY / 3);
+            int desiredX = Mth.floor(cam.x) - VOL_SX / 2;
+            int desiredZ = Mth.floor(cam.z) - VOL_SZ / 2;
+            int desiredY =
+                    Mth.clamp(centerY - VOL_SY / 2, level.getMinBuildHeight(), level.getMaxBuildHeight() - VOL_SY);
+            boolean drifted = !volumeReady
+                    || Math.abs(desiredX - volOriginX) > VOL_REBUILD_MOVE_THRESHOLD
+                    || Math.abs(desiredY - volOriginY) > VOL_REBUILD_MOVE_THRESHOLD
+                    || Math.abs(desiredZ - volOriginZ) > VOL_REBUILD_MOVE_THRESHOLD;
+            boolean stale = now - lastVolumeBuildTick >= REBUILD_INTERVAL_TICKS;
+            if (!drifted && !stale) {
+                return;
+            }
+            if (volumeFlood == null) {
+                volumeFlood = new RegionOpenness(VOL_SX, VOL_SY, VOL_SZ);
+                int words = (volumeFlood.cellCount() + 63) >> 6;
+                volPassable = new long[words];
+                volFluid = new long[words];
+                volExposed = new long[words];
+            }
+            Arrays.fill(volPassable, 0L);
+            Arrays.fill(volFluid, 0L);
+            scanOriginX = desiredX;
+            scanOriginY = desiredY;
+            scanOriginZ = desiredZ;
+            volScanColumn = 0;
+        }
+
+        scanVolumeSlice(level);
+        if (volScanColumn >= VOL_SX * VOL_SZ) {
+            volScanColumn = -1;
+            lastVolumeBuildTick = now;
+            volumeFlood.classify(volPassable, ToxicSurfaceConfig.ENCLOSURE_FLOOD_FILL_BUDGET.get(), volExposed);
+            packAndUploadVolume();
+            volOriginX = scanOriginX;
+            volOriginY = scanOriginY;
+            volOriginZ = scanOriginZ;
+            volumeReady = true;
+        }
+    }
+
+    /** Reads passability and fluid state for the next {@link #VOL_COLUMNS_PER_FRAME} columns of the scan. */
+    private static void scanVolumeSlice(ClientLevel level) {
+        LevelPassabilityProbe probe = new LevelPassabilityProbe(level);
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        int end = Math.min(volScanColumn + VOL_COLUMNS_PER_FRAME, VOL_SX * VOL_SZ);
+        for (int col = volScanColumn; col < end; col++) {
+            int cx = col % VOL_SX;
+            int cz = col / VOL_SX;
+            int worldX = scanOriginX + cx;
+            int worldZ = scanOriginZ + cz;
+            if (!level.hasChunk(worldX >> 4, worldZ >> 4)) {
+                continue; // unloaded columns stay impassable: no fog claims, and no leaks through them
+            }
+            for (int cy = 0; cy < VOL_SY; cy++) {
+                int worldY = scanOriginY + cy;
+                if (!probe.isPassable(worldX, worldY, worldZ)) {
+                    continue;
+                }
+                int idx = volumeFlood.index(cx, cy, cz);
+                RegionOpenness.set(volPassable, idx);
+                // Gas can flow through a fluid cell (matching the damage scan) but never renders in one:
+                // submerged cells are clean per GasModel, so they are exposed for connectivity yet fog-free.
+                if (!level.getFluidState(cursor.set(worldX, worldY, worldZ)).isEmpty()) {
+                    RegionOpenness.set(volFluid, idx);
+                }
+            }
+        }
+        volScanColumn = end;
+    }
+
+    /** Packs exposed-and-not-fluid cells into the Y-slice atlas texture the shader reads. */
+    private static void packAndUploadVolume() {
+        if (volumeTexture == null) {
+            volumeTexture = new DynamicTexture(VOL_SX * VOL_ATLAS_COLS, VOL_SZ * (VOL_SY / VOL_ATLAS_COLS), false);
+            volumeTexture.setFilter(false, false); // nearest: cells are hard data, never blend texels
+        }
+        NativeImage pixels = volumeTexture.getPixels();
+        if (pixels == null) {
+            return;
+        }
+        for (int cy = 0; cy < VOL_SY; cy++) {
+            int baseX = (cy % VOL_ATLAS_COLS) * VOL_SX;
+            int baseY = (cy / VOL_ATLAS_COLS) * VOL_SZ;
+            for (int cz = 0; cz < VOL_SZ; cz++) {
+                for (int cx = 0; cx < VOL_SX; cx++) {
+                    int idx = volumeFlood.index(cx, cy, cz);
+                    boolean fog = RegionOpenness.get(volExposed, idx) && !RegionOpenness.get(volFluid, idx);
+                    pixels.setPixelRGBA(baseX + cx, baseY + cz, fog ? VOL_PIXEL_EXPOSED : VOL_PIXEL_CLEAR);
+                }
+            }
+        }
+        volumeTexture.upload();
+    }
+
     private static void draw(RenderLevelStageEvent event, Minecraft mc, Vec3 cam, int ceilingY, float intensity) {
         Matrix4f invViewProj = new Matrix4f(event.getProjectionMatrix())
                 .mul(event.getModelViewMatrix())
@@ -182,6 +352,11 @@ public final class ToxicGasFogRenderer {
 
         shader.setSampler("DepthSampler", depthCopy.getDepthTextureId());
         shader.setSampler("HeightSampler", heightTexture.getId());
+        if (volumeTexture != null) {
+            shader.setSampler("VolumeSampler", volumeTexture.getId());
+        }
+        shader.safeGetUniform("VolOrigin").set((float) volOriginX, (float) volOriginY, (float) volOriginZ);
+        shader.safeGetUniform("VolReady").set(volumeReady ? 1 : 0);
         shader.safeGetUniform("InvViewProj").set(invViewProj);
         shader.safeGetUniform("CameraPos").set((float) cam.x, (float) cam.y, (float) cam.z);
         shader.safeGetUniform("CeilingY").set((float) ceilingY);

@@ -38,8 +38,8 @@ no errors, no crash. **Not verified: the rendered result.** Please check:
       trunks + green tops like the per-surface version)
 - [ ] **Hills**: haze drapes smoothly, no holes up or down a slope
 - [ ] **From high up looking down**: dense over the ground (long ray through the layer), out to the
-      ~128-block map radius, fading past it (raise `MAP_SIZE`/`MAX_DIST` if the edge is too close —
-      cost scales with `MAP_SIZE` squared and `STEPS`)
+      coverage radius, fading past it. Coverage now follows render distance (clamped 8–16 chunks;
+      `MIN_RADIUS`/`MAX_RADIUS` in `ToxicGasFogRenderer`)
 - [ ] **Sealed room, no windows**: interior fully clear (confirmed once; recheck after raymarch)
 - [ ] **Sealed room / base, looking out a window**: interior clear, haze outside thickening with
       distance
@@ -50,10 +50,25 @@ no errors, no crash. **Not verified: the rendered result.** Please check:
 - [ ] No FPS cliff — raymarch is `STEPS` (24) texture lookups/pixel; drop `STEPS` if low-end GPUs
       struggle. Once-a-second rebuild is 65k heightmap lookups.
 - [ ] Old `ToxicFogHandler` (personal screen fog while in gas) still layers on top without fighting
-- [ ] **Known gap (unchanged):** Cleanser bubbles aren't carved out — the shader has no bubble data
-      yet; standing in one may still show haze. Needs cleanser-range sync; follow-up.
+- [x] Cleanser bubbles carve a clean pocket out of the haze (synced spheres; confirmed in-game)
+- [x] Generator smog clouds add haze, even above the ceiling / in clean areas (confirmed in-game)
 - [ ] Colour / density feel right (`FOG_R/G/B`, `FOG_DENSITY` = per block of exposed air,
       `FOG_MAX_ALPHA` in `ToxicGasFogRenderer.java`)
+
+**Near-field exposure volume** (new): within ~48 blocks of the camera, fog now follows true air
+connectivity — a 96×48×96 cell grid classified with the damage scanner's own passability rules
+(`RegionOpenness`, unit-tested), amortized ~768 columns/frame, blended into the roof-test height map
+over the volume's outer 8 blocks. The rule is "fog exactly where the gas would hurt":
+- [ ] **Breached room floods**: knock one block out of a sealed room's wall → fog fills the interior
+      within ~1–2s; sealing it again clears it after the next rebuild
+- [ ] **Sealed room stays clear** (walls, roof, glass windows) — from inside *and* looking in from
+      outside through a window (within ~48 blocks)
+- [ ] **Overhangs / cave mouths / open doorways fog** when unsealed — they damage you, so they haze
+- [ ] **Distant overhangs** (beyond the volume): still clear (roof-test fallback), fog fades in as
+      you approach — the handover should be a soft blend, not a pop or a visible seam
+- [ ] **No fog inside water** (submerged is safe per GasModel); haze still sits above the surface
+- [ ] **Frame cost**: the amortized scan is ~37k block reads/frame while rebuilding — watch for new
+      stutter beyond the height-map's (drop `VOL_COLUMNS_PER_FRAME` if so)
 
 ### Conditional green rain
 - [x] Below the toxic ceiling Y: rain droplets render green (not blue)
