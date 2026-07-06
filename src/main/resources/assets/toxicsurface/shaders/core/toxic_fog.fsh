@@ -46,8 +46,10 @@ float ign(vec2 pix) {
     return fract(52.9829189 * fract(dot(pix, vec2(0.06711056, 0.00583715))));
 }
 
-// Terrain top (highest solid) at a world column, decoded from the two high/low bytes in R and G.
-// Returns a huge value for columns outside the mapped region so those samples never count as air.
+// Sky-openness floor at a world column: the lowest Y whose air still connects to the open sky, decoded
+// from the two high/low bytes in R and G. The CPU bakes this with a wall-respecting flood (SkyOpenness),
+// so it is low under an open overhang but stays high inside a walled room. Returns a huge value for
+// columns outside the mapped region so those samples never count as air.
 float terrainTop(vec2 worldXZ) {
     vec2 uv = (worldXZ - HeightOrigin) / HeightWorldSize;
     if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
@@ -60,12 +62,12 @@ float terrainTop(vec2 worldXZ) {
 }
 
 // Volumetric toxic haze. Rather than tinting the surface pixel, we march the view ray from the
-// camera to the surface and accumulate how much genuinely-exposed toxic *air* it crosses — air that
-// is at/below the ceiling and above the terrain in its own column. This reads as real depth (distant
-// ground fades into haze, trees/hills fog uniformly) and keeps sealed rooms clear for free: a ray
-// inside a room stays below its roof the whole way, so it accumulates zero exposed air. The height
-// data is a small per-column texture rebuilt around the camera, so there is no cell blockiness and no
-// flashing.
+// camera to the surface and accumulate how much genuinely-exposed toxic *air* it crosses — air that is
+// at/below the ceiling and at/above its column's sky-openness floor. This reads as real depth (distant
+// ground fades into haze, trees/hills fog uniformly) and matches the gas model: fog fills open air and
+// seeps under overhangs, but a walled room's floor sits below its high openness value so its air never
+// counts. The height data is a small per-column texture rebuilt around the camera, so there is no cell
+// blockiness and no flashing.
 void main() {
     float depth = texture(DepthSampler, texCoord).r;
 
