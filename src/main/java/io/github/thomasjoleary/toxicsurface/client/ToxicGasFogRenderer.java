@@ -24,6 +24,7 @@ import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
@@ -458,8 +459,13 @@ public final class ToxicGasFogRenderer {
         int limit = Math.max(level.getMinBuildHeight(), top - 1 - MAX_ROOF_SCAN);
         for (int y = top - 1; y >= limit; y--) {
             cursor.set(worldX, y, worldZ);
-            if (level.getBlockState(cursor).isCollisionShapeFullBlock(level, cursor)) {
-                return y + 1; // top surface of the sealing cube is the fog floor
+            BlockState state = level.getBlockState(cursor);
+            // A fluid surface seals like ground: gas sits on water, never inside it (GasModel's
+            // submerged rule). Without this, deep water — no full cube within the scan window — read
+            // as air open to bedrock, and the far field filled the ocean with fog.
+            if (state.isCollisionShapeFullBlock(level, cursor)
+                    || !state.getFluidState().isEmpty()) {
+                return y + 1; // top surface of the sealing cube/fluid is the fog floor
             }
         }
         // No sealing cube within the scan window: treat as open ground so a thin block/structure sitting

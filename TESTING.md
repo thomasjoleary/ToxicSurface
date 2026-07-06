@@ -66,7 +66,9 @@ over the volume's outer 8 blocks. The rule is "fog exactly where the gas would h
 - [ ] **Overhangs / cave mouths / open doorways fog** when unsealed — they damage you, so they haze
 - [ ] **Distant overhangs** (beyond the volume): still clear (roof-test fallback), fog fades in as
       you approach — the handover should be a soft blend, not a pop or a visible seam
-- [ ] **No fog inside water** (submerged is safe per GasModel); haze still sits above the surface
+- [ ] **No fog inside water** (submerged is safe per GasModel); haze still sits above the surface.
+      Check *distant/deep* water too, from underwater looking out — the far field now treats a fluid
+      surface as the fog floor (a deep column previously read as open air and fogged the ocean)
 - [ ] **Frame cost**: the amortized scan is ~37k block reads/frame while rebuilding — watch for new
       stutter beyond the height-map's (drop `VOL_COLUMNS_PER_FRAME` if so)
 
