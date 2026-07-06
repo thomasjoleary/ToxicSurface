@@ -42,15 +42,17 @@ read it (esp. §3 system design, §5b build log for current status, §9 soft-dep
 
 ## Current status & gotchas (handoff)
 
-Phases 1–7 ✅; Phase 8 in progress (see DESIGN §5b). This session added: the two toxic generators +
-industrial-filter cycle, JEI/EMI/Jade integration, air-bar HUD, enclosure-cache wiring, toxic
-DamageType, cough+HUD-flash, toxic-rain overlay, cleanser bubble particles, accessibility sliders,
-pre-toxicity telegraph + retroactive advancement. All **compile + unit-test green**, but:
+Phases 1–7 ✅; Phase 8 nearly done (see DESIGN §5b). Everything compiles + unit-tests green, and the
+player has verified the big systems in-game: generators + filter cycle, JEI/EMI/Jade (incl. the
+weaving/generator-fuel **recipe categories**), air-bar HUD, toxic rain, commands, weaver work-face,
+and the **volumetric fog** (screen-space raymarch; near-field 3D exposure volume mirrors the damage
+scanner via `RegionOpenness`, so fog floods breaches/caves/overhangs and skips sealed rooms + water).
 
-- **Not yet run in-game / GameTest in this env** — rendering, particles, the config screen, packets,
-  and Create runtime are compile-verified only. Local `runClient` testing is the next step.
-- **No textures/models** — everything is missing-texture; this also gates the deferred JEI/EMI
-  **recipe categories**. The `cough` sound is a placeholder (vanilla choke) until a real `cough.ogg`.
-- **Known gap:** enclosure cache invalidates on break/place/explosion events but not piston/`/setblock`.
+- **Textures/models ✅** — full coverage: every registered block/item has blockstate/model/texture
+  (verified by cross-reference), plus armor layers, particles, fluid + atlas entries.
+- The `cough` sound is still a placeholder (vanilla drown-hurt) until a real `cough.ogg` (end of list).
+- **Known gaps:** enclosure cache invalidates on break/place/explosion but not piston/`/setblock`;
+  fog under overhangs can lag a rebuild cycle (~1–2 s) behind — tune `VOL_COLUMNS_PER_FRAME` /
+  `VOL_REBUILD_MOVE_THRESHOLD` in `ToxicGasFogRenderer` if it bothers.
 
-Remaining: textures/models, JEI/EMI recipe categories, balance pass, real-pack compat testing.
+Remaining: `cough.ogg`, balance pass, real-pack compat testing.
