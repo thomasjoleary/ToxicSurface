@@ -104,15 +104,8 @@ public class SludgeGeneratorBlockEntity extends GeneratingKineticBlockEntity imp
         boolean run = running();
         if (run) {
             tank.drain(GeneratorFuel.SLUDGE_MB_PER_TICK, IFluidHandler.FluidAction.EXECUTE);
-            // A clean industrial filter captures the exhaust so it runs clean; otherwise it vents.
-            if (ExhaustScrubber.advance(items, SLOT_FILTER)) {
-                GeneratorEmissions.stop(server, pos); // scrubbed: no smog, no pollution
-            } else {
-                GeneratorEmissions.emit(server, pos); // raw exhaust: smog + pollution (DESIGN.md §7)
-            }
-        } else {
-            GeneratorEmissions.stop(server, pos);
         }
+        ExhaustScrubber.tickExhaust(server, pos, items, SLOT_FILTER, run);
 
         // Tell Create whenever the running state flips (a pump topping up the tank between ticks is a
         // spin-up; draining dry is a spin-down). Comparing the freshly-recomputed speed to itself, as

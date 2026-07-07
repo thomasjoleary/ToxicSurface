@@ -2,29 +2,22 @@
 
 package io.github.thomasjoleary.toxicsurface.block;
 
-import io.github.thomasjoleary.toxicsurface.compat.jade.JadeReadout;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
 import io.github.thomasjoleary.toxicsurface.core.machine.CleanserRange;
 import io.github.thomasjoleary.toxicsurface.menu.CleanserMenu;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlockEntities;
 import io.github.thomasjoleary.toxicsurface.world.CleanserBubbles;
-import io.github.thomasjoleary.toxicsurface.world.CleanserVisual;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.items.IItemHandler;
-import net.neoforged.neoforge.items.ItemStackHandler;
 
 /**
  * The Cleanser (DESIGN.md §3) — a furnace-fuelled reclamation machine that reverts toxic
@@ -33,79 +26,42 @@ import net.neoforged.neoforge.items.ItemStackHandler;
  * larger ranges. The gas-purge bubble (clean breathable air in range) lands in a
  * follow-up increment; this core handles fuel, range control, and sludge reversion.
  */
-public class CleanserBlockEntity extends BlockEntity implements MenuProvider, JadeReadout {
+public class CleanserBlockEntity extends AbstractFueledMachineBlockEntity {
     public static final int SLOT_FUEL = 0;
     public static final int SLOT_COUNT = 1;
 
-    public static final int DATA_LIT_TIME = 0;
-    public static final int DATA_LIT_DURATION = 1;
     public static final int DATA_MENU_RANGE = 2;
     public static final int DATA_EFFECTIVE_RANGE = 3;
 
-    /** Cells scanned per active tick for the reversion sweep (bounds the work). */
-    private static final int SCAN_BUDGET = 4096;
-
-    private final ItemStackHandler items = new ItemStackHandler(SLOT_COUNT) {
-        @Override
-        protected void onContentsChanged(int slot) {
-            setChanged();
-        }
-
-        @Override
-        public boolean isItemValid(int slot, ItemStack stack) {
-            return stack.getBurnTime(null) > 0;
-        }
-    };
-
-    private int litTime;
-    private int litDuration;
     private int menuRange = CleanserRange.BASE_RANGE;
     private int effectiveRange = CleanserRange.BASE_RANGE;
     private int scanCursor;
 
-    private final ContainerData data = new ContainerData() {
-        @Override
-        public int get(int index) {
-            return switch (index) {
-                case DATA_LIT_TIME -> litTime;
-                case DATA_LIT_DURATION -> litDuration;
-                case DATA_MENU_RANGE -> menuRange;
-                case DATA_EFFECTIVE_RANGE -> effectiveRange;
-                default -> 0;
-            };
-        }
-
-        @Override
-        public void set(int index, int value) {
-            switch (index) {
-                case DATA_LIT_TIME -> litTime = value;
-                case DATA_LIT_DURATION -> litDuration = value;
-                case DATA_MENU_RANGE -> menuRange = value;
-                case DATA_EFFECTIVE_RANGE -> effectiveRange = value;
-                default -> {}
-            }
-        }
-
-        @Override
-        public int getCount() {
-            return 4;
-        }
-    };
-
     public CleanserBlockEntity(BlockPos pos, BlockState state) {
-        super(ModBlockEntities.CLEANSER.get(), pos, state);
+        super(ModBlockEntities.CLEANSER.get(), pos, state, SLOT_COUNT);
     }
 
-    public IItemHandler getItemHandler() {
-        return items;
+    @Override
+    protected boolean isItemValid(int slot, ItemStack stack) {
+        return stack.getBurnTime(null) > 0;
     }
 
-    public ItemStackHandler getItems() {
-        return items;
+    @Override
+    protected int getMachineData(int index) {
+        return switch (index) {
+            case DATA_MENU_RANGE -> menuRange;
+            case DATA_EFFECTIVE_RANGE -> effectiveRange;
+            default -> 0;
+        };
     }
 
-    public ContainerData getDataAccess() {
-        return data;
+    @Override
+    protected void setMachineData(int index, int value) {
+        switch (index) {
+            case DATA_MENU_RANGE -> menuRange = value;
+            case DATA_EFFECTIVE_RANGE -> effectiveRange = value;
+            default -> {}
+        }
     }
 
     /** Sets the menu range, clamped to the configured maximum. */
@@ -140,16 +96,14 @@ public class CleanserBlockEntity extends BlockEntity implements MenuProvider, Ja
         int cost = Math.max(1, (int) Math.round(
                 CleanserRange.fuelCostMultiplier(be.effectiveRange, ToxicSurfaceConfig.CLEANSER_FUEL_EXPONENT.get())));
 
-        if (be.litTime <= 0 && be.consumeFuel()) {
+        if (be.litTime <= 0 && be.consumeFuel(SLOT_FUEL)) {
             changed = true;
         }
 
         if (be.litTime > 0) {
             // Larger ranges burn through the current charge faster.
             be.litTime = Math.max(0, be.litTime - (cost - 1));
-            be.scanCursor = SludgeReclaimer.revertSludge(level, pos, be.effectiveRange, SCAN_BUDGET, be.scanCursor);
-            CleanserBubbles.update(serverLevel, pos, be.effectiveRange); // keep breathable air in range
-            CleanserVisual.tick(serverLevel, pos, be.effectiveRange); // green clean-air dome particles
+            be.scanCursor = SludgeReclaimer.tickActive(serverLevel, pos, be.effectiveRange, be.scanCursor);
             changed = true;
         } else {
             CleanserBubbles.remove(serverLevel, pos); // out of fuel: the bubble collapses
@@ -158,22 +112,6 @@ public class CleanserBlockEntity extends BlockEntity implements MenuProvider, Ja
         if (changed) {
             setChanged(level, pos, state);
         }
-    }
-
-    private boolean consumeFuel() {
-        ItemStack fuel = items.getStackInSlot(SLOT_FUEL);
-        int burn = fuel.getBurnTime(null);
-        if (burn <= 0) {
-            return false;
-        }
-        litTime = burn;
-        litDuration = burn;
-        ItemStack remainder = fuel.getCraftingRemainingItem();
-        fuel.shrink(1);
-        if (fuel.isEmpty() && !remainder.isEmpty()) {
-            items.setStackInSlot(SLOT_FUEL, remainder);
-        }
-        return true;
     }
 
     @Override
@@ -195,20 +133,12 @@ public class CleanserBlockEntity extends BlockEntity implements MenuProvider, Ja
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
-        tag.put("Items", items.serializeNBT(registries));
-        tag.putInt("LitTime", litTime);
-        tag.putInt("LitDuration", litDuration);
         tag.putInt("MenuRange", menuRange);
     }
 
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        if (tag.contains("Items")) {
-            items.deserializeNBT(registries, tag.getCompound("Items"));
-        }
-        litTime = tag.getInt("LitTime");
-        litDuration = tag.getInt("LitDuration");
         menuRange = tag.contains("MenuRange") ? tag.getInt("MenuRange") : CleanserRange.BASE_RANGE;
     }
 }

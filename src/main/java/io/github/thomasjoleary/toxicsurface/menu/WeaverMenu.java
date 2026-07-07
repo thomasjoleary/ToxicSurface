@@ -5,11 +5,8 @@ package io.github.thomasjoleary.toxicsurface.menu;
 import io.github.thomasjoleary.toxicsurface.block.WeaverBlockEntity;
 import io.github.thomasjoleary.toxicsurface.registry.ModMenus;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.SimpleContainerData;
-import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemStackHandler;
@@ -20,7 +17,7 @@ import net.neoforged.neoforge.items.SlotItemHandler;
  * output slot, plus the player inventory. The {@link ContainerData} carries the burn
  * and progress values so the screen can draw the flame and progress arrow.
  */
-public class WeaverMenu extends AbstractContainerMenu {
+public class WeaverMenu extends AbstractMachineMenu {
     private final ContainerData data;
 
     /** Client constructor — dummy backing; the server syncs slot and data values. */
@@ -38,7 +35,7 @@ public class WeaverMenu extends AbstractContainerMenu {
     }
 
     private WeaverMenu(int containerId, Inventory playerInventory, IItemHandler items, ContainerData data) {
-        super(ModMenus.WEAVER.get(), containerId);
+        super(ModMenus.WEAVER.get(), containerId, WeaverBlockEntity.SLOT_COUNT);
         this.data = data;
 
         addSlot(new SlotItemHandler(items, WeaverBlockEntity.SLOT_INPUT_A, 44, 17));
@@ -50,16 +47,7 @@ public class WeaverMenu extends AbstractContainerMenu {
                 return false;
             }
         });
-
-        for (int row = 0; row < 3; row++) {
-            for (int col = 0; col < 9; col++) {
-                addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, 84 + row * 18));
-            }
-        }
-        for (int col = 0; col < 9; col++) {
-            addSlot(new Slot(playerInventory, col, 8 + col * 18, 142));
-        }
-
+        addPlayerInventory(playerInventory, 84);
         addDataSlots(data);
     }
 
@@ -83,43 +71,12 @@ public class WeaverMenu extends AbstractContainerMenu {
         return data.get(WeaverBlockEntity.DATA_LIT_TIME) > 0;
     }
 
+    /** Routes fuel to the fuel slot and everything else to the inputs (never the output). */
     @Override
-    public boolean stillValid(Player player) {
-        return true;
-    }
-
-    @Override
-    public ItemStack quickMoveStack(Player player, int index) {
-        ItemStack result = ItemStack.EMPTY;
-        Slot slot = this.slots.get(index);
-        if (slot != null && slot.hasItem()) {
-            ItemStack stack = slot.getItem();
-            result = stack.copy();
-            int machineSlots = WeaverBlockEntity.SLOT_COUNT;
-            int invStart = machineSlots;
-            int invEnd = invStart + 36;
-            if (index < machineSlots) {
-                // machine -> player inventory
-                if (!moveItemStackTo(stack, invStart, invEnd, true)) {
-                    return ItemStack.EMPTY;
-                }
-            } else {
-                // player inventory -> machine inputs/fuel (never the output)
-                if (stack.getBurnTime(null) > 0) {
-                    if (!moveItemStackTo(stack, WeaverBlockEntity.SLOT_FUEL, WeaverBlockEntity.SLOT_FUEL + 1, false)) {
-                        return ItemStack.EMPTY;
-                    }
-                } else if (!moveItemStackTo(
-                        stack, WeaverBlockEntity.SLOT_INPUT_A, WeaverBlockEntity.SLOT_FUEL, false)) {
-                    return ItemStack.EMPTY;
-                }
-            }
-            if (stack.isEmpty()) {
-                slot.set(ItemStack.EMPTY);
-            } else {
-                slot.setChanged();
-            }
+    protected boolean moveToMachine(ItemStack stack) {
+        if (stack.getBurnTime(null) > 0) {
+            return moveItemStackTo(stack, WeaverBlockEntity.SLOT_FUEL, WeaverBlockEntity.SLOT_FUEL + 1, false);
         }
-        return result;
+        return moveItemStackTo(stack, WeaverBlockEntity.SLOT_INPUT_A, WeaverBlockEntity.SLOT_FUEL, false);
     }
 }

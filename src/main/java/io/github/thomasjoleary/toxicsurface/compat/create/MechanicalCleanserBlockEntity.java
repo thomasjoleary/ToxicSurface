@@ -8,7 +8,6 @@ import io.github.thomasjoleary.toxicsurface.compat.jade.JadeReadout;
 import io.github.thomasjoleary.toxicsurface.config.ToxicSurfaceConfig;
 import io.github.thomasjoleary.toxicsurface.core.machine.CleanserRange;
 import io.github.thomasjoleary.toxicsurface.world.CleanserBubbles;
-import io.github.thomasjoleary.toxicsurface.world.CleanserVisual;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -27,9 +26,6 @@ import net.minecraft.world.level.block.state.BlockState;
 public class MechanicalCleanserBlockEntity extends KineticBlockEntity implements JadeReadout {
     /** Stress units consumed per RPM (Create's stress model); makes the machine a real load. */
     private static final float STRESS_IMPACT = 8f;
-
-    /** Cells scanned per active tick for the reversion sweep — matches the fuel Cleanser. */
-    private static final int SCAN_BUDGET = 4096;
 
     private int scanCursor;
     /** Last reclamation range driven this tick, surfaced to Jade (parity with the fuel Cleanser). */
@@ -64,9 +60,7 @@ public class MechanicalCleanserBlockEntity extends KineticBlockEntity implements
         effectiveRange = range; // surfaced to Jade
 
         if (range > 0 && SludgeReclaimer.canReclaim(level)) {
-            scanCursor = SludgeReclaimer.revertSludge(level, pos, range, SCAN_BUDGET, scanCursor);
-            CleanserBubbles.update((ServerLevel) level, pos, range); // keep breathable air in range
-            CleanserVisual.tick((ServerLevel) level, pos, range); // green clean-air dome particles
+            scanCursor = SludgeReclaimer.tickActive((ServerLevel) level, pos, range, scanCursor);
         } else if (level instanceof ServerLevel sl) {
             CleanserBubbles.remove(sl, pos); // idle / unpowered: the bubble collapses
         }

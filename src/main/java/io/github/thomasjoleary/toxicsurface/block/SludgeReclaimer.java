@@ -3,6 +3,8 @@
 package io.github.thomasjoleary.toxicsurface.block;
 
 import io.github.thomasjoleary.toxicsurface.registry.ModBlocks;
+import io.github.thomasjoleary.toxicsurface.world.CleanserBubbles;
+import io.github.thomasjoleary.toxicsurface.world.CleanserVisual;
 import io.github.thomasjoleary.toxicsurface.world.ToxicityTicker;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -17,6 +19,9 @@ import net.minecraft.world.level.block.Blocks;
  * lives here once. Kept free of any Create types so it compiles and runs in the standalone jar.
  */
 public final class SludgeReclaimer {
+    /** Base cells scanned per active tick for the reversion sweep (bounds the work). */
+    public static final int SCAN_BUDGET = 4096;
+
     /** Aim to sweep the whole sphere within this many ticks regardless of radius. */
     private static final int TARGET_SWEEP_TICKS = 40;
     /** Per-tick cell-visit cap so a huge radius can't stall the server thread. */
@@ -29,6 +34,18 @@ public final class SludgeReclaimer {
         return level instanceof ServerLevel sl
                 && ToxicityTicker.isAffected(sl)
                 && ToxicityTicker.currentToxicY(sl) != ToxicityTicker.NOT_TOXIC;
+    }
+
+    /**
+     * One active tick of the full cleanser effect both variants project: the budgeted
+     * sludge-reversion sweep, the breathable-air bubble, and the green clean-air dome
+     * particles. Returns the updated scan cursor to resume from next tick.
+     */
+    public static int tickActive(ServerLevel level, BlockPos pos, int range, int scanCursor) {
+        scanCursor = revertSludge(level, pos, range, SCAN_BUDGET, scanCursor);
+        CleanserBubbles.update(level, pos, range); // keep breathable air in range
+        CleanserVisual.tick(level, pos, range); // green clean-air dome particles
+        return scanCursor;
     }
 
     /**

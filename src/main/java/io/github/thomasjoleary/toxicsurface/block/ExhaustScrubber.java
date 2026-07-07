@@ -4,6 +4,9 @@ package io.github.thomasjoleary.toxicsurface.block;
 
 import io.github.thomasjoleary.toxicsurface.item.IndustrialFilterItem;
 import io.github.thomasjoleary.toxicsurface.registry.ModItems;
+import io.github.thomasjoleary.toxicsurface.world.GeneratorEmissions;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.items.ItemStackHandler;
 
@@ -28,6 +31,21 @@ public final class ExhaustScrubber {
     /** True if {@code stack} is a clean industrial filter the scrubber will burn. */
     public static boolean isFilter(ItemStack stack) {
         return stack.is(ModItems.INDUSTRIAL_FILTER.get());
+    }
+
+    /**
+     * One server tick of exhaust handling for a generator: while {@code running}, a clean
+     * industrial filter in {@code items[filterSlot]} captures the exhaust (no smog, no
+     * pollution), otherwise the generator vents raw via {@link GeneratorEmissions}; an
+     * idle generator emits nothing.
+     */
+    public static void tickExhaust(
+            ServerLevel level, BlockPos pos, ItemStackHandler items, int filterSlot, boolean running) {
+        if (running && !advance(items, filterSlot)) {
+            GeneratorEmissions.emit(level, pos); // raw exhaust: smog + pollution (DESIGN.md §7)
+        } else {
+            GeneratorEmissions.stop(level, pos); // idle or scrubbed: no smog, no pollution
+        }
     }
 
     /**

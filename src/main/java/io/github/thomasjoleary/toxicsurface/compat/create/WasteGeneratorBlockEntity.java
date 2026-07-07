@@ -110,16 +110,7 @@ public class WasteGeneratorBlockEntity extends GeneratingKineticBlockEntity impl
             consumeFuel(); // light the next unit, or fall idle if none/invalid
         }
 
-        if (running()) {
-            // A clean industrial filter captures the exhaust so it runs clean; otherwise it vents.
-            if (ExhaustScrubber.advance(items, SLOT_FILTER)) {
-                GeneratorEmissions.stop(server, pos); // scrubbed: no smog, no pollution
-            } else {
-                GeneratorEmissions.emit(server, pos); // raw exhaust: smog + pollution (DESIGN.md §7)
-            }
-        } else {
-            GeneratorEmissions.stop(server, pos);
-        }
+        ExhaustScrubber.tickExhaust(server, pos, items, SLOT_FILTER, running());
 
         // Tell Create only when our generated rotation or capacity actually changed.
         if (getGeneratedSpeed() != beforeSpeed || (running() ? litCapacity : 0f) != beforeCapacity) {

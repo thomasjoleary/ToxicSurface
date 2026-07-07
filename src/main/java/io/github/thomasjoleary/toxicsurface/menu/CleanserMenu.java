@@ -6,11 +6,8 @@ import io.github.thomasjoleary.toxicsurface.block.CleanserBlockEntity;
 import io.github.thomasjoleary.toxicsurface.registry.ModMenus;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.SimpleContainerData;
-import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemStackHandler;
 import net.neoforged.neoforge.items.SlotItemHandler;
@@ -21,7 +18,7 @@ import net.neoforged.neoforge.items.SlotItemHandler;
  * {@link #clickMenuButton}); the {@link ContainerData} carries burn + range values for
  * the screen.
  */
-public class CleanserMenu extends AbstractContainerMenu {
+public class CleanserMenu extends AbstractMachineMenu {
     /** Button ids for the range steppers (see {@link #clickMenuButton}). */
     public static final int BUTTON_RANGE_DOWN_1 = 0;
 
@@ -53,21 +50,12 @@ public class CleanserMenu extends AbstractContainerMenu {
             IItemHandler items,
             ContainerData data,
             CleanserBlockEntity cleanser) {
-        super(ModMenus.CLEANSER.get(), containerId);
+        super(ModMenus.CLEANSER.get(), containerId, CleanserBlockEntity.SLOT_COUNT);
         this.data = data;
         this.cleanser = cleanser;
 
         addSlot(new SlotItemHandler(items, CleanserBlockEntity.SLOT_FUEL, 80, 53));
-
-        for (int row = 0; row < 3; row++) {
-            for (int col = 0; col < 9; col++) {
-                addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, 84 + row * 18));
-            }
-        }
-        for (int col = 0; col < 9; col++) {
-            addSlot(new Slot(playerInventory, col, 8 + col * 18, 142));
-        }
-
+        addPlayerInventory(playerInventory, 84);
         addDataSlots(data);
     }
 
@@ -102,36 +90,5 @@ public class CleanserMenu extends AbstractContainerMenu {
         }
         cleanser.setMenuRange(next);
         return true;
-    }
-
-    @Override
-    public boolean stillValid(Player player) {
-        return true;
-    }
-
-    @Override
-    public ItemStack quickMoveStack(Player player, int index) {
-        ItemStack result = ItemStack.EMPTY;
-        Slot slot = this.slots.get(index);
-        if (slot != null && slot.hasItem()) {
-            ItemStack stack = slot.getItem();
-            result = stack.copy();
-            int machineSlots = CleanserBlockEntity.SLOT_COUNT;
-            int invStart = machineSlots;
-            int invEnd = invStart + 36;
-            if (index < machineSlots) {
-                if (!moveItemStackTo(stack, invStart, invEnd, true)) {
-                    return ItemStack.EMPTY;
-                }
-            } else if (!moveItemStackTo(stack, 0, machineSlots, false)) {
-                return ItemStack.EMPTY;
-            }
-            if (stack.isEmpty()) {
-                slot.set(ItemStack.EMPTY);
-            } else {
-                slot.setChanged();
-            }
-        }
-        return result;
     }
 }

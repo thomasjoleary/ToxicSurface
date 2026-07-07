@@ -8,6 +8,7 @@ import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.neoforged.neoforge.items.ItemStackHandler;
 
 /**
  * Shared weave recipe table and matching used by both Weaver variants (DESIGN.md §3) — the
@@ -34,6 +35,27 @@ public final class WeaverLogic {
             }
         }
         return null;
+    }
+
+    /** True when {@code result} fits in the output slot: empty, or the same item with room to stack. */
+    public static boolean canOutput(ItemStackHandler items, int outputSlot, ItemStack result) {
+        ItemStack out = items.getStackInSlot(outputSlot);
+        if (out.isEmpty()) {
+            return true;
+        }
+        return ItemStack.isSameItemSameComponents(out, result)
+                && out.getCount() + result.getCount() <= out.getMaxStackSize();
+    }
+
+    /** Consumes the recipe's inputs from the two input slots and merges its result into the output slot. */
+    public static void craft(ItemStackHandler items, int slotA, int slotB, int outputSlot, WeaveRecipe recipe) {
+        recipe.consume(items.getStackInSlot(slotA), items.getStackInSlot(slotB));
+        ItemStack out = items.getStackInSlot(outputSlot);
+        if (out.isEmpty()) {
+            items.setStackInSlot(outputSlot, recipe.result().copy());
+        } else {
+            out.grow(recipe.result().getCount());
+        }
     }
 
     private static List<WeaveRecipe> buildRecipes() {

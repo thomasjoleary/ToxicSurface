@@ -159,7 +159,7 @@ public class MechanicalWeaverBlockEntity extends KineticBlockEntity implements J
                 ? null
                 : WeaverLogic.find(items.getStackInSlot(SLOT_INPUT_A), items.getStackInSlot(SLOT_INPUT_B));
 
-        boolean nowWeaving = recipe != null && canOutput(recipe.result());
+        boolean nowWeaving = recipe != null && WeaverLogic.canOutput(items, SLOT_OUTPUT, recipe.result());
         if (nowWeaving) {
             maxProgress = recipe.time();
             // Faster rotation weaves faster: one fuel-tick of progress per MIN_RPM of speed.
@@ -194,23 +194,8 @@ public class MechanicalWeaverBlockEntity extends KineticBlockEntity implements J
         }
     }
 
-    private boolean canOutput(ItemStack result) {
-        ItemStack out = items.getStackInSlot(SLOT_OUTPUT);
-        if (out.isEmpty()) {
-            return true;
-        }
-        return ItemStack.isSameItemSameComponents(out, result)
-                && out.getCount() + result.getCount() <= out.getMaxStackSize();
-    }
-
     private void craft(WeaverLogic.WeaveRecipe recipe) {
-        recipe.consume(items.getStackInSlot(SLOT_INPUT_A), items.getStackInSlot(SLOT_INPUT_B));
-        ItemStack out = items.getStackInSlot(SLOT_OUTPUT);
-        if (out.isEmpty()) {
-            items.setStackInSlot(SLOT_OUTPUT, recipe.result().copy());
-        } else {
-            out.grow(recipe.result().getCount());
-        }
+        WeaverLogic.craft(items, SLOT_INPUT_A, SLOT_INPUT_B, SLOT_OUTPUT, recipe);
         // A small white puff to punctuate the transformation, offset toward the work face.
         if (level instanceof ServerLevel server) {
             BlockPos pos = getBlockPos();
