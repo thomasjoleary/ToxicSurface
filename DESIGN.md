@@ -525,10 +525,12 @@ server-driven and synced. Baked into the architecture, not bolted on.
   `ExhaustScrubber` are all base-mod (only the fan-wash recipe is Create-gated; the predicate is
   unit-tested).
 
-**Phase 8 — Polish & pack integration 🚧 (in progress; branch `claude/phase7-create-integration-ez5bsp`)**
-> Everything below is CI-green (spotlessCheck + compileJava + unit tests). The headless GameTest and
-> the visual/in-game behaviour have **not** been run in this environment — local `runClient` testing
-> is the next step (see §12). Recipe categories, a balance pass, and real-pack compat testing remain.
+**Phase 8 — Polish & pack integration 🚧 (nearly done; branch `claude/phase7-create-integration-ez5bsp`)**
+> Everything below is CI-green (spotlessCheck + compileJava + unit tests). The **player has now
+> verified the visual/in-game behaviour** locally — the big systems (generators + filters, JEI/EMI
+> incl. recipe categories, Jade, air-bar HUD, textures/models, toxic rain, and the volumetric fog with
+> its near-field exposure volume) all work in `runClient`. Remaining: a **balance pass**, **real-pack
+> compat testing**, and a real **cough.ogg**.
 
 - **JEI integration + hint tooltips** (Phase 8 start): the generator fuels and the industrial-filter
   clog/clean cycle have **no recipe view**, so the mechanics are surfaced two ways. (1) A client
@@ -592,6 +594,58 @@ server-driven and synced. Baked into the architecture, not bolted on.
   Mechanical) emits a green clean-air dome — an aura over the machine plus a throttled sampling of
   its purge-sphere boundary — via `CleanserVisual`, spawned server-side so it broadcasts with no
   extra networking.
+- **Volumetric toxic-gas haze — "fog is visible where the damage is"** (Phase 8, now done; player-
+  verified in-game): replaced the old *camera-block-only* NeoForge fog (which showed nothing unless
+  your head was in the gas) with a **screen-space raymarched** haze — `ToxicGasFogRenderer` + the
+  `toxic_fog` core shader. After the level draws, a fullscreen pass reconstructs each pixel's world
+  position from the depth buffer, marches the view ray to the surface, and accumulates the *exposed
+  toxic air* it crosses. So gas now reads correctly from **outside** it — through a window, from
+  above the layer, across a valley — with real volumetric depth (distant ground fades into haze,
+  hills/trees fog uniformly, no flat "fog sea" plane or cell seams). Coverage and march reach **scale
+  with render distance** (clamped 8–16 chunks; `MaxDist`/`Steps` shader uniforms) so it fills to about
+  as far as you can see. Hard-won gotchas, all fixed: (1) a **depth feedback loop** — sampling the main
+  target's depth while it is still attached is undefined GL and left a stable garbage screen region;
+  fixed by `copyDepthFrom` into a standalone `TextureTarget`. (2) **Step banding / tearing** on grazing
+  boundaries — fixed with interleaved-gradient-noise ray-start dither + smoothstep-soft volume edges.
+  (3) **Thin-block halo** — a Create shaft/fence/torch read as a roof and cleared a fog column; the
+  roof scan now only accepts a *full collision cube*. (4) **Deep-water far-field** — fluids have no
+  collision, so ocean columns read as open to bedrock and fogged; a **fluid surface now seals** the
+  column like ground (gas sits *on* water, never in it). *Two dead ends worth not retrying* (see
+  TESTING.md): view-independent world-space fog geometry (blocky top, seams, holes on slopes) and a
+  2.5D per-column "sky-openness" heightmap flood (can't see an opening hidden under a roof line).
+- **Fog exposure matches `GasModel` exactly — near-field 3D volume** (Phase 8, now done): the fog's
+  "is this air toxic" test is answered in two tiers so it mirrors the *damage* predicate cell-for-cell
+  instead of approximating it. Near the camera, a **96×48×96 exposure volume** (`RegionOpenness`, pure
+  + unit-tested in `core/enclosure`) classifies every cell using the **same `LevelPassabilityProbe`
+  the server damage scan uses** — a cell is exposed iff its pocket reaches the volume boundary or
+  exceeds the enclosure budget, the grid analogue of `EnclosureScanner`'s "grew without closing". So a
+  **breached room floods** with fog (the case a roof test fundamentally can't see), unsealed **caves/
+  overhangs/doorways** fog, **sealed bases stay clear** (even viewed from outside through a window),
+  and **fluid cells stay fog-free** per `GasModel.submerged`. Generator smog is gated by the same
+  exposure, so a wall keeps a neighbour's smog out of a sealed room. The scan is **amortized**
+  (~768 columns/frame, ~12 frames/rebuild) so no frame pays the whole region, packed into a Y-slice
+  atlas texture; beyond the volume the shader falls back to the per-column roof-test heightmap, blended
+  over the volume's outer 8 blocks so there is no seam. Tunables in `ToxicGasFogRenderer`:
+  `VOL_COLUMNS_PER_FRAME`, `VOL_REBUILD_MOVE_THRESHOLD` (a fresh overhang can lag a rebuild ~1–2 s).
+- **Cleanser bubbles carved out + generator smog added in** (Phase 8, now done): the two things that
+  are *not* real blocks are synced to the fog shader — `CleanserBubbles.collectNear` /
+  `SmogClouds.collectNear` gather nearby spheres server-side (gated by `hasAny`), sent via
+  `FogVolumesPayload` and cached in `ClientFogVolumes` as packed `{x,y,z,r}` arrays. The shader fades
+  gas *out* inside a cleanser sphere and *in* inside a smog sphere (soft edges), both still respecting
+  the exposure gate. Smog renders even with no ambient ceiling (a running generator in a clean area).
+- **Shader verified on a real GL context** (Phase 8): the `toxic_fog` vsh/fsh pair now
+  **compiles + links on an actual GL 3.2 core profile** (a small LWJGL harness under Xvfb, Mesa) —
+  closes the long-standing "never seen the shader accepted by a driver in this env" gap; the rendered
+  look itself is player-confirmed.
+- **Live-tuning commands + Weaver work-face + Aeronautics dev flag** (Phase 8, now done):
+  `/toxicsurface` server commands set/get the toxic values on the fly (ceiling, time-to-toxic, on/off
+  with a persisted `suppressed` flag, start Y, rise speed, sludge min/max depth) for testing without a
+  config reload. The **Mechanical Weaver** got a designated **work face** (`WORK_FACE` DirectionProperty
+  following the shaft axis — top when shafts enter two sides, a side when they go up/down) with a
+  distinct texture, and its item handler now **exposes only the output slot** to funnels/hoppers
+  (Create-style) instead of ejecting the whole inventory. A `-PaeroRuntime` dev flag loads Create:
+  Aeronautics alongside the other soft-dep runtimes (Aeronautics contraptions already seal for free —
+  they extend `AbstractContraptionEntity`, which the existing `ContraptionSeal` handles).
 - **Accessibility sliders** (Phase 8, now done): a per-player **CLIENT** config
   (`ToxicSurfaceClientConfig`, never synced) — `fogIntensity` (full fog → thin tint), `visorOverlay`
   toggle, `filterFlashIntensity`, `toxicRainOpacity` — wired into the fog handler, visor overlay, and
@@ -607,7 +661,8 @@ server-driven and synced. Baked into the architecture, not bolted on.
   The "The Air Has Turned" advancement is now also granted **retroactively** — players who log in or
   change into an already-toxic affected dimension receive it (the award is idempotent).
 
-- **Textures & models** (Phase 8, in progress): started with **toxic sludge** — animated
+- **Textures & models** (Phase 8, ✅ complete — full coverage verified by cross-reference; player
+  confirmed in-game): started with **toxic sludge** — animated
   `sludge_still`/`sludge_flow` strips + `sludge_overlay`, plus the sludge-bucket item texture/model,
   procedurally generated by `tools/textures/gen_sludge.py` (dependency-free; authored as luminance
   maps so the fluid's olive tint colours them) and stitched onto the block atlas via
@@ -657,9 +712,17 @@ server-driven and synced. Baked into the architecture, not bolted on.
   are craftable again.
 
 **Carried-forward polish / TODO** (tracked in-code):
-An **in-game** render pass to confirm the HQ art reads on real models / on a worn suit
-and that the new JEI/EMI categories lay out correctly; a balance pass; real-pack compat
-testing; a real **cough.ogg**.
+Textures/models, the JEI/EMI recipe categories, and the fog/HUD/rain visuals are now
+**player-confirmed in-game**. What remains of the whole roadmap: a **balance pass** (filter
+lifetimes, generator fuel curves + output, cleanser fuel/range, air-bar drain/refill, damage
+cadence, toxicity timings — mostly config-default tuning), **real-pack compat testing** (drop into
+an actual Create / Aeronautics / Sky Archipelago pack), and a real **cough.ogg** (still the vanilla
+drown-hurt placeholder). No phase 9 — this is the tail of Phase 8.
+
+**Branches:** the full history lives on `claude/phase7-create-integration-ez5bsp` (active dev branch);
+a **`main`** branch was cut at that tip (it already contains every prior phase branch, so it is a true
+"everything merged", no merge commit). GitHub's *default* branch is still the old
+`claude/minecraft-toxic-mod-io2j93` — flip it to `main` in repo Settings when ready.
 
 ---
 
