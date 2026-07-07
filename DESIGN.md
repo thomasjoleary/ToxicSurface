@@ -738,7 +738,7 @@ drown-hurt placeholder). No phase 9 — this is the tail of Phase 8.
 branch was cut at that tip (a true "everything merged", no merge commit) and now also carries the
 machine-layer dedup + datapack weave recipes from `claude/minecraft-mod-refactoring-wyydgb`
 (fast-forwarded in). Develop new work on feature branches cut from `main`. GitHub's *default* branch
-is still the old `claude/minecraft-toxic-mod-io2j93` — flip it to `main` in repo Settings when ready.
+is now **`main`** (flipped from the old `claude/minecraft-toxic-mod-io2j93`).
 
 ---
 
