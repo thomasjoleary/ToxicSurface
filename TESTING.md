@@ -131,6 +131,9 @@ over the volume's outer 8 blocks. The rule is "fog exactly where the gas would h
 ### Weaver / Cleanser machines
 - [x] Weaver: kelp+wool → hazmat material; wool/string → filter; filter+coal → carbon filter
 - [x] Cleanser GUI changes range; HUD/Jade reflects it
+- [ ] Weave recipes are now **datapack JSONs** (`data/toxicsurface/recipe/weaving/`): re-verify the
+      Mechanical Weaver crafts in-game (fuel Weaver is GameTest-covered), and that a pack override
+      of a weaving JSON shows up in the machine + JEI/EMI
 
 ## Priority 3 — integrations (need their runtime)
 

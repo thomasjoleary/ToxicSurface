@@ -734,10 +734,11 @@ cadence, toxicity timings — mostly config-default tuning), **real-pack compat 
 an actual Create / Aeronautics / Sky Archipelago pack), and a real **cough.ogg** (still the vanilla
 drown-hurt placeholder). No phase 9 — this is the tail of Phase 8.
 
-**Branches:** the full history lives on `claude/phase7-create-integration-ez5bsp` (active dev branch);
-a **`main`** branch was cut at that tip (it already contains every prior phase branch, so it is a true
-"everything merged", no merge commit). GitHub's *default* branch is still the old
-`claude/minecraft-toxic-mod-io2j93` — flip it to `main` in repo Settings when ready.
+**Branches:** the Phase 1–8 history lives on `claude/phase7-create-integration-ez5bsp`; a **`main`**
+branch was cut at that tip (a true "everything merged", no merge commit) and now also carries the
+machine-layer dedup + datapack weave recipes from `claude/minecraft-mod-refactoring-wyydgb`
+(fast-forwarded in). Develop new work on feature branches cut from `main`. GitHub's *default* branch
+is still the old `claude/minecraft-toxic-mod-io2j93` — flip it to `main` in repo Settings when ready.
 
 ---
 
