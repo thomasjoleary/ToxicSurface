@@ -12,8 +12,10 @@ import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.registration.IRecipeCatalystRegistration;
 import mezz.jei.api.registration.IRecipeCategoryRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.crafting.RecipeHolder;
 
 /**
  * JEI integration (DESIGN.md §5 Phase 8). The toxic generators and the industrial-filter cleaning
@@ -49,7 +51,13 @@ public class ToxicSurfaceJeiPlugin implements IModPlugin {
         for (HintInfo.Entry entry : HintInfo.entries()) {
             registration.addIngredientInfo(entry.item(), HintInfo.text(entry.key()));
         }
-        registration.addRecipes(WeavingCategory.TYPE, WeaverLogic.recipes());
+        // JEI registers plugins with a level in hand (it reloads per world join), so the recipe
+        // manager here is the one the server synced — pack-added weave recipes show up too.
+        registration.addRecipes(
+                WeavingCategory.TYPE,
+                WeaverLogic.recipes(Minecraft.getInstance().level.getRecipeManager()).stream()
+                        .map(RecipeHolder::value)
+                        .toList());
         registration.addRecipes(GeneratorFuelCategory.TYPE, MachineFuel.rows());
     }
 

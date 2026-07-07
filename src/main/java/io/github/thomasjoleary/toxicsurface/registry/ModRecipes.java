@@ -3,6 +3,7 @@
 package io.github.thomasjoleary.toxicsurface.registry;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
+import io.github.thomasjoleary.toxicsurface.block.WeavingRecipe;
 import io.github.thomasjoleary.toxicsurface.item.FanContaminatingRecipe;
 import io.github.thomasjoleary.toxicsurface.item.FilterWashRecipe;
 import io.github.thomasjoleary.toxicsurface.item.MaskRefillRecipe;
@@ -25,6 +26,17 @@ public final class ModRecipes {
 
     public static final Supplier<RecipeSerializer<FilterWashRecipe>> FILTER_WASH = RECIPE_SERIALIZERS.register(
             "filter_wash", () -> new SimpleCraftingRecipeSerializer<>(FilterWashRecipe::new));
+
+    /**
+     * Weaving: one or two counted inputs woven into a result over a process time (DESIGN.md §3).
+     * Datapack-driven so packs can add/remove/rebalance the weave table as JSON; run by both the
+     * furnace-fuelled Weaver and (with Create) the Mechanical Weaver.
+     */
+    public static final Supplier<RecipeType<WeavingRecipe>> WEAVING_TYPE =
+            RECIPE_TYPES.register("weaving", () -> new RecipeType<>() {});
+
+    public static final Supplier<RecipeSerializer<WeavingRecipe>> WEAVING =
+            RECIPE_SERIALIZERS.register("weaving", WeavingRecipe.Serializer::new);
 
     /**
      * Fan-contaminating: an item carried through a fan's sludge airflow is transformed (DESIGN.md

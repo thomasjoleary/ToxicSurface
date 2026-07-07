@@ -10,11 +10,13 @@ import dev.emi.emi.api.stack.EmiIngredient;
 import dev.emi.emi.api.stack.EmiStack;
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
 import io.github.thomasjoleary.toxicsurface.block.WeaverLogic;
+import io.github.thomasjoleary.toxicsurface.block.WeavingRecipe;
 import io.github.thomasjoleary.toxicsurface.compat.HintInfo;
 import io.github.thomasjoleary.toxicsurface.compat.MachineFuel;
 import io.github.thomasjoleary.toxicsurface.registry.ModItems;
 import java.util.List;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.crafting.RecipeHolder;
 
 /**
  * EMI integration (DESIGN.md §5 Phase 8) — the EMI counterpart of {@code compat.jei}. EMI has its
@@ -41,9 +43,8 @@ public class ToxicSurfaceEmiPlugin implements EmiPlugin {
         registry.addCategory(ToxicSurfaceEmiCategories.WEAVING);
         registry.addWorkstation(ToxicSurfaceEmiCategories.WEAVING, EmiStack.of(ModItems.WEAVER.get()));
         workstationById(registry, ToxicSurfaceEmiCategories.WEAVING, "mechanical_weaver");
-        int wi = 0;
-        for (WeaverLogic.WeaveRecipe recipe : WeaverLogic.recipes()) {
-            registry.addRecipe(new WeavingEmiRecipe(recipe, wi++));
+        for (RecipeHolder<WeavingRecipe> holder : WeaverLogic.recipes(registry.getRecipeManager())) {
+            registry.addRecipe(new WeavingEmiRecipe(holder));
         }
 
         // Generator-fuel category: only when the generators exist (Create present → non-empty rows).

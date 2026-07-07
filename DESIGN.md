@@ -282,7 +282,8 @@ These are client options, not server config — each player tunes their own view
 ### Weaver (machine block) — textile & filtration fabricator
 - Crafted from **6 iron + 2 sticks**. Block entity with a sided `ItemStackHandler`;
   **runs on furnace fuel**, **a redstone signal STOPS it**, **hopper-automatable**.
-- **Recipe-driven** (custom `weaver` recipe type, datapack-extensible) rather than a
+- **Recipe-driven** (custom `toxicsurface:weaving` recipe type, datapack-extensible — ✅
+  implemented) rather than a
   single hard-coded recipe — so the Weaver is the hub for all fiber/filtration gear,
   not just a one-off Hazmat Material press. Accepts a range of fibers via a
   **`#toxicsurface:fiber`** tag (wool, string, kelp, bamboo, dried kelp…), so it
@@ -710,6 +711,20 @@ server-driven and synced. Baked into the architecture, not bolted on.
   which 1.21.1's strict datapack codec rejects — they silently weren't loading. Converted to object form
   (`{"item": …}` / `{"tag": …}`), so the hazmat set, weaver, cleanser, filters, mask and waste block
   are craftable again.
+
+- **Machine-layer dedup + datapack weave recipes** (Phase 8 tail): a structural pass extracted the
+  copy-pasted machine plumbing into shared bases — `menu.AbstractMachineMenu` (player-inventory
+  layout + shift-click template), `block.AbstractFueledMachineBlockEntity` (fuel/lit bookkeeping,
+  item handler, ContainerData + NBT round-trip for Weaver/Cleanser), plus shared
+  `WeaverLogic.canOutput/craft`, `ExhaustScrubber.tickExhaust` and `SludgeReclaimer.tickActive`
+  helpers for the Create siblings. Then the Weaver's hard-coded table became the **datapack-driven
+  `toxicsurface:weaving` recipe type** (§3's "recipe-driven" goal): `block.WeavingRecipe` carries
+  two counted ingredients + result + weave time with full JSON/network codecs, the four shipped
+  recipes live in `data/toxicsurface/recipe/weaving/`, both Weaver variants look up via the
+  `RecipeManager`, and the JEI/EMI categories read the same manager (so pack-added recipes show up
+  automatically; EMI now uses the real recipe ids). A new GameTest (`weaverCraftsDatapackRecipe`)
+  proves the JSONs parse, register, and drive the machine end-to-end — 13/13 green standalone and
+  with Create.
 
 **Carried-forward polish / TODO** (tracked in-code):
 Textures/models, the JEI/EMI recipe categories, and the fog/HUD/rain visuals are now

@@ -8,16 +8,19 @@ import dev.emi.emi.api.stack.EmiIngredient;
 import dev.emi.emi.api.stack.EmiStack;
 import dev.emi.emi.api.widget.WidgetHolder;
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
-import io.github.thomasjoleary.toxicsurface.block.WeaverLogic.WeaveRecipe;
+import io.github.thomasjoleary.toxicsurface.block.WeavingRecipe;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.crafting.RecipeHolder;
 
 /** EMI display of a single Weaver weave recipe (the EMI counterpart of {@code WeavingCategory}). */
 public class WeavingEmiRecipe extends BasicEmiRecipe {
     private final boolean twoInputs;
     private final int time;
 
-    public WeavingEmiRecipe(WeaveRecipe recipe, int index) {
-        super(ToxicSurfaceEmiCategories.WEAVING, ToxicSurfaceEmiCategories.id("weaving/" + index), 116, 54);
+    public WeavingEmiRecipe(RecipeHolder<WeavingRecipe> holder) {
+        // The datapack recipe id doubles as the EMI id, so EMI's recipe tree and defaults link up.
+        super(ToxicSurfaceEmiCategories.WEAVING, holder.id(), 116, 54);
+        WeavingRecipe recipe = holder.value();
         this.twoInputs = recipe.bCount() > 0;
         this.time = recipe.time();
         inputs.add(EmiIngredient.of(recipe.a(), recipe.aCount()));

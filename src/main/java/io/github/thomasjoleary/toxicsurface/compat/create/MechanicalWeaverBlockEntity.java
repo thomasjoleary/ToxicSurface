@@ -4,6 +4,7 @@ package io.github.thomasjoleary.toxicsurface.compat.create;
 
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import io.github.thomasjoleary.toxicsurface.block.WeaverLogic;
+import io.github.thomasjoleary.toxicsurface.block.WeavingRecipe;
 import io.github.thomasjoleary.toxicsurface.compat.jade.JadeReadout;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -19,7 +20,7 @@ import net.neoforged.neoforge.items.ItemStackHandler;
 /**
  * The Mechanical Weaver (DESIGN.md §3) — the Create rotation-powered sibling of the fuel
  * {@link io.github.thomasjoleary.toxicsurface.block.WeaverBlockEntity}. It shares the exact
- * {@link WeaverLogic} recipe table (kelp + wool → Hazmat Material, filters, …) but instead of
+ * datapack-driven weave recipes via {@link WeaverLogic} (kelp + wool → Hazmat Material, filters, …) but instead of
  * burning furnace fuel it weaves while driven by rotation: progress per tick scales with the
  * supplied RPM, so a faster shaft fabricates faster. A redstone signal or an over-stressed
  * network halts it; the inventory is hopper/pipe-automatable. Extends Create's kinetic API, so
@@ -155,9 +156,9 @@ public class MechanicalWeaverBlockEntity extends KineticBlockEntity implements J
 
         float rpm = Math.abs(getSpeed());
         boolean halted = level.hasNeighborSignal(getBlockPos()) || isOverStressed() || rpm < MIN_RPM;
-        WeaverLogic.WeaveRecipe recipe = halted
+        WeavingRecipe recipe = halted
                 ? null
-                : WeaverLogic.find(items.getStackInSlot(SLOT_INPUT_A), items.getStackInSlot(SLOT_INPUT_B));
+                : WeaverLogic.find(level, items.getStackInSlot(SLOT_INPUT_A), items.getStackInSlot(SLOT_INPUT_B));
 
         boolean nowWeaving = recipe != null && WeaverLogic.canOutput(items, SLOT_OUTPUT, recipe.result());
         if (nowWeaving) {
@@ -194,7 +195,7 @@ public class MechanicalWeaverBlockEntity extends KineticBlockEntity implements J
         }
     }
 
-    private void craft(WeaverLogic.WeaveRecipe recipe) {
+    private void craft(WeavingRecipe recipe) {
         WeaverLogic.craft(items, SLOT_INPUT_A, SLOT_INPUT_B, SLOT_OUTPUT, recipe);
         // A small white puff to punctuate the transformation, offset toward the work face.
         if (level instanceof ServerLevel server) {

@@ -1,0 +1,13 @@
+{
+    "type": "toxicsurface:weaving",
+    "input_a": {
+        "item": "minecraft:kelp"
+    },
+    "input_b": {
+        "tag": "minecraft:wool"
+    },
+    "result": {
+        "id": "toxicsurface:hazmat_material"
+    },
+    "time": 200
+}

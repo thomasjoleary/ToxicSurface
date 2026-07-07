@@ -1,0 +1,18 @@
+{
+    "type": "toxicsurface:weaving",
+    "input_a": {
+        "item": "toxicsurface:clean_air_filter"
+    },
+    "input_b": [
+        {
+            "item": "minecraft:charcoal"
+        },
+        {
+            "item": "minecraft:coal"
+        }
+    ],
+    "result": {
+        "id": "toxicsurface:carbon_air_filter"
+    },
+    "time": 150
+}

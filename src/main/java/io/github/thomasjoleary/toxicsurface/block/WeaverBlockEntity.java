@@ -18,8 +18,8 @@ import net.minecraft.world.level.block.state.BlockState;
 /**
  * The Weaver (DESIGN.md §3) — a furnace-fuelled textile/filtration fabricator. Two
  * input slots + fuel + output; converts fibre into Hazmat Material and air filters
- * via a small hard-coded recipe table (datapack-driven recipes are a future
- * enhancement). A redstone signal halts it; the item handler is hopper-automatable.
+ * via datapack-driven {@link WeavingRecipe weave recipes}. A redstone signal halts
+ * it; the item handler is hopper-automatable.
  */
 public class WeaverBlockEntity extends AbstractFueledMachineBlockEntity {
     public static final int SLOT_INPUT_A = 0;
@@ -89,9 +89,9 @@ public class WeaverBlockEntity extends AbstractFueledMachineBlockEntity {
             be.litTime--;
         }
 
-        WeaverLogic.WeaveRecipe recipe = level.hasNeighborSignal(pos)
+        WeavingRecipe recipe = level.hasNeighborSignal(pos)
                 ? null
-                : WeaverLogic.find(be.items.getStackInSlot(SLOT_INPUT_A), be.items.getStackInSlot(SLOT_INPUT_B));
+                : WeaverLogic.find(level, be.items.getStackInSlot(SLOT_INPUT_A), be.items.getStackInSlot(SLOT_INPUT_B));
         if (recipe != null && WeaverLogic.canOutput(be.items, SLOT_OUTPUT, recipe.result())) {
             if (be.litTime <= 0) {
                 changed |= be.consumeFuel(SLOT_FUEL);

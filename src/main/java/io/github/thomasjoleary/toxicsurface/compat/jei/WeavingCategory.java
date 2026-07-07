@@ -3,7 +3,7 @@
 package io.github.thomasjoleary.toxicsurface.compat.jei;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
-import io.github.thomasjoleary.toxicsurface.block.WeaverLogic.WeaveRecipe;
+import io.github.thomasjoleary.toxicsurface.block.WeavingRecipe;
 import io.github.thomasjoleary.toxicsurface.registry.ModItems;
 import java.util.List;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
@@ -24,11 +24,12 @@ import net.minecraft.world.item.crafting.Ingredient;
 /**
  * JEI category for the Weaver's weave recipes (DESIGN.md §3): one or two item inputs woven into an
  * output over a process time, shared by the furnace-fuelled Weaver and the Create Mechanical Weaver.
- * The recipe data comes from {@code WeaverLogic} so the view matches the machine exactly.
+ * The recipe data comes from the datapack-loaded {@code toxicsurface:weaving} recipes, so the
+ * view always matches what the machines (and any pack overrides) actually run.
  */
-public class WeavingCategory implements IRecipeCategory<WeaveRecipe> {
-    public static final RecipeType<WeaveRecipe> TYPE =
-            RecipeType.create(ToxicSurface.MODID, "weaving", WeaveRecipe.class);
+public class WeavingCategory implements IRecipeCategory<WeavingRecipe> {
+    public static final RecipeType<WeavingRecipe> TYPE =
+            RecipeType.create(ToxicSurface.MODID, "weaving", WeavingRecipe.class);
 
     private static final int WIDTH = 116;
     private static final int HEIGHT = 54;
@@ -46,7 +47,7 @@ public class WeavingCategory implements IRecipeCategory<WeaveRecipe> {
     }
 
     @Override
-    public RecipeType<WeaveRecipe> getRecipeType() {
+    public RecipeType<WeavingRecipe> getRecipeType() {
         return TYPE;
     }
 
@@ -71,7 +72,7 @@ public class WeavingCategory implements IRecipeCategory<WeaveRecipe> {
     }
 
     @Override
-    public void setRecipe(IRecipeLayoutBuilder builder, WeaveRecipe recipe, IFocusGroup focuses) {
+    public void setRecipe(IRecipeLayoutBuilder builder, WeavingRecipe recipe, IFocusGroup focuses) {
         boolean twoInputs = recipe.bCount() > 0;
         builder.addSlot(RecipeIngredientRole.INPUT, 5, 19)
                 .setStandardSlotBackground()
@@ -90,7 +91,7 @@ public class WeavingCategory implements IRecipeCategory<WeaveRecipe> {
     }
 
     @Override
-    public void draw(WeaveRecipe recipe, IRecipeSlotsView slots, GuiGraphics graphics, double mouseX, double mouseY) {
+    public void draw(WeavingRecipe recipe, IRecipeSlotsView slots, GuiGraphics graphics, double mouseX, double mouseY) {
         if (recipe.bCount() > 0) {
             plus.draw(graphics, 23, 21); // centred in the clear gap between slot A (5) and slot B (38)
         }

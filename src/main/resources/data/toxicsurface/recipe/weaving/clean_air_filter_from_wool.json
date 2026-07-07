@@ -1,0 +1,10 @@
+{
+    "type": "toxicsurface:weaving",
+    "input_a": {
+        "tag": "minecraft:wool"
+    },
+    "result": {
+        "id": "toxicsurface:clean_air_filter"
+    },
+    "time": 100
+}

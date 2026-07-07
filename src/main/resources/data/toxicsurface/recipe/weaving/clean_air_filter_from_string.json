@@ -1,0 +1,11 @@
+{
+    "type": "toxicsurface:weaving",
+    "input_a": {
+        "item": "minecraft:string"
+    },
+    "count_a": 2,
+    "result": {
+        "id": "toxicsurface:clean_air_filter"
+    },
+    "time": 100
+}

@@ -3,16 +3,20 @@
 package io.github.thomasjoleary.toxicsurface.gametest;
 
 import io.github.thomasjoleary.toxicsurface.ToxicSurface;
+import io.github.thomasjoleary.toxicsurface.block.WeaverBlockEntity;
 import io.github.thomasjoleary.toxicsurface.core.enclosure.BlockMapPassabilityProbe;
 import io.github.thomasjoleary.toxicsurface.core.enclosure.EnclosureScanner;
 import io.github.thomasjoleary.toxicsurface.core.enclosure.LevelPassabilityProbe;
 import io.github.thomasjoleary.toxicsurface.core.enclosure.ScanResult;
 import io.github.thomasjoleary.toxicsurface.registry.ModBlocks;
+import io.github.thomasjoleary.toxicsurface.registry.ModItems;
 import java.util.HashMap;
 import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -183,6 +187,30 @@ public final class ToxicSurfaceGameTests {
                     b -> b == ModBlocks.SLUDGE_BLOCK.get(),
                     "adjacent water must not flow in and replace the sludge");
             helper.succeed();
+        });
+    }
+
+    // ------------------------------------------------------------------ weaver (datapack recipes)
+    /**
+     * The Weaver must craft from the datapack-loaded {@code toxicsurface:weaving} recipes: 2 string
+     * weave into a clean air filter (100 ticks at the fuel rate). Proves the JSON recipes parse,
+     * register, and drive the machine end-to-end.
+     */
+    @GameTest(template = "empty", timeoutTicks = 200)
+    public static void weaverCraftsDatapackRecipe(GameTestHelper helper) {
+        BlockPos pos = new BlockPos(2, 1, 2);
+        helper.setBlock(pos, ModBlocks.WEAVER.get());
+        if (!(helper.getBlockEntity(pos) instanceof WeaverBlockEntity weaver)) {
+            helper.fail("placing the weaver block should give a WeaverBlockEntity");
+            return;
+        }
+        weaver.getItems().setStackInSlot(WeaverBlockEntity.SLOT_INPUT_A, new ItemStack(Items.STRING, 2));
+        weaver.getItems().setStackInSlot(WeaverBlockEntity.SLOT_FUEL, new ItemStack(Items.COAL));
+        helper.succeedWhen(() -> {
+            ItemStack out = weaver.getItems().getStackInSlot(WeaverBlockEntity.SLOT_OUTPUT);
+            if (!out.is(ModItems.CLEAN_AIR_FILTER.get())) {
+                helper.fail("the weaver should weave 2 string into a clean air filter");
+            }
         });
     }
 
